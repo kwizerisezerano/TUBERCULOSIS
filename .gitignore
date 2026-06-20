@@ -1,0 +1,96 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# ML models
+*.pkl
+*.pickle
+*.joblib
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Frontend
+.nuxt/
+.output/
+.cache/
+.nitro/
+
+# Archive files (old datasets)
+*.zip
+*.tar.gz
+*.rar
+
+# Old dataset files (we don't need these anymore - using database)
+*.csv
+*.json
+*.xlsx
+*.xls
+*.pdf
+
+# Notebooks (optional - uncomment if you want to keep them)
+# *.ipynb
+
+# Other old files
+TB_Diagnostic_Model/
+amr-stewardship-nuxt/
+TB_Diagnostic_Assistant.py
+cleanup.py
+create_tb_app.py
+final_cleanup.py
+setup_project.py
+simple_test.py
+tb_assistant.py
+tb_diagnostic_reports.txt
+test_log.txt

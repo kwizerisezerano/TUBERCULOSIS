@@ -1,0 +1,141 @@
+================================================================================
+            TUBERCULOSIS (TB) DIAGNOSTIC SYSTEM
+================================================================================
+
+Loading data from C:\Users\TABITHA\Desktop\TUBERCULOSIS\TB_Diagnostic_System\../synthetic_tb_data_bangladesh.csv...
+Successfully loaded 20000 patient records!
+
+Training Random Forest classifier...
+Model trained successfully! Accuracy: 0.50
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.49      0.48      0.49      1974
+           1       0.50      0.51      0.51      2026
+
+    accuracy                           0.50      4000
+   macro avg       0.50      0.50      0.50      4000
+weighted avg       0.50      0.50      0.50      4000
+
+
+Model saved to models\tb_diagnostic_model.pkl
+Model loaded successfully!
+
+================================================================================
+Testing with sample patients from the dataset...
+================================================================================
+
+================================================================================
+================================================================================
+              TB DIAGNOSTIC SYSTEM - PATIENT REPORT
+================================================================================
+
+PATIENT: Patient 1
+AGE: 12
+
+--- SYMPTOM ANALYSIS ---
+SYMPTOMS REPORTED: Weight loss
+RISK LEVEL: Low Risk
+ADVICE: Monitor symptoms, consult doctor if worsens
+
+--- TEST RESULTS EVALUATION ---
+Sputum Smear: Negative
+GeneXpert Test: Negative
+Chest X-ray: Normal
+
+DIAGNOSIS: Inconclusive - Additional Tests Needed
+CONFIDENCE: 0%
+
+--- TREATMENT RECOMMENDATION ---
+TREATMENT TYPE: Drug-resistant TB Treatment
+DRUGS: Second-line drugs (fluoroquinolones, injectable agents)
+DURATION: 18-24 months
+NOTES: Directly Observed Therapy (DOT) recommended
+
+--- ML PREDICTION ---
+Predicted Drug Resistance Probability: 30%
+
+================================================================================
+DISCLAIMER: This system is for educational purposes only.
+Always consult with qualified medical professionals.
+================================================================================
+================================================================================
+
+================================================================================
+================================================================================
+              TB DIAGNOSTIC SYSTEM - PATIENT REPORT
+================================================================================
+
+PATIENT: Patient 2
+AGE: 30
+
+--- SYMPTOM ANALYSIS ---
+SYMPTOMS REPORTED: Fever
+RISK LEVEL: Unlikely TB
+ADVICE: Low probability, but consult doctor if concerned
+
+--- TEST RESULTS EVALUATION ---
+Sputum Smear: Negative
+GeneXpert Test: Positive
+Chest X-ray: Abnormal
+
+DIAGNOSIS: Confirmed TB Diagnosis
+CONFIDENCE: 80%
+  - GeneXpert test positive for TB DNA
+  - Chest X-ray shows abnormalities consistent with TB
+
+--- TREATMENT RECOMMENDATION ---
+TREATMENT TYPE: Drug-resistant TB Treatment
+DRUGS: Second-line drugs (fluoroquinolones, injectable agents)
+DURATION: 18-24 months
+NOTES: Directly Observed Therapy (DOT) recommended
+
+--- ML PREDICTION ---
+Predicted Drug Resistance Probability: 60%
+
+================================================================================
+DISCLAIMER: This system is for educational purposes only.
+Always consult with qualified medical professionals.
+================================================================================
+================================================================================
+
+================================================================================
+================================================================================
+              TB DIAGNOSTIC SYSTEM - PATIENT REPORT
+================================================================================
+
+PATIENT: Patient 3
+AGE: 13
+
+--- SYMPTOM ANALYSIS ---
+SYMPTOMS REPORTED: Night Sweats
+RISK LEVEL: Low Risk
+ADVICE: Monitor symptoms, consult doctor if worsens
+RED FLAGS: Night sweats
+
+--- TEST RESULTS EVALUATION ---
+Sputum Smear: Positive
+GeneXpert Test: Positive
+Chest X-ray: Abnormal
+
+DIAGNOSIS: Confirmed TB Diagnosis
+CONFIDENCE: 100%
+  - Sputum smear positive for Acid-Fast Bacilli (AFB)
+  - GeneXpert test positive for TB DNA
+  - Chest X-ray shows abnormalities consistent with TB
+
+--- TREATMENT RECOMMENDATION ---
+TREATMENT TYPE: Drug-sensitive TB Treatment
+DRUGS: Isoniazid (INH), Rifampicin (RIF), Pyrazinamide (PZA), Ethambutol (EMB)
+DURATION: 6 months
+NOTES: Directly Observed Therapy (DOT) recommended
+
+--- ML PREDICTION ---
+Predicted Drug Resistance Probability: 80%
+
+================================================================================
+DISCLAIMER: This system is for educational purposes only.
+Always consult with qualified medical professionals.
+================================================================================
+================================================================================
