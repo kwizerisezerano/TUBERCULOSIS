@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+frontend/node_modules/
 __pycache__/
 *.py[cod]
 *$py.class
@@ -45,6 +46,7 @@ Thumbs.db
 
 # Environment variables
 .env
+backend/.env
 .env.local
 .env.*.local
 
@@ -63,34 +65,25 @@ logs/
 
 # Frontend
 .nuxt/
+frontend/.nuxt/
 .output/
 .cache/
 .nitro/
+frontend/.output/
 
-# Archive files (old datasets)
+# Archive files
 *.zip
 *.tar.gz
 *.rar
 
-# Old dataset files (we don't need these anymore - using database)
+# Dataset files
 *.csv
 *.json
 *.xlsx
 *.xls
 *.pdf
+!backend/data/raw/*.csv
 
-# Notebooks (optional - uncomment if you want to keep them)
-# *.ipynb
-
-# Other old files
-TB_Diagnostic_Model/
-amr-stewardship-nuxt/
-TB_Diagnostic_Assistant.py
-cleanup.py
-create_tb_app.py
-final_cleanup.py
-setup_project.py
-simple_test.py
-tb_assistant.py
-tb_diagnostic_reports.txt
-test_log.txt
+# Models and local artifacts
+backend/models/*.pkl
+backend/models/*.joblib
