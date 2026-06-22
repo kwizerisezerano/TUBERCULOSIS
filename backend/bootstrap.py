@@ -6,6 +6,40 @@ trains models, and can start the API server.
 """
 import argparse
 import os
+import subprocess
+import sys
+
+
+def _use_project_venv_when_available():
+    # Allow `python bootstrap.py ...` to work from the backend folder without
+    # requiring the user to activate the virtual environment first.
+    current_prefix = os.path.abspath(sys.prefix)
+    base_prefix = os.path.abspath(getattr(sys, "base_prefix", sys.prefix))
+    running_inside_venv = current_prefix != base_prefix
+    if running_inside_venv:
+        return
+
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    venv_python = os.path.join(project_dir, ".venv", "Scripts", "python.exe")
+    if not os.path.exists(venv_python):
+        return
+
+    current_python = os.path.normcase(os.path.abspath(sys.executable))
+    target_python = os.path.normcase(os.path.abspath(venv_python))
+    if current_python == target_python:
+        return
+
+    env = os.environ.copy()
+    env["TB_BACKEND_AUTO_VENV"] = "1"
+    completed = subprocess.run(
+        [target_python, os.path.abspath(__file__), *sys.argv[1:]],
+        env=env,
+        check=False,
+    )
+    raise SystemExit(completed.returncode)
+
+
+_use_project_venv_when_available()
 
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import make_url

@@ -1,9 +1,42 @@
 import os
 import json
+import subprocess
+import sys
 import joblib
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+
+
+def _use_project_venv_when_available():
+    current_prefix = os.path.abspath(sys.prefix)
+    base_prefix = os.path.abspath(getattr(sys, "base_prefix", sys.prefix))
+    running_inside_venv = current_prefix != base_prefix
+    if running_inside_venv:
+        return
+
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    venv_python = os.path.join(project_dir, ".venv", "Scripts", "python.exe")
+    if not os.path.exists(venv_python):
+        return
+
+    current_python = os.path.normcase(os.path.abspath(sys.executable))
+    target_python = os.path.normcase(os.path.abspath(venv_python))
+    if current_python == target_python:
+        return
+
+    env = os.environ.copy()
+    env["TB_BACKEND_AUTO_VENV"] = "1"
+    completed = subprocess.run(
+        [target_python, os.path.abspath(__file__), *sys.argv[1:]],
+        env=env,
+        check=False,
+    )
+    raise SystemExit(completed.returncode)
+
+
+_use_project_venv_when_available()
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_mail import Mail, Message
@@ -67,6 +100,59 @@ tb_status_label_encoder = None
 drug_resistance_model = None
 drug_resistance_label_encoder = None
 
+TB_BACTERIA_PROFILES = {
+    "Mycobacterium tuberculosis": {
+        "description": "The most common cause of human tuberculosis worldwide.",
+        "typical_source": "Human-to-human airborne transmission.",
+        "lab_note": "Routine TB molecular tests and culture commonly target this species within the MTBC.",
+        "treatment_note": "Use standard first-line treatment unless drug resistance is detected.",
+    },
+    "Mycobacterium bovis": {
+        "description": "A zoonotic MTBC species linked to cattle and contaminated dairy products.",
+        "typical_source": "Cattle exposure or unpasteurized milk products.",
+        "lab_note": "Culture speciation is important when zoonotic exposure is suspected.",
+        "treatment_note": "Confirm speciation because M. bovis is typically pyrazinamide resistant; tailor regimen accordingly.",
+    },
+    "Mycobacterium africanum": {
+        "description": "An MTBC member that causes human TB, especially in parts of West Africa.",
+        "typical_source": "Human transmission, often with West African epidemiologic linkage.",
+        "lab_note": "Reference-lab speciation is useful where M. africanum is endemic.",
+        "treatment_note": "Treat similarly to drug-sensitive TB unless resistance testing indicates otherwise.",
+    },
+    "Mycobacterium canettii": {
+        "description": "A rare smooth-colony MTBC member reported mainly in the Horn of Africa.",
+        "typical_source": "Rare human infection with specific geographic clustering.",
+        "lab_note": "Requires specialist or reference-laboratory speciation support.",
+        "treatment_note": "Seek infectious-disease or TB-specialist input because cases are rare.",
+    },
+    "Mycobacterium microti": {
+        "description": "An uncommon MTBC species more often associated with rodents than humans.",
+        "typical_source": "Rodent or wildlife exposure.",
+        "lab_note": "Species confirmation often needs specialized molecular testing.",
+        "treatment_note": "Manage with specialist input and drug-susceptibility guidance.",
+    },
+    "Mycobacterium caprae": {
+        "description": "An MTBC species usually associated with goats and other livestock.",
+        "typical_source": "Goat, sheep, or livestock exposure.",
+        "lab_note": "Consider speciation when livestock exposure is prominent.",
+        "treatment_note": "Treat as TB but review susceptibilities and zoonotic implications.",
+    },
+    "Mycobacterium pinnipedii": {
+        "description": "A rare MTBC species associated with seals and sea lions.",
+        "typical_source": "Marine mammal exposure.",
+        "lab_note": "Reference-lab confirmation is recommended.",
+        "treatment_note": "Use specialist review because human infection is rare and zoonotic.",
+    },
+    "Mycobacterium orygis": {
+        "description": "An MTBC species reported in both animals and humans, often with zoonotic linkage.",
+        "typical_source": "Animal exposure or South Asian epidemiologic linkage.",
+        "lab_note": "Speciation generally requires molecular reference testing.",
+        "treatment_note": "Treat as TB while confirming species and resistance profile.",
+    },
+}
+
+BOVIS_LIKE_SPECIES = {"Mycobacterium bovis"}
+
 def load_models():
     global tb_status_model, tb_status_label_encoder, drug_resistance_model, drug_resistance_label_encoder
     try:
@@ -96,6 +182,496 @@ def load_models():
         drug_resistance_label_encoder = None
 
 load_models()
+
+
+def normalize_bacteria_species(value):
+    if value is None:
+        return None
+    cleaned = str(value).strip()
+    if not cleaned or cleaned.lower() in {"auto", "auto-detect", "autodetect", "unknown", "none"}:
+        return None
+
+    aliases = {
+        "m. tuberculosis": "Mycobacterium tuberculosis",
+        "mtb": "Mycobacterium tuberculosis",
+        "m. bovis": "Mycobacterium bovis",
+        "m. africanum": "Mycobacterium africanum",
+        "m. canettii": "Mycobacterium canettii",
+        "m. microti": "Mycobacterium microti",
+        "m. caprae": "Mycobacterium caprae",
+        "m. pinnipedii": "Mycobacterium pinnipedii",
+        "m. orygis": "Mycobacterium orygis",
+    }
+    normalized = aliases.get(cleaned.lower(), cleaned)
+    return normalized if normalized in TB_BACTERIA_PROFILES else None
+
+
+def tokenize_case_text(*values):
+    stopwords = {
+        "the", "and", "with", "from", "that", "this", "have", "has", "for", "into",
+        "patient", "history", "positive", "negative", "unknown", "daily", "oral",
+        "weeks", "week", "months", "month", "mild", "severe", "common", "rare",
+        "likely", "possible", "tb", "tuberculosis",
+    }
+    tokens = set()
+    for value in values:
+        if not value:
+            continue
+        cleaned = str(value).lower()
+        for char in [",", ".", ";", ":", "(", ")", "/", "-", "_"]:
+            cleaned = cleaned.replace(char, " ")
+        for token in cleaned.split():
+            if len(token) >= 3 and token not in stopwords:
+                tokens.add(token)
+    return tokens
+
+
+def infer_bacteria_species_from_owner_dataset(exposure_history, region=None, city=None, symptoms=None, sputum_smear=None, genexpert=None, chest_xray=None, tb_culture=None, tst=None, igra=None):
+    reference_cases = (
+        Patient.query.filter(
+            Patient.source_dataset == "owner_tb_species_dataset",
+            Patient.bacteria_species.isnot(None),
+        )
+        .all()
+    )
+    if not reference_cases:
+        return None
+
+    patient_tokens = tokenize_case_text(exposure_history, region, city, symptoms)
+    patient_test_values = {
+        "sputum_smear_test": str(sputum_smear or "").strip().lower(),
+        "genexpert_test": str(genexpert or "").strip().lower(),
+        "chest_xray": str(chest_xray or "").strip().lower(),
+    }
+    patient_positive_tests = {
+        "tb_culture": str(tb_culture or "").strip().lower(),
+        "tst": str(tst or "").strip().lower(),
+        "igra": str(igra or "").strip().lower(),
+    }
+
+    species_scores = {}
+    species_examples = {}
+    species_reasons = {}
+
+    for case in reference_cases:
+        score = 0.0
+        reason_parts = []
+        case_tokens = tokenize_case_text(case.exposure_history, case.region, case.city, case.symptoms)
+        overlap = sorted(patient_tokens & case_tokens)
+        if overlap:
+            overlap_score = min(len(overlap), 5) * 1.5
+            score += overlap_score
+            reason_parts.append(f"shared context: {', '.join(overlap[:4])}")
+
+        for field, patient_value in patient_test_values.items():
+            case_value = str(getattr(case, field, "") or "").strip().lower()
+            if patient_value and patient_value != "unknown" and case_value == patient_value:
+                score += 2.0
+                reason_parts.append(f"{field.replace('_', ' ')} match")
+
+        for field, patient_value in patient_positive_tests.items():
+            if patient_value and patient_value != "unknown" and patient_value == "positive":
+                score += 1.0
+                reason_parts.append(f"{field.replace('_', ' ')} positive")
+
+        if score <= 0:
+            continue
+
+        species = case.bacteria_species
+        species_scores[species] = species_scores.get(species, 0.0) + score
+        species_examples[species] = species_examples.get(species, 0) + 1
+        species_reasons.setdefault(species, []).extend(reason_parts[:3])
+
+    if not species_scores:
+        return None
+
+    ranked = sorted(species_scores.items(), key=lambda item: item[1], reverse=True)
+    top_species, top_score = ranked[0]
+    runner_up_score = ranked[1][1] if len(ranked) > 1 else 0.0
+    if top_score < 4.0 or top_score - runner_up_score < 1.5:
+        return None
+
+    unique_reasons = []
+    for reason in species_reasons.get(top_species, []):
+        if reason not in unique_reasons:
+            unique_reasons.append(reason)
+
+    return {
+        "species": top_species,
+        "mode": "dataset-assisted",
+        "reason": (
+            f"Estimated from curated owner dataset matches using patient symptoms, exposure, geography, and tests. "
+            f"Matched {species_examples.get(top_species, 1)} similar case(s); strongest evidence: {', '.join(unique_reasons[:3])}."
+        ),
+    }
+
+
+def infer_bacteria_species(explicit_species, exposure_history, region=None, city=None, symptoms=None, sputum_smear=None, genexpert=None, chest_xray=None, tb_culture=None, tst=None, igra=None):
+    species = normalize_bacteria_species(explicit_species)
+    if species:
+        return {
+            "species": species,
+            "mode": "manual",
+            "reason": "Clinician selected a specific TB bacteria species.",
+        }
+
+    context = " ".join(
+        [
+            str(exposure_history or ""),
+            str(region or ""),
+            str(city or ""),
+        ]
+    ).lower()
+
+    dataset_result = infer_bacteria_species_from_owner_dataset(
+        exposure_history,
+        region,
+        city,
+        symptoms,
+        sputum_smear,
+        genexpert,
+        chest_xray,
+        tb_culture,
+        tst,
+        igra,
+    )
+    if dataset_result:
+        return dataset_result
+
+    inference_rules = [
+        ("Mycobacterium bovis", ["cattle", "cow", "bovine", "unpasteurized", "milk", "dairy"]),
+        ("Mycobacterium africanum", ["west africa", "ghana", "gambia", "senegal", "nigeria", "sierra leone", "liberia"]),
+        ("Mycobacterium canettii", ["horn of africa", "djibouti", "somalia", "eritrea", "ethiopia"]),
+        ("Mycobacterium microti", ["rodent", "vole", "mouse", "wild rodent"]),
+        ("Mycobacterium caprae", ["goat", "sheep", "caprine", "livestock herd"]),
+        ("Mycobacterium pinnipedii", ["seal", "sea lion", "pinniped", "marine mammal"]),
+        ("Mycobacterium orygis", ["south asia", "india", "pakistan", "bangladesh", "nepal", "oryx"]),
+    ]
+
+    for candidate, keywords in inference_rules:
+        if any(keyword in context for keyword in keywords):
+            return {
+                "species": candidate,
+                "mode": "inferred",
+                "reason": f"Inferred from exposure or epidemiology clues: {', '.join(keywords[:3])}.",
+            }
+
+    return {
+        "species": "Mycobacterium tuberculosis",
+        "mode": "default",
+        "reason": "Defaulted to the most common human TB species because the patient record did not contain enough species-specific evidence.",
+    }
+
+
+def build_bacteria_assessment(species_result, tb_analysis):
+    species = species_result["species"]
+    profile = TB_BACTERIA_PROFILES.get(species, TB_BACTERIA_PROFILES["Mycobacterium tuberculosis"])
+    tb_detected = tb_analysis["who_category"] != "NO EVIDENCE OF TB"
+
+    return {
+        "species": species,
+        "mode": species_result["mode"],
+        "reason": species_result["reason"],
+        "description": profile["description"],
+        "typical_source": profile["typical_source"],
+        "lab_note": profile["lab_note"],
+        "treatment_note": profile["treatment_note"],
+        "supported_species_count": len(TB_BACTERIA_PROFILES),
+        "supported_species": list(TB_BACTERIA_PROFILES.keys()),
+        "tb_detected": tb_detected,
+    }
+
+
+def apply_species_treatment_adjustments(treatment, clinical_info, bacteria_assessment):
+    adjusted_treatment = dict(treatment)
+    adjusted_clinical_info = dict(clinical_info)
+    species = bacteria_assessment["species"]
+    species_note = bacteria_assessment["treatment_note"]
+
+    adjusted_treatment["species_specific_notes"] = species_note
+
+    if species in BOVIS_LIKE_SPECIES:
+        adjusted_treatment["drugs"] = (
+            f"{adjusted_treatment.get('drugs')} "
+            "If M. bovis is confirmed, review the regimen because pyrazinamide is usually not effective."
+        ).strip()
+        adjusted_treatment["notes"] = (
+            f"{adjusted_treatment.get('notes')} "
+            "Confirm M. bovis with a reference laboratory and tailor therapy to susceptibility results."
+        ).strip()
+        adjusted_clinical_info["who_recommendation"] = (
+            f"{adjusted_clinical_info.get('who_recommendation', '')} "
+            "Add zoonotic exposure review and confirm pyrazinamide susceptibility assumptions."
+        ).strip()
+    elif bacteria_assessment["mode"] in {"manual", "inferred"} and species != "Mycobacterium tuberculosis":
+        adjusted_treatment["notes"] = (
+            f"{adjusted_treatment.get('notes')} "
+            "Confirm species at a reference laboratory and review zoonotic/public-health implications."
+        ).strip()
+        adjusted_clinical_info["who_recommendation"] = (
+            f"{adjusted_clinical_info.get('who_recommendation', '')} "
+            "Request species confirmation if clinical management depends on the exact MTBC member."
+        ).strip()
+
+    return adjusted_treatment, adjusted_clinical_info
+
+
+def normalize_drug_list(value):
+    if value is None:
+        return []
+    if isinstance(value, list):
+        raw_items = value
+    else:
+        normalized = str(value).replace(";", ",").replace("|", ",")
+        raw_items = normalized.split(",")
+
+    cleaned = []
+    for item in raw_items:
+        text = str(item).strip()
+        if text:
+            cleaned.append(text)
+    return cleaned
+
+
+def determine_resistance_profile(drug_resistant, genexpert, antibiogram_result=None, resistant_to=None, susceptible_to=None):
+    resistant_drugs = normalize_drug_list(resistant_to)
+    susceptible_drugs = normalize_drug_list(susceptible_to)
+    antibiogram_text = str(antibiogram_result or "").strip()
+    decision_basis = []
+    regimen_level = "first-line"
+    classification = "Drug-sensitive TB (DS-TB)"
+    resistant_drug_set = {drug.lower() for drug in resistant_drugs}
+
+    combined_text = " ".join(
+        [
+            str(drug_resistant or ""),
+            str(genexpert or ""),
+            antibiogram_text,
+            ", ".join(resistant_drugs),
+        ]
+    ).lower()
+
+    if "extensively drug-resistant" in combined_text or "xdr" in combined_text:
+        classification = "Extensively Drug-Resistant TB (XDR-TB)"
+        regimen_level = "individualized second-line"
+        decision_basis.append("Detected XDR-level resistance markers from DST/GeneXpert metadata.")
+    elif (
+        "multidrug-resistant" in combined_text
+        or "mdr" in combined_text
+        or {"isoniazid", "rifampicin"}.issubset({drug.lower() for drug in resistant_drugs})
+        or str(drug_resistant or "").strip() == "Isoniazid and Rifampicin"
+    ):
+        classification = "Multidrug-Resistant TB (MDR-TB)"
+        regimen_level = "second-line"
+        decision_basis.append("Detected rifampicin plus isoniazid resistance pattern.")
+    elif resistant_drug_set == {"pyrazinamide"}:
+        classification = "Pyrazinamide-resistant pattern"
+        regimen_level = "modified first-line"
+        decision_basis.append("Only pyrazinamide resistance was provided; review for M. bovis or regimen modification.")
+    elif "rifampicin-resistant" in combined_text or "rr-tb" in combined_text or "rifampicin" in {drug.lower() for drug in resistant_drugs}:
+        classification = "Rifampicin-Resistant TB (RR-TB)"
+        regimen_level = "second-line"
+        decision_basis.append("Detected rifampicin resistance signal.")
+    elif str(drug_resistant or "").strip().lower() in {"yes", "drug-resistant"} or resistant_drugs:
+        classification = "Drug-Resistant TB (DR-TB)"
+        regimen_level = "second-line"
+        decision_basis.append("Resistance data present but not enough to label RR/MDR/XDR confidently.")
+    else:
+        decision_basis.append("No resistance markers supplied; managed as drug-sensitive TB unless DST changes the plan.")
+
+    if antibiogram_text:
+        decision_basis.append(f"Antibiogram/DST summary: {antibiogram_text}")
+
+    return {
+        "classification": classification,
+        "regimen_level": regimen_level,
+        "antibiogram_result": antibiogram_text or "Not provided",
+        "resistant_to": resistant_drugs,
+        "susceptible_to": susceptible_drugs,
+        "decision_basis": decision_basis,
+        "dst_required": classification != "Drug-sensitive TB (DS-TB)",
+    }
+
+
+def build_infection_assessment(tb_analysis):
+    infection_types = []
+    seen = set()
+
+    infection_rules = [
+        ("pulmonary", "Pulmonary TB", "Lungs"),
+        ("lymph node", "Lymph Node TB", "Lymph nodes"),
+        ("bone/joint", "Bone and Joint TB", "Spine, bones, or joints"),
+        ("meningitis", "TB Meningitis", "Central nervous system"),
+        ("genitourinary", "Genitourinary TB", "Genitourinary tract"),
+        ("abdominal", "Abdominal TB", "Abdomen/peritoneum"),
+        ("pleural", "Pleural TB", "Pleura"),
+        ("miliary", "Miliary TB", "Disseminated / whole body spread"),
+        ("latent", "Latent TB Infection", "No active organ disease"),
+        ("hiv", "TB/HIV Co-infection", "Systemic comorbidity"),
+    ]
+
+    for tb_type in tb_analysis["tb_types"]:
+        lower = tb_type.lower()
+        for key, label, site in infection_rules:
+            if key in lower and label not in seen:
+                infection_types.append(
+                    {
+                        "label": label,
+                        "site": site,
+                        "source_classification": tb_type,
+                    }
+                )
+                seen.add(label)
+
+    if not infection_types:
+        infection_types.append(
+            {
+                "label": "No specific TB infection pattern confirmed",
+                "site": "Unspecified",
+                "source_classification": tb_analysis["who_category"],
+            }
+        )
+
+    return {
+        "primary_infection": infection_types[0]["label"],
+        "infection_types": infection_types,
+    }
+
+
+def build_treatment_plan(tb_analysis, bacteria_assessment, resistance_profile, treatment, clinical_info):
+    tb_type = tb_analysis["who_category"]
+    species = bacteria_assessment["species"]
+    resistance_class = resistance_profile["classification"]
+    options = []
+
+    def option(name, level, drugs, duration, administration, monitoring, notes):
+        return {
+            "name": name,
+            "level": level,
+            "drugs": drugs,
+            "duration": duration,
+            "administration": administration,
+            "monitoring": monitoring,
+            "notes": notes,
+        }
+
+    if "XDR-TB" in resistance_class:
+        options.append(
+            option(
+                "WHO-aligned XDR-TB individualized regimen",
+                "individualized second-line",
+                "Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + additional active agents guided by DST",
+                "18-24 months",
+                "Daily supervised treatment under specialist DR-TB care; all-oral regimen preferred.",
+                "Monthly clinical review, ECG where indicated, liver tests, neuropathy and hematology monitoring.",
+                "Must be individualized from DST/antibiogram and WHO DR-TB guidance.",
+            )
+        )
+    elif "MDR-TB" in resistance_class:
+        options.append(
+            option(
+                "WHO MDR-TB second-line regimen",
+                "second-line",
+                "Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + Cycloserine / other active drugs",
+                "18-24 months",
+                "Daily supervised treatment, preferably all-oral, with DR-TB specialist oversight.",
+                "Frequent DST review, toxicity review, liver/kidney tests, ECG, adherence tracking.",
+                "Chosen because rifampicin and isoniazid resistance is present or strongly suspected.",
+            )
+        )
+    elif "RR-TB" in resistance_class or "Drug-Resistant TB" in resistance_class:
+        options.append(
+            option(
+                "WHO RR/DR-TB regimen",
+                "second-line",
+                "Second-line anti-TB regimen selected from DST-active medicines",
+                "18-24 months",
+                "Daily supervised treatment under a DR-TB protocol.",
+                "Repeat DST, adverse-effect monitoring, adherence checks, and specialist review.",
+                "Escalate to MDR/XDR protocol if additional resistance is confirmed.",
+            )
+        )
+    elif species == "Mycobacterium bovis":
+        options.append(
+            option(
+                "M. bovis pyrazinamide-sparing regimen",
+                "modified first-line",
+                "Isoniazid (H) + Rifampicin (R) + Ethambutol (E)",
+                "6-9 months",
+                "Daily oral therapy with DOTS strongly recommended.",
+                "Review species confirmation, liver tests, response to therapy, and zoonotic exposure control.",
+                "Avoid relying on pyrazinamide because M. bovis is usually resistant.",
+            )
+        )
+    elif species == "Mycobacterium microti":
+        options.append(
+            option(
+                "M. microti HR-based regimen",
+                "modified first-line",
+                "Isoniazid (H) + Rifampicin (R)-based regimen with or without Ethambutol depending on severity",
+                "6-9 months",
+                "Daily oral therapy, ideally under supervised adherence support.",
+                "Confirm species and review response because human disease is uncommon.",
+                "Specialist review is advised for rare-species disease.",
+            )
+        )
+    else:
+        options.append(
+            option(
+                treatment.get("regimen", clinical_info.get("diagnosis", tb_type)),
+                "first-line",
+                treatment.get("drugs"),
+                treatment.get("duration"),
+                f"Intensive phase: {treatment.get('intensive_phase')}; continuation phase: {treatment.get('continuation_phase')}; daily DOTS/supervised dosing where feasible.",
+                clinical_info.get("who_recommendation"),
+                treatment.get("notes"),
+            )
+        )
+
+    if "Latent TB" in tb_type:
+        options.extend(
+            [
+                option(
+                    "LTBI 6-9H option",
+                    "preventive therapy",
+                    "Isoniazid daily",
+                    "6-9 months",
+                    "Daily oral therapy with adherence follow-up.",
+                    "Baseline and interval liver monitoring where indicated.",
+                    "Standard WHO preventive option for LTBI.",
+                ),
+                option(
+                    "LTBI 3HP option",
+                    "preventive therapy",
+                    "Isoniazid + Rifapentine weekly",
+                    "3 months",
+                    "Weekly directly observed or closely supported therapy.",
+                    "Monitor adherence and drug interactions.",
+                    "Short-course WHO preventive option.",
+                ),
+                option(
+                    "LTBI 4R option",
+                    "preventive therapy",
+                    "Rifampicin daily",
+                    "4 months",
+                    "Daily oral therapy.",
+                    "Monitor liver function and interactions.",
+                    "Alternative preventive option when appropriate.",
+                ),
+            ]
+        )
+
+    return {
+        "selected_option": options[0],
+        "options": options,
+        "guideline_source": "WHO-aligned TB rule engine with species notes, infection-site classification, and DST-aware regimen escalation.",
+        "decision_basis": [
+            f"Primary TB classification: {tb_type}",
+            f"Bacteria estimate: {species}",
+            f"Resistance class: {resistance_class}",
+            *resistance_profile["decision_basis"],
+        ],
+    }
 
 # Role-based access decorator
 def get_current_user_from_jwt():
@@ -186,7 +762,7 @@ def is_presumptive_tb(symptoms):
         'reasons': reasons
     }
 
-def has_bacteriological_confirmation(sputum, genexpert, tb_culture=None):
+def has_bacteriological_confirmation(sputum, genexpert, tb_culture=None, bacteria_species=None):
     """Check for bacteriologically confirmed TB according to WHO"""
     confirmed = False
     evidence = []
@@ -199,14 +775,15 @@ def has_bacteriological_confirmation(sputum, genexpert, tb_culture=None):
         evidence.append('Sputum smear microscopy positive (acid-fast bacilli detected)')
     if tb_culture == 'Positive':
         confirmed = True
-        evidence.append('TB culture positive (Mycobacterium tuberculosis grown)')
+        cultured_species = normalize_bacteria_species(bacteria_species) or 'Mycobacterium tuberculosis complex'
+        evidence.append(f'TB culture positive ({cultured_species} grown or suspected)')
         
     return {
         'bacteriologically_confirmed': confirmed,
         'evidence': evidence
     }
 
-def identify_tb_type_who(symptoms, sputum, genexpert, chest_xray, hiv, drug_resistant, tb_culture=None, tst=None, igra=None):
+def identify_tb_type_who(symptoms, sputum, genexpert, chest_xray, hiv, drug_resistant, tb_culture=None, tst=None, igra=None, bacteria_species=None):
     """
     Identify TB type according to full WHO international clinical standards
     Classifies into:
@@ -229,7 +806,7 @@ def identify_tb_type_who(symptoms, sputum, genexpert, chest_xray, hiv, drug_resi
         details.append(f"Presumptive TB: {', '.join(presumptive['reasons'])}")
 
     # Bacteriological confirmation
-    bacteriological = has_bacteriological_confirmation(sputum, genexpert, tb_culture)
+    bacteriological = has_bacteriological_confirmation(sputum, genexpert, tb_culture, bacteria_species)
     if bacteriological['bacteriologically_confirmed']:
         details.append(f"Bacteriologically confirmed: {', '.join(bacteriological['evidence'])}")
 
@@ -801,9 +1378,11 @@ def patients():
             gender=data.get('gender'),
             city=data.get('city'),
             symptoms=data.get('symptoms'),
+            exposure_history=data.get('exposure_history'),
             sputum_smear_test=data.get('sputum_smear_test'),
             genexpert_test=data.get('genexpert_test'),
             chest_xray=data.get('chest_xray'),
+            bacteria_species=data.get('bacteria_species'),
             drug_resistance=data.get('drug_resistance'),
             hiv=data.get('hiv'),
             diabetes=data.get('diabetes')
@@ -875,9 +1454,11 @@ def diagnose():
             "gender",
             "city",
             "symptoms",
+            "exposure_history",
             "sputum_smear_test",
             "genexpert_test",
             "chest_xray",
+            "bacteria_species",
             "drug_resistance",
             "hiv",
             "diabetes",
@@ -998,6 +1579,24 @@ def diagnose():
 
         return predictions if predictions else None
 
+    tb_culture = patient_data.get('tb_culture', None)
+    tst = patient_data.get('tst', None)
+    igra = patient_data.get('igra', None)
+
+    species_result = infer_bacteria_species(
+        patient_data.get("bacteria_species", patient.bacteria_species),
+        patient_data.get("exposure_history", patient.exposure_history),
+        patient.region,
+        patient.city,
+        patient.symptoms,
+        patient.sputum_smear_test,
+        patient.genexpert_test,
+        patient.chest_xray,
+        tb_culture,
+        tst,
+        igra,
+    )
+
     # WHO Clinical Analysis
     tb_analysis = identify_tb_type_who(
         patient.symptoms or '',
@@ -1006,10 +1605,13 @@ def diagnose():
         patient.chest_xray or 'Unknown',
         patient.hiv or 'No',
         patient.drug_resistance or 'No',
-        patient_data.get('tb_culture', None),
-        patient_data.get('tst', None),
-        patient_data.get('igra', None)
+        tb_culture,
+        tst,
+        igra,
+        species_result["species"],
     )
+    bacteria_assessment = build_bacteria_assessment(species_result, tb_analysis)
+    infection_assessment = build_infection_assessment(tb_analysis)
 
     # Get WHO clinical info
     clinical_info = get_who_clinical_info(
@@ -1028,6 +1630,15 @@ def diagnose():
         patient.hiv or 'No',
         patient.drug_resistance or 'No'
     )
+    resistance_profile = determine_resistance_profile(
+        patient.drug_resistance or 'No',
+        patient.genexpert_test or 'Unknown',
+        patient_data.get('antibiogram_result'),
+        patient_data.get('resistant_to'),
+        patient_data.get('susceptible_to'),
+    )
+    treatment, clinical_info = apply_species_treatment_adjustments(treatment, clinical_info, bacteria_assessment)
+    treatment_plan = build_treatment_plan(tb_analysis, bacteria_assessment, resistance_profile, treatment, clinical_info)
 
     ml_prediction = predict_ml(patient)
 
@@ -1035,6 +1646,14 @@ def diagnose():
     alert_created = None
     symptom_analysis = compute_symptom_analysis(patient.symptoms or "")
     test_evaluation = evaluate_tests(patient.sputum_smear_test, patient.genexpert_test, patient.chest_xray)
+    if tb_culture:
+        test_evaluation["findings"].append(f"TB culture: {tb_culture}")
+    if tst:
+        test_evaluation["findings"].append(f"TST: {tst}")
+    if igra:
+        test_evaluation["findings"].append(f"IGRA: {igra}")
+    if resistance_profile["antibiogram_result"] != "Not provided":
+        test_evaluation["findings"].append(f"Antibiogram/DST: {resistance_profile['antibiogram_result']}")
 
     diagnosis_record = Diagnosis(
         patient_id=patient.id,
@@ -1045,8 +1664,12 @@ def diagnose():
             'symptoms_present': tb_analysis['symptoms_present'],
             'presumptive_tb': tb_analysis['presumptive_tb'],
             'bacteriological_confirmation': tb_analysis['bacteriological_confirmation'],
+            'bacteria_assessment': bacteria_assessment,
+            'infection_assessment': infection_assessment,
+            'resistance_profile': resistance_profile,
             'clinical_info': clinical_info,
             'treatment_regimen': treatment,
+            'treatment_plan': treatment_plan,
             'symptom_analysis': symptom_analysis,
             'test_evaluation': test_evaluation,
             'ml_prediction': ml_prediction
@@ -1060,11 +1683,15 @@ def diagnose():
     treatment_record = Treatment(
         patient_id=patient.id,
         diagnosis_id=diagnosis_record.id,
-        treatment_type=tb_analysis['who_category'],
-        drugs=treatment.get('drugs'),
-        duration=treatment.get('duration'),
-        dosage=f"Intensive: {treatment.get('intensive_phase')}, Continuation: {treatment.get('continuation_phase')}",
-        administration_notes=treatment.get('notes')
+        treatment_type=treatment_plan["selected_option"]["name"],
+        drugs=treatment_plan["selected_option"]["drugs"],
+        duration=treatment_plan["selected_option"]["duration"],
+        dosage=(
+            f"Intensive: {treatment.get('intensive_phase')}, Continuation: {treatment.get('continuation_phase')}"
+            if treatment.get('intensive_phase') and treatment.get('continuation_phase')
+            else treatment_plan["selected_option"]["administration"]
+        ),
+        administration_notes=treatment_plan["selected_option"]["notes"]
     )
     db.session.add(treatment_record)
 
@@ -1072,13 +1699,21 @@ def diagnose():
     treatment_recommendation = {
         "type": clinical_info.get("diagnosis", tb_analysis["who_category"]),
         "category": tb_analysis["who_category"],
-        "duration": treatment.get("duration"),
-        "drugs": treatment.get("drugs"),
+        "bacteria_species": bacteria_assessment["species"],
+        "infection_type": infection_assessment["primary_infection"],
+        "resistance_class": resistance_profile["classification"],
+        "regimen_name": treatment_plan["selected_option"]["name"],
+        "regimen_level": treatment_plan["selected_option"]["level"],
+        "duration": treatment_plan["selected_option"]["duration"],
+        "drugs": treatment_plan["selected_option"]["drugs"],
         "dosage": treatment_record.dosage,
-        "administration": treatment.get("notes"),
-        "monitoring": clinical_info.get("who_recommendation"),
+        "administration": treatment_plan["selected_option"]["administration"],
+        "monitoring": treatment_plan["selected_option"]["monitoring"],
         "urgency": urgency,
-        "notes": clinical_info.get("infection_control"),
+        "notes": treatment_plan["selected_option"]["notes"],
+        "guideline_source": treatment_plan["guideline_source"],
+        "decision_basis": treatment_plan["decision_basis"],
+        "treatment_options": treatment_plan["options"],
     }
 
     if 'CONFIRMED' in tb_analysis['who_category'] or 'URGENT' in urgency or 'CRITICAL' in urgency:
@@ -1086,7 +1721,7 @@ def diagnose():
             patient_id=patient.id,
             user_id=user.id,
             alert_type=f"ALERT: {tb_analysis['who_category']}",
-            message=f"Patient {patient_name} (ID: {patient.patient_id}) classified as {tb_analysis['who_category']}. {clinical_info.get('who_recommendation','')}",
+            message=f"Patient {patient_name} (ID: {patient.patient_id}) classified as {tb_analysis['who_category']} with estimated bacteria {bacteria_assessment['species']}. {clinical_info.get('who_recommendation','')}",
             severity='high'
         )
 
@@ -1104,6 +1739,9 @@ def diagnose():
             "bacteriological_confirmation": tb_analysis["bacteriological_confirmation"],
             "clinical_info": clinical_info,
         },
+        "bacteria_assessment": bacteria_assessment,
+        "infection_assessment": infection_assessment,
+        "resistance_profile": resistance_profile,
         "ml_prediction": ml_prediction,
         "treatment_recommendation": treatment_recommendation,
         "saved_diagnosis": diagnosis_record.to_dict(),

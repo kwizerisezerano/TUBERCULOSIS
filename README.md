@@ -8,6 +8,7 @@ A comprehensive tuberculosis diagnostic system with ML-based predictions, patien
 /
 ├── backend/          # Flask API + ML + Database import
 │   ├── models/       # Database models + training code
+│   ├── data/         # Public raw datasets + owner curated species dataset
 │   ├── app.py        # Main API server
 │   ├── requirements.txt
 │   ├── data/raw/     # Raw CSV datasets staged for import
@@ -28,6 +29,59 @@ A comprehensive tuberculosis diagnostic system with ML-based predictions, patien
 - **In-app and email alerts** for high-risk cases
 - **Dark/light mode UI**
 
+## Tuberculosis Reference
+
+### Main Tuberculosis Bacteria
+
+The disease tuberculosis is mainly caused by bacteria in the **Mycobacterium tuberculosis complex (MTBC)**:
+
+- **Mycobacterium tuberculosis** - the most common cause of human TB
+- **Mycobacterium bovis** - zoonotic TB, can spread from infected cattle or unpasteurized milk
+- **Mycobacterium africanum** - an important cause of TB in parts of West Africa
+- **Mycobacterium canettii** - a rare MTBC member
+- **Mycobacterium microti** - usually animal-associated, rarely infects humans
+- **Mycobacterium caprae** - animal-associated, can occasionally infect humans
+- **Mycobacterium pinnipedii** - associated with seals and sea lions, rare in humans
+- **Mycobacterium orygis** - another MTBC member reported in both animals and humans
+
+### Common Clinical Types Of TB
+
+- **Pulmonary TB (PTB)** - affects the lungs
+- **Extrapulmonary TB (EPTB)** - affects organs outside the lungs
+- **Latent TB Infection (LTBI)** - TB bacteria are present but inactive
+- **Miliary TB** - widespread disseminated TB
+- **Drug-sensitive TB (DS-TB)** - responsive to standard first-line treatment
+- **Rifampicin-resistant TB (RR-TB)** - resistant to rifampicin
+- **Multidrug-resistant TB (MDR-TB)** - resistant to at least isoniazid and rifampicin
+- **Extensively drug-resistant TB (XDR-TB)** - resistant to multiple key TB drugs
+
+### WHO-Aligned Decision Chain
+
+The system is designed around this medical decision flow:
+
+1. **TB detection**
+   - Determine whether the patient record is consistent with TB.
+2. **Bacteria assessment**
+   - Estimate the most likely MTBC species from clinician input, exposure history, culture context, and epidemiology.
+3. **Infection assessment**
+   - Classify pulmonary, extrapulmonary, latent, miliary, and related TB patterns.
+4. **Resistance / antibiogram review**
+   - Interpret GeneXpert, culture, DST/antibiogram summary, and resistance markers.
+5. **Treatment engine**
+   - Select WHO-aligned treatment options using infection type plus resistance class.
+6. **Treatment administration**
+   - Return duration, intensive phase, continuation phase, DOTS-style dosing, monitoring, and alternative options where appropriate.
+
+### Important Medical Logic
+
+- First-line treatment is broadly similar across many MTBC members.
+- Final treatment choice depends mainly on:
+  - **infection site / severity**
+  - **drug resistance / DST / antibiogram**
+  - **species-specific exceptions** such as **M. bovis** and pyrazinamide resistance
+  - **patient risk factors** such as HIV and diabetes
+- Because of this, the project uses a **WHO-aligned decision engine**, not species alone, to choose treatment.
+
 ## Setup
 
 ### Backend
@@ -35,7 +89,9 @@ A comprehensive tuberculosis diagnostic system with ML-based predictions, patien
 1. Install dependencies:
 ```bash
 cd backend
-pip install -r requirements.txt
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 ```
 
 2. Configure `.env` (optional, defaults to SQLite):
@@ -49,6 +105,12 @@ cd backend
 python bootstrap.py --runserver
 ```
 
+If you see `ModuleNotFoundError: No module named 'sqlalchemy'`, it usually means you ran `python` outside the virtual environment. Run it with:
+```bash
+cd backend
+.\.venv\Scripts\python bootstrap.py --runserver
+```
+
 This command:
 - drops the existing database if it exists and recreates it from scratch
 - creates database tables
@@ -56,6 +118,12 @@ This command:
 - seeds users and roles
 - trains models from database records
 - starts the backend API server
+
+### Owner Dataset
+
+- Curated species-labeled dataset file: `backend/data/raw/owner_tb_species_dataset.csv`
+- Dataset schema guide: `backend/data/owner_tb_species_dataset_schema.md`
+- The importer preserves the `patient_id` provided in this owner dataset.
 
 ### Seeded User Credentials
 

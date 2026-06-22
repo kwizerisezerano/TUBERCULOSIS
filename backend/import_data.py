@@ -6,8 +6,38 @@ Imports TB datasets from CSV files into the database
 import os
 import sys
 import json
+import subprocess
 import pandas as pd
 import numpy as np
+
+
+def _use_project_venv_when_available():
+    current_prefix = os.path.abspath(sys.prefix)
+    base_prefix = os.path.abspath(getattr(sys, "base_prefix", sys.prefix))
+    running_inside_venv = current_prefix != base_prefix
+    if running_inside_venv:
+        return
+
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    venv_python = os.path.join(project_dir, ".venv", "Scripts", "python.exe")
+    if not os.path.exists(venv_python):
+        return
+
+    current_python = os.path.normcase(os.path.abspath(sys.executable))
+    target_python = os.path.normcase(os.path.abspath(venv_python))
+    if current_python == target_python:
+        return
+
+    completed = subprocess.run(
+        [target_python, os.path.abspath(__file__), *sys.argv[1:]],
+        env=os.environ.copy(),
+        check=False,
+    )
+    raise SystemExit(completed.returncode)
+
+
+_use_project_venv_when_available()
+
 from app import app
 from models.models import db, Patient, ExternalDatasetRow
 
@@ -47,6 +77,21 @@ def normalize_yes_no(value):
     if value in ['yes', '1', 'true', 'positive']:
         return "Yes"
     return "No"
+
+
+def normalize_optional_result(value):
+    """Normalize Positive/Negative/Unknown style optional test values"""
+    if pd.isna(value) or value is None:
+        return "Unknown"
+    value = str(value).strip()
+    if value == "":
+        return "Unknown"
+    lowered = value.lower()
+    if lowered in ['positive', 'yes', '1', 'true', 'detected']:
+        return "Positive"
+    if lowered in ['negative', 'no', '0', 'false', 'not detected']:
+        return "Negative"
+    return value
 
 def upsert_external_dataset_row(dataset_name, source_key, record):
     existing = ExternalDatasetRow.query.filter_by(dataset_name=dataset_name, source_key=source_key).first()
@@ -329,6 +374,66 @@ def import_xray_dataset(file_path):
         db.session.rollback()
         return 0
 
+
+def import_owner_species_dataset(file_path):
+    """Import curated owner dataset with species-labeled TB cases"""
+    print(f"Importing owner TB species dataset from: {file_path}")
+
+    try:
+        df = pd.read_csv(file_path)
+        print(f"  Found {len(df)} curated patient records")
+
+        imported_count = 0
+        external_count = 0
+
+        for idx, row in df.iterrows():
+            record = {k: (None if pd.isna(v) else v) for k, v in row.to_dict().items()}
+            patient_id = clean_text(record.get('patient_id', f'OWN{idx+1:04d}'))
+            if not patient_id:
+                patient_id = f'OWN{idx+1:04d}'
+
+            if upsert_external_dataset_row("owner_tb_species_dataset", patient_id, record):
+                external_count += 1
+
+            existing = Patient.query.filter_by(patient_id=patient_id).first()
+            if existing:
+                continue
+
+            patient = Patient(
+                patient_id=patient_id,
+                first_name=f'Owner{idx+1}',
+                last_name='Dataset',
+                age=int(record.get('age', 35)) if record.get('age') is not None else 35,
+                gender=normalize_gender(record.get('gender')),
+                city=clean_text(record.get('city', '')),
+                region=clean_text(record.get('region', '')),
+                symptoms=clean_text(record.get('symptoms', '')),
+                exposure_history=clean_text(record.get('exposure_history', '')),
+                sputum_smear_test=normalize_optional_result(record.get('sputum_smear_test')),
+                genexpert_test=normalize_optional_result(record.get('genexpert_test')),
+                chest_xray=normalize_optional_result(record.get('chest_xray')),
+                bacteria_species=clean_text(record.get('bacteria_species', '')) or None,
+                treatment_type=clean_text(record.get('treatment_regimen', '')),
+                drug_resistance=clean_text(record.get('drug_resistance', '')) or 'No',
+                hiv='Unknown',
+                diabetes='Unknown',
+                tb_status_label='Yes' if str(record.get('tb_status_label', 'Yes')).strip().lower() == 'yes' else 'No',
+                source_dataset='owner_tb_species_dataset',
+                source_row_id=patient_id,
+            )
+            db.session.add(patient)
+            imported_count += 1
+
+        db.session.commit()
+        print(f"  Stored {external_count} owner dataset records in external dataset table")
+        print(f"  Successfully imported {imported_count} curated patients")
+        return imported_count
+
+    except Exception as e:
+        print(f"  Error importing owner TB species dataset: {e}")
+        db.session.rollback()
+        return 0
+
 def create_comprehensive_sample_patients():
     """Create sample patients covering various TB scenarios"""
     print("Creating comprehensive sample patients...")
@@ -426,6 +531,7 @@ def main():
 
         sympt_2024_path = os.path.join(data_raw_dir, "TB_SymptdataApril2024.csv")
         xray_path = os.path.join(data_raw_dir, "tuberculosis_xray_dataset.csv")
+        owner_species_path = os.path.join(data_raw_dir, "owner_tb_species_dataset.csv")
         incidence_path = os.path.join(data_raw_dir, "incidenceoftuberculosis_new.csv")
         treatment_path = os.path.join(data_raw_dir, "treatment.csv")
 
@@ -441,6 +547,13 @@ def main():
             print()
         else:
             print(f"X-ray dataset not found at: {xray_path}")
+            print()
+
+        if os.path.exists(owner_species_path):
+            total_imported += import_owner_species_dataset(owner_species_path)
+            print()
+        else:
+            print(f"Owner TB species dataset not found at: {owner_species_path}")
             print()
 
         if os.path.exists(incidence_path):
@@ -482,8 +595,8 @@ def main():
                 db.session.rollback()
                 print()
         
-        # Create sample patients if no data
-        if total_imported == 0:
+        # Create sample patients only when the database is still empty.
+        if Patient.query.count() == 0:
             create_comprehensive_sample_patients()
         
         total_patients = Patient.query.count()

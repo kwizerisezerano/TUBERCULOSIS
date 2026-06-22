@@ -1,7 +1,10 @@
 export default defineNuxtConfig({
   compatibilityDate: '2024-04-03',
   devtools: { enabled: true },
-  modules: ['@nuxtjs/tailwindcss'],
+  experimental: {
+    appManifest: false
+  },
+  modules: ['@nuxtjs/tailwindcss', '@nuxtjs/color-mode'],
   css: ['~/assets/css/main.css'],
   colorMode: {
     classSuffix: '',

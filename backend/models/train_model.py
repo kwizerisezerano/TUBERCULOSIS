@@ -1,4 +1,7 @@
 import os
+import json
+import time
+import urllib.request
 import joblib
 import pandas as pd
 import numpy as np
@@ -8,6 +11,28 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from imblearn.over_sampling import SMOTE
 from models.models import Patient
+
+
+def _emit_debug_event(hypothesis_id, location, message, data):
+    # Debug telemetry should never break local training when no collector is running.
+    try:
+        payload = {
+            "sessionId": "bootstrap-train-failure",
+            "runId": "pre-fix",
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "msg": message,
+            "data": data,
+            "ts": time.time_ns() // 1_000_000,
+        }
+        request = urllib.request.Request(
+            "http://127.0.0.1:7778/event",
+            data=json.dumps(payload).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        urllib.request.urlopen(request, timeout=1).read()
+    except Exception:
+        pass
 
 def preprocess_symptoms(symptoms_text):
     if pd.isna(symptoms_text) or symptoms_text is None:
@@ -147,7 +172,12 @@ def prepare_training_data(task):
         return None
 
     # #region debug-point A:prepared-data
-    import json, urllib.request; urllib.request.urlopen(urllib.request.Request("http://127.0.0.1:7778/event", data=json.dumps({"sessionId":"bootstrap-train-failure","runId":"pre-fix","hypothesisId":"A","location":"backend/models/train_model.py:149","msg":"[DEBUG] prepared training data","data":{"task":task,"rows":len(rows),"labels":pd.DataFrame(rows)["label"].value_counts().to_dict()},"ts":__import__("time").time_ns()//1_000_000}).encode(), headers={"Content-Type":"application/json"})).read()
+    _emit_debug_event(
+        "A",
+        "backend/models/train_model.py:149",
+        "[DEBUG] prepared training data",
+        {"task": task, "rows": len(rows), "labels": pd.DataFrame(rows)["label"].value_counts().to_dict()},
+    )
     # #endregion
     return pd.DataFrame(rows)
 
@@ -159,7 +189,17 @@ def _train_classifier(df, model_filename, encoder_filename):
     le = LabelEncoder()
     y_enc = le.fit_transform(y)
     # #region debug-point B:encoded-classes
-    import json, urllib.request; urllib.request.urlopen(urllib.request.Request("http://127.0.0.1:7778/event", data=json.dumps({"sessionId":"bootstrap-train-failure","runId":"pre-fix","hypothesisId":"B","location":"backend/models/train_model.py:158","msg":"[DEBUG] encoded classifier classes","data":{"model_filename":model_filename,"classes":list(le.classes_), "encoded_unique":[int(v) for v in np.unique(y_enc).tolist()], "n_samples":int(len(df))},"ts":__import__("time").time_ns()//1_000_000}).encode(), headers={"Content-Type":"application/json"})).read()
+    _emit_debug_event(
+        "B",
+        "backend/models/train_model.py:158",
+        "[DEBUG] encoded classifier classes",
+        {
+            "model_filename": model_filename,
+            "classes": list(le.classes_),
+            "encoded_unique": [int(v) for v in np.unique(y_enc).tolist()],
+            "n_samples": int(len(df)),
+        },
+    )
     # #endregion
 
     if len(np.unique(y_enc)) > 1:
@@ -174,7 +214,18 @@ def _train_classifier(df, model_filename, encoder_filename):
         X, y_enc, test_size=0.2, random_state=42, stratify=stratify
     )
     # #region debug-point C:train-test-split
-    import json, urllib.request; urllib.request.urlopen(urllib.request.Request("http://127.0.0.1:7778/event", data=json.dumps({"sessionId":"bootstrap-train-failure","runId":"pre-fix","hypothesisId":"C","location":"backend/models/train_model.py:171","msg":"[DEBUG] classifier split info","data":{"model_filename":model_filename,"y_train_unique":[int(v) for v in np.unique(y_train).tolist()],"y_test_unique":[int(v) for v in np.unique(y_test).tolist()],"train_size":int(len(y_train)),"test_size":int(len(y_test))},"ts":__import__("time").time_ns()//1_000_000}).encode(), headers={"Content-Type":"application/json"})).read()
+    _emit_debug_event(
+        "C",
+        "backend/models/train_model.py:171",
+        "[DEBUG] classifier split info",
+        {
+            "model_filename": model_filename,
+            "y_train_unique": [int(v) for v in np.unique(y_train).tolist()],
+            "y_test_unique": [int(v) for v in np.unique(y_test).tolist()],
+            "train_size": int(len(y_train)),
+            "test_size": int(len(y_test)),
+        },
+    )
     # #endregion
 
     model = RandomForestClassifier(
@@ -190,7 +241,17 @@ def _train_classifier(df, model_filename, encoder_filename):
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
     # #region debug-point D:predictions
-    import json, urllib.request; urllib.request.urlopen(urllib.request.Request("http://127.0.0.1:7778/event", data=json.dumps({"sessionId":"bootstrap-train-failure","runId":"pre-fix","hypothesisId":"D","location":"backend/models/train_model.py:188","msg":"[DEBUG] classifier predictions","data":{"model_filename":model_filename,"y_pred_unique":[int(v) for v in np.unique(y_pred).tolist()],"y_test_unique":[int(v) for v in np.unique(y_test).tolist()],"encoder_classes":list(le.classes_)},"ts":__import__("time").time_ns()//1_000_000}).encode(), headers={"Content-Type":"application/json"})).read()
+    _emit_debug_event(
+        "D",
+        "backend/models/train_model.py:188",
+        "[DEBUG] classifier predictions",
+        {
+            "model_filename": model_filename,
+            "y_pred_unique": [int(v) for v in np.unique(y_pred).tolist()],
+            "y_test_unique": [int(v) for v in np.unique(y_test).tolist()],
+            "encoder_classes": list(le.classes_),
+        },
+    )
     # #endregion
 
     model_path = os.path.join(os.path.dirname(__file__), model_filename)

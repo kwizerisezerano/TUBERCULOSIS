@@ -58,9 +58,11 @@ class Patient(db.Model):
     occupation = db.Column(db.String(100))
     date_of_diagnosis = db.Column(db.Integer)
     symptoms = db.Column(db.Text)
+    exposure_history = db.Column(db.Text)
     sputum_smear_test = db.Column(db.String(50))
     genexpert_test = db.Column(db.String(50))
     chest_xray = db.Column(db.String(50))
+    bacteria_species = db.Column(db.String(100))
     treatment_type = db.Column(db.String(100))
     duration_of_treatment = db.Column(db.Integer)
     drug_resistance = db.Column(db.String(50))
@@ -95,9 +97,11 @@ class Patient(db.Model):
             "region": self.region,
             "occupation": self.occupation,
             "symptoms": self.symptoms,
+            "exposure_history": self.exposure_history,
             "sputum_smear_test": self.sputum_smear_test,
             "genexpert_test": self.genexpert_test,
             "chest_xray": self.chest_xray,
+            "bacteria_species": self.bacteria_species,
             "treatment_type": self.treatment_type,
             "drug_resistance": self.drug_resistance,
             "treatment_outcome": self.treatment_outcome,

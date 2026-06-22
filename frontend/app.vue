@@ -217,6 +217,45 @@
                   placeholder="Describe symptoms (e.g., Persistent cough, fever, night sweats, weight loss, chest pain, coughing blood)"
                 ></textarea>
               </div>
+              <div>
+                <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Exposure History</label>
+                <textarea
+                  v-model="patient.exposure_history"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  rows="2"
+                  placeholder="Animal exposure, unpasteurized milk, travel region, wildlife contact, marine animals, livestock, rodents..."
+                ></textarea>
+              </div>
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">TB Bacteria Species</label>
+                  <select
+                    v-model="patient.bacteria_species"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option>Auto-detect</option>
+                    <option>Mycobacterium tuberculosis</option>
+                    <option>Mycobacterium bovis</option>
+                    <option>Mycobacterium africanum</option>
+                    <option>Mycobacterium canettii</option>
+                    <option>Mycobacterium microti</option>
+                    <option>Mycobacterium caprae</option>
+                    <option>Mycobacterium pinnipedii</option>
+                    <option>Mycobacterium orygis</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">TB Culture</label>
+                  <select
+                    v-model="patient.tb_culture"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option>Unknown</option>
+                    <option>Positive</option>
+                    <option>Negative</option>
+                  </select>
+                </div>
+              </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Sputum Smear</label>
@@ -265,6 +304,30 @@
                   </select>
                 </div>
               </div>
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">TST</label>
+                  <select
+                    v-model="patient.tst"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option>Unknown</option>
+                    <option>Positive</option>
+                    <option>Negative</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">IGRA</label>
+                  <select
+                    v-model="patient.igra"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option>Unknown</option>
+                    <option>Positive</option>
+                    <option>Negative</option>
+                  </select>
+                </div>
+              </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">HIV Status</label>
@@ -287,6 +350,37 @@
                     <option>Yes</option>
                     <option>Unknown</option>
                   </select>
+                </div>
+              </div>
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Antibiogram / DST Summary</label>
+                  <textarea
+                    v-model="patient.antibiogram_result"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    rows="2"
+                    placeholder="Example: rifampicin susceptible, isoniazid resistant, linezolid active"
+                  ></textarea>
+                </div>
+                <div class="space-y-4">
+                  <div>
+                    <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Resistant To</label>
+                    <input
+                      v-model="patient.resistant_to"
+                      type="text"
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      placeholder="rifampicin, isoniazid"
+                    />
+                  </div>
+                  <div>
+                    <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Susceptible To</label>
+                    <input
+                      v-model="patient.susceptible_to"
+                      type="text"
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      placeholder="ethambutol, linezolid"
+                    />
+                  </div>
                 </div>
               </div>
               <button
@@ -346,16 +440,99 @@
               </div>
             </div>
 
+            <!-- Bacteria Assessment -->
+            <div v-if="diagnosisResult.bacteria_assessment" class="space-y-3">
+              <h3 class="font-semibold text-gray-800 dark:text-gray-200">TB Bacteria Assessment</h3>
+              <div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                <p class="text-lg font-medium text-amber-800 dark:text-amber-300">
+                  {{ diagnosisResult.bacteria_assessment.species }}
+                </p>
+                <p class="mt-1 text-sm text-amber-700 dark:text-amber-400">
+                  Method: {{ diagnosisResult.bacteria_assessment.mode }} | Supported species: {{ diagnosisResult.bacteria_assessment.supported_species_count }}
+                </p>
+                <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                  {{ diagnosisResult.bacteria_assessment.description }}
+                </p>
+                <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                  <strong>Reason:</strong> {{ diagnosisResult.bacteria_assessment.reason }}
+                </p>
+                <p class="text-sm text-gray-700 dark:text-gray-300">
+                  <strong>Typical source:</strong> {{ diagnosisResult.bacteria_assessment.typical_source }}
+                </p>
+                <p class="text-sm text-gray-700 dark:text-gray-300">
+                  <strong>Lab note:</strong> {{ diagnosisResult.bacteria_assessment.lab_note }}
+                </p>
+              </div>
+            </div>
+
+            <!-- Infection Assessment -->
+            <div v-if="diagnosisResult.infection_assessment" class="space-y-3">
+              <h3 class="font-semibold text-gray-800 dark:text-gray-200">Infection Assessment</h3>
+              <div class="p-4 bg-sky-50 dark:bg-sky-900/30 rounded-lg border border-sky-200 dark:border-sky-800">
+                <p class="text-lg font-medium text-sky-800 dark:text-sky-300">
+                  {{ diagnosisResult.infection_assessment.primary_infection }}
+                </p>
+                <ul class="mt-3 text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                  <li
+                    v-for="(infection, i) in diagnosisResult.infection_assessment.infection_types"
+                    :key="i"
+                  >
+                    {{ infection.label }} - {{ infection.site }}
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Resistance Profile -->
+            <div v-if="diagnosisResult.resistance_profile" class="space-y-3">
+              <h3 class="font-semibold text-gray-800 dark:text-gray-200">Resistance / DST Profile</h3>
+              <div class="p-4 bg-rose-50 dark:bg-rose-900/30 rounded-lg border border-rose-200 dark:border-rose-800">
+                <p class="text-lg font-medium text-rose-800 dark:text-rose-300">
+                  {{ diagnosisResult.resistance_profile.classification }}
+                </p>
+                <p class="mt-1 text-sm text-rose-700 dark:text-rose-400">
+                  Regimen level: {{ diagnosisResult.resistance_profile.regimen_level }}
+                </p>
+                <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                  <strong>Antibiogram:</strong> {{ diagnosisResult.resistance_profile.antibiogram_result }}
+                </p>
+                <p class="text-sm text-gray-700 dark:text-gray-300">
+                  <strong>Resistant to:</strong> {{ diagnosisResult.resistance_profile.resistant_to.join(', ') || 'None provided' }}
+                </p>
+                <p class="text-sm text-gray-700 dark:text-gray-300">
+                  <strong>Susceptible to:</strong> {{ diagnosisResult.resistance_profile.susceptible_to.join(', ') || 'None provided' }}
+                </p>
+                <ul class="mt-3 text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                  <li v-for="(item, i) in diagnosisResult.resistance_profile.decision_basis" :key="i">
+                    {{ item }}
+                  </li>
+                </ul>
+              </div>
+            </div>
+
             <!-- ML Prediction -->
             <div v-if="diagnosisResult.ml_prediction" class="space-y-3">
               <h3 class="font-semibold text-gray-800 dark:text-gray-200">ML Prediction</h3>
               <div class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-800">
                 <p class="font-medium text-purple-800 dark:text-purple-300">
-                  Drug Resistance Prediction: {{ diagnosisResult.ml_prediction.prediction }}
+                  TB Prediction: {{ formatPredictionLabel(diagnosisResult.ml_prediction.tb_status?.prediction, 'tb') }}
+                </p>
+                <p v-if="diagnosisResult.ml_prediction.tb_status" class="mt-1 text-sm text-purple-700 dark:text-purple-400">
+                  {{ buildConfidenceSummary(diagnosisResult.ml_prediction.tb_status, 'tb') }}
                 </p>
                 <div class="mt-2 text-sm space-y-1">
-                  <p v-for="(prob, cls) in diagnosisResult.ml_prediction.probabilities" :key="cls" class="text-purple-700 dark:text-purple-400">
-                    {{ cls }}: {{ prob }}%
+                  <p v-if="diagnosisResult.ml_prediction.drug_resistance" class="text-purple-700 dark:text-purple-400">
+                    Drug Resistance Prediction: {{ formatPredictionLabel(diagnosisResult.ml_prediction.drug_resistance.prediction, 'resistance') }}
+                  </p>
+                  <p v-if="diagnosisResult.ml_prediction.drug_resistance" class="text-purple-700 dark:text-purple-400">
+                    {{ buildConfidenceSummary(diagnosisResult.ml_prediction.drug_resistance, 'resistance') }}
+                  </p>
+                  <p
+                    v-for="item in formatProbabilityList(diagnosisResult.ml_prediction.tb_status?.probabilities)"
+                    :key="item.label"
+                    class="text-purple-700 dark:text-purple-400"
+                  >
+                    {{ item.label }}: {{ item.value }}
                   </p>
                 </div>
               </div>
@@ -367,7 +544,7 @@
               <div class="p-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg border border-emerald-200 dark:border-emerald-800">
                 <div class="flex items-center justify-between mb-2">
                   <p class="font-semibold text-emerald-800 dark:text-emerald-300">
-                    {{ diagnosisResult.treatment_recommendation.type }}
+                    {{ diagnosisResult.treatment_recommendation.regimen_name || diagnosisResult.treatment_recommendation.type || diagnosisResult.treatment_recommendation.category || 'Treatment plan' }}
                   </p>
                   <span class="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded font-medium">
                     {{ diagnosisResult.treatment_recommendation.urgency }}
@@ -375,6 +552,18 @@
                 </div>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
                   <strong>Category:</strong> {{ diagnosisResult.treatment_recommendation.category }}
+                </p>
+                <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
+                  <strong>Bacteria:</strong> {{ diagnosisResult.treatment_recommendation.bacteria_species || diagnosisResult.bacteria_assessment?.species || 'Not available in this response' }}
+                </p>
+                <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
+                  <strong>Infection:</strong> {{ diagnosisResult.treatment_recommendation.infection_type || diagnosisResult.infection_assessment?.primary_infection || diagnosisResult.treatment_recommendation.category || 'Not available in this response' }}
+                </p>
+                <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
+                  <strong>Resistance:</strong> {{ diagnosisResult.treatment_recommendation.resistance_class || diagnosisResult.resistance_profile?.classification || diagnosisResult.ml_prediction?.drug_resistance?.prediction || 'Not available in this response' }}
+                </p>
+                <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
+                  <strong>Level:</strong> {{ diagnosisResult.treatment_recommendation.regimen_level || diagnosisResult.resistance_profile?.regimen_level || 'WHO rule-based treatment level' }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
                   <strong>Duration:</strong> {{ diagnosisResult.treatment_recommendation.duration }}
@@ -391,6 +580,25 @@
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
                   <strong>Monitoring:</strong> {{ diagnosisResult.treatment_recommendation.monitoring }}
                 </p>
+                <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
+                  <strong>Guideline:</strong> {{ diagnosisResult.treatment_recommendation.guideline_source || 'WHO-aligned TB treatment guidance' }}
+                </p>
+                <ul v-if="diagnosisResult.treatment_recommendation.decision_basis?.length" class="mt-3 text-sm text-emerald-700 dark:text-emerald-400 space-y-1">
+                  <li v-for="(item, i) in diagnosisResult.treatment_recommendation.decision_basis" :key="i">
+                    {{ item }}
+                  </li>
+                </ul>
+                <div v-if="diagnosisResult.treatment_recommendation.treatment_options?.length > 1" class="mt-4">
+                  <p class="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Other treatment options</p>
+                  <ul class="mt-2 text-sm text-emerald-700 dark:text-emerald-400 space-y-2">
+                    <li
+                      v-for="(option, i) in diagnosisResult.treatment_recommendation.treatment_options.slice(1)"
+                      :key="i"
+                    >
+                      {{ option.name }} - {{ option.duration }} - {{ option.drugs }}
+                    </li>
+                  </ul>
+                </div>
                 <p class="text-xs text-emerald-600 dark:text-emerald-500 mt-2">
                   {{ diagnosisResult.treatment_recommendation.notes }}
                 </p>
@@ -590,9 +798,17 @@ const patient = ref({
   gender: 'Male',
   city: '',
   symptoms: '',
+  exposure_history: '',
+  bacteria_species: 'Auto-detect',
+  tb_culture: 'Unknown',
   sputum_smear_test: 'Unknown',
   genexpert_test: 'Unknown',
   chest_xray: 'Unknown',
+  tst: 'Unknown',
+  igra: 'Unknown',
+  antibiogram_result: '',
+  resistant_to: '',
+  susceptible_to: '',
   drug_resistance: 'No',
   hiv: 'No',
   diabetes: 'No'
@@ -650,6 +866,40 @@ function toggleDarkMode() {
 function formatDate(dateStr) {
   if (!dateStr) return '-'
   return new Date(dateStr).toLocaleDateString()
+}
+
+function formatPercent(value) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return '-'
+  return `${(numeric * 100).toFixed(1)}%`
+}
+
+function formatPredictionLabel(value, type = 'tb') {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (!normalized) return 'Not available'
+  if (type === 'tb') {
+    if (normalized === 'yes' || normalized === 'positive') return 'TB likely'
+    if (normalized === 'no' || normalized === 'negative') return 'TB not likely'
+  }
+  if (type === 'resistance') {
+    if (normalized === 'yes' || normalized === 'positive') return 'Drug resistance likely'
+    if (normalized === 'no' || normalized === 'negative') return 'Drug resistance not predicted'
+  }
+  return value
+}
+
+function buildConfidenceSummary(predictionBlock, type = 'tb') {
+  if (!predictionBlock) return 'No model confidence available.'
+  const predictionLabel = formatPredictionLabel(predictionBlock.prediction, type)
+  return `${predictionLabel} with ${formatPercent(predictionBlock.confidence)} model confidence.`
+}
+
+function formatProbabilityList(probabilities) {
+  if (!probabilities || typeof probabilities !== 'object') return []
+  return Object.entries(probabilities).map(([label, value]) => ({
+    label,
+    value: formatPercent(value)
+  }))
 }
 
 function clearSession(preserveEmail = true) {
