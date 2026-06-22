@@ -2,11 +2,22 @@
   <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
     <!-- Header -->
     <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="w-full max-w-none px-4 sm:px-6 lg:px-10 2xl:px-12 py-4">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xl font-bold">
-              TB
+            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-md ring-1 ring-slate-800/10 dark:bg-slate-100 dark:text-slate-900">
+              <svg viewBox="0 0 64 64" class="h-9 w-9" fill="none" aria-hidden="true">
+                <path d="M31.5 10v17" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+                <path d="M31.5 18c-7 0-13 5-15 12-1.5 5-1 10.5 1.5 15 2.2 4.1 6.2 7.2 11 8.5l2.5-16V18z" fill="rgba(255,255,255,0.92)"/>
+                <path d="M32.5 18c7 0 13 5 15 12 1.5 5 1 10.5-1.5 15-2.2 4.1-6.2 7.2-11 8.5l-2.5-16V18z" fill="rgba(236,253,245,0.96)"/>
+                <path d="M31.5 14c-1.5-2.5-3.5-4-6-4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                <path d="M32.5 14c1.5-2.5 3.5-4 6-4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                <path d="M27 25l-5 7m7-4-8 10m12-7-6 9" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M37 25l5 7m-7-4 8 10m-12-7 6 9" stroke="#34d399" stroke-width="2.5" stroke-linecap="round"/>
+                <circle cx="44.5" cy="44.5" r="2.4" fill="#34d399"/>
+                <circle cx="48.5" cy="39.5" r="2" fill="#34d399"/>
+                <circle cx="40.5" cy="39.5" r="1.8" fill="#34d399"/>
+              </svg>
             </div>
             <div>
               <h1 class="text-xl font-bold text-gray-900 dark:text-white">TB Diagnostic System</h1>
@@ -14,16 +25,14 @@
             </div>
           </div>
           <div class="flex items-center gap-4">
-            <div v-if="isLoggedIn" class="hidden text-right md:block">
-              <p class="text-sm font-medium text-gray-900 dark:text-white">{{ userDisplayName }}</p>
-              <p class="text-xs uppercase tracking-wide text-emerald-600 dark:text-emerald-400">{{ userRoleLabel }}</p>
-            </div>
             <button
               v-if="isLoggedIn"
               @click="logout"
-              class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm"
+              class="hidden rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-right transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/20 md:block"
+              title="Click your name or role to logout"
             >
-              Logout
+              <p class="text-sm font-medium text-gray-900 dark:text-white">{{ userDisplayName }}</p>
+              <p class="text-xs uppercase tracking-wide text-emerald-600 dark:text-emerald-400">{{ userRoleLabel }}</p>
             </button>
             <!-- Alerts Badge -->
             <button
@@ -52,7 +61,7 @@
 
     <!-- Navigation -->
     <nav v-if="isLoggedIn" class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="w-full max-w-none px-4 sm:px-6 lg:px-10 2xl:px-12">
         <div class="flex gap-1">
           <button
             v-for="tab in tabs"
@@ -70,83 +79,336 @@
     </nav>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div v-if="!isLoggedIn" class="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <section class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
-          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Authenticated Clinical Workspace</p>
-          <h2 class="mt-3 text-3xl font-bold text-gray-900 dark:text-white">TB diagnosis, patient review, treatment guidance, and alerts in one dashboard.</h2>
-          <p class="mt-4 text-base leading-7 text-gray-600 dark:text-gray-300">
-            Sign in to analyze symptoms, evaluate TB test results, review patient history from the database, and generate clinician-friendly treatment recommendations.
+    <main class="w-full max-w-none px-4 sm:px-6 lg:px-10 2xl:px-12 py-6">
+      <div v-if="!isLoggedIn" class="grid grid-cols-1 items-stretch gap-5 xl:min-h-[calc(100vh-11rem)] xl:grid-cols-2">
+        <section class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-lg h-full flex flex-col">
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Clinical Sign-In</p>
+          <h2 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white lg:text-[1.9rem]">From patient data to TB decision.</h2>
+          <p class="mt-2 max-w-3xl text-sm leading-6 text-gray-600 dark:text-gray-300">
+            Open a case, review evidence, generate one guided report.
           </p>
-          <div class="mt-6 grid gap-4 md:grid-cols-2">
-            <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
-              <h3 class="font-semibold text-emerald-800 dark:text-emerald-300">What the system does</h3>
-              <ul class="mt-2 space-y-2 text-sm text-emerald-700 dark:text-emerald-400">
-                <li>Analyzes TB symptoms and red flags</li>
-                <li>Evaluates GeneXpert, smear, and X-ray results</li>
-                <li>Uses patient records stored in the database</li>
-                <li>Recommends treatment and follow-up monitoring</li>
+          <div class="mt-4 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900/40">
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-semibold text-gray-900 dark:text-white">System workflow</h3>
+              <p class="text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">Few words</p>
+            </div>
+            <div class="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-slate-50 p-3 dark:border-gray-700 dark:bg-gray-800/80">
+              <svg viewBox="0 0 920 320" class="h-auto w-full" role="img" aria-label="TB system workflow">
+                <defs>
+                  <filter id="tbCardShadow" x="-20%" y="-20%" width="140%" height="180%">
+                    <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0f172a" flood-opacity="0.08"/>
+                  </filter>
+                </defs>
+
+                <rect x="18" y="18" width="884" height="284" rx="28" fill="#ffffff" />
+                <rect x="42" y="38" width="210" height="244" rx="24" fill="#eff6ff" stroke="#cbd5e1" />
+                <rect x="278" y="50" width="602" height="88" rx="22" fill="#ffffff" stroke="#dbeafe" filter="url(#tbCardShadow)" />
+                <rect x="278" y="154" width="602" height="112" rx="22" fill="#ffffff" stroke="#e5e7eb" filter="url(#tbCardShadow)" />
+                <rect x="292" y="62" width="132" height="64" rx="18" fill="#f0fdf4" stroke="#bbf7d0" />
+                <rect x="438" y="62" width="132" height="64" rx="18" fill="#eff6ff" stroke="#bfdbfe" />
+                <rect x="584" y="62" width="132" height="64" rx="18" fill="#f5f3ff" stroke="#ddd6fe" />
+                <rect x="730" y="62" width="132" height="64" rx="18" fill="#f0fdf4" stroke="#bbf7d0" />
+
+                <g transform="translate(72 64)">
+                  <circle cx="74" cy="58" r="48" fill="#0f172a"/>
+                  <path d="M74 26v26" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
+                  <path d="M73 39c-6 0-13 5-15 12-2 5-1 10 2 15 3 5 7 8 13 10l2-22V39z" fill="#ffffff"/>
+                  <path d="M75 39c6 0 13 5 15 12 2 5 1 10-2 15-3 5-7 8-13 10l-2-22V39z" fill="#d1fae5"/>
+                  <path d="M73 32c-3-4-7-6-11-6" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+                  <path d="M75 32c3-4 7-6 11-6" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+                  <path d="M60 47l-6 8m9-4-10 13m16-10-7 10" stroke="#60a5fa" stroke-width="2.6" stroke-linecap="round"/>
+                  <path d="M88 47l6 8m-9-4 10 13m-16-10 7 10" stroke="#34d399" stroke-width="2.6" stroke-linecap="round"/>
+                  <circle cx="95" cy="68" r="2.8" fill="#34d399"/>
+                  <circle cx="89" cy="76" r="2.3" fill="#34d399"/>
+                  <circle cx="102" cy="75" r="2.3" fill="#34d399"/>
+                </g>
+                <text x="147" y="205" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">TB System</text>
+                <text x="147" y="226" text-anchor="middle" font-size="12" fill="#475569">sign in</text>
+                <text x="147" y="243" text-anchor="middle" font-size="12" fill="#475569">evaluate</text>
+                <text x="147" y="260" text-anchor="middle" font-size="12" fill="#475569">guide care</text>
+
+                <path d="M424 94h14" stroke="#10b981" stroke-width="4" stroke-linecap="round"/>
+                <path d="M570 94h14" stroke="#2563eb" stroke-width="4" stroke-linecap="round"/>
+                <path d="M716 94h14" stroke="#7c3aed" stroke-width="4" stroke-linecap="round"/>
+                <path d="M430 88l8 6-8 6" fill="none" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M576 88l8 6-8 6" fill="none" stroke="#2563eb" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M722 88l8 6-8 6" fill="none" stroke="#7c3aed" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+                <g>
+                  <circle cx="322" cy="94" r="16" fill="#dcfce7"/>
+                  <circle cx="468" cy="94" r="16" fill="#dbeafe"/>
+                  <circle cx="614" cy="94" r="16" fill="#ede9fe"/>
+                  <circle cx="760" cy="94" r="16" fill="#dcfce7"/>
+                </g>
+
+                <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="322" cy="90" r="5.5" stroke="#059669" stroke-width="2.5"/>
+                  <path d="M312 106c4-6 9-9 15-9 6 0 11 3 15 9" stroke="#059669" stroke-width="2.5"/>
+                  <path d="M334 104h8" stroke="#059669" stroke-width="2.5"/>
+                  <path d="M338 100v8" stroke="#059669" stroke-width="2.5"/>
+
+                  <path d="M458 103l5-11 5 7 5-11" stroke="#2563eb" stroke-width="3"/>
+                  <path d="M454 108h27" stroke="#2563eb" stroke-width="2.6"/>
+                  <circle cx="477" cy="82" r="4" stroke="#2563eb" stroke-width="2.5"/>
+
+                  <ellipse cx="614" cy="91" rx="8" ry="10" stroke="#7c3aed" stroke-width="2.5"/>
+                  <circle cx="609" cy="87" r="1.6" fill="#7c3aed"/>
+                  <circle cx="617" cy="93" r="1.6" fill="#7c3aed"/>
+                  <path d="M622 103l6 6" stroke="#7c3aed" stroke-width="2.5"/>
+
+                  <path d="M750 95l6 6 13-14" stroke="#16a34a" stroke-width="4"/>
+                  <path d="M760 79v8" stroke="#16a34a" stroke-width="2.5"/>
+                </g>
+
+                <g font-family="Inter, Arial, sans-serif">
+                  <text x="350" y="84" font-size="9" font-weight="700" fill="#059669">STEP 1</text>
+                  <text x="350" y="103" font-size="15" font-weight="700" fill="#065f46">Collect</text>
+
+                  <text x="496" y="84" font-size="9" font-weight="700" fill="#2563eb">STEP 2</text>
+                  <text x="496" y="103" font-size="15" font-weight="700" fill="#1d4ed8">Analyze</text>
+
+                  <text x="642" y="84" font-size="9" font-weight="700" fill="#7c3aed">STEP 3</text>
+                  <text x="642" y="103" font-size="15" font-weight="700" fill="#6d28d9">Classify</text>
+
+                  <text x="788" y="84" font-size="9" font-weight="700" fill="#16a34a">STEP 4</text>
+                  <text x="788" y="103" font-size="15" font-weight="700" fill="#166534">Treat</text>
+                </g>
+
+                <g>
+                  <rect x="298" y="172" width="176" height="76" rx="18" fill="#f8fafc" stroke="#cbd5e1"/>
+                  <rect x="488" y="172" width="176" height="76" rx="18" fill="#f8fafc" stroke="#cbd5e1"/>
+                  <rect x="678" y="172" width="170" height="76" rx="18" fill="#f8fafc" stroke="#cbd5e1"/>
+
+                  <rect x="320" y="188" width="40" height="40" rx="12" fill="#ecfdf5"/>
+                  <path d="M340 195v26" stroke="#059669" stroke-width="2.6" stroke-linecap="round"/>
+                  <path d="M340 201c-5 0-8 4-9 8-1 4 0 8 2 10 2 3 4 5 7 6l1-12v-12z" fill="#ffffff"/>
+                  <path d="M340 201c5 0 8 4 9 8 1 4 0 8-2 10-2 3-4 5-7 6l-1-12v-12z" fill="#d1fae5"/>
+                  <text x="374" y="201" font-size="12" font-weight="700" fill="#0f172a">Patient</text>
+                  <text x="374" y="218" font-size="10" fill="#475569">symptoms</text>
+                  <text x="374" y="232" font-size="10" fill="#475569">tests</text>
+
+                  <rect x="508" y="188" width="40" height="40" rx="12" fill="#dbeafe"/>
+                  <path d="M519 219h20" stroke="#2563eb" stroke-width="2.8" stroke-linecap="round"/>
+                  <path d="M523 214l4-10 4 6 4-12" stroke="#2563eb" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  <text x="560" y="201" font-size="12" font-weight="700" fill="#0f172a">TB type</text>
+                  <text x="560" y="218" font-size="10" fill="#475569">bacteria</text>
+                  <text x="560" y="232" font-size="10" fill="#475569">resistance</text>
+
+                  <rect x="696" y="188" width="40" height="40" rx="12" fill="#ede9fe"/>
+                  <path d="M708 196h16l4 4v18h-20z" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linejoin="round"/>
+                  <path d="M724 196v5h5" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round"/>
+                  <text x="748" y="201" font-size="12" font-weight="700" fill="#0f172a">Report</text>
+                  <text x="748" y="218" font-size="10" fill="#475569">treatment</text>
+                  <text x="748" y="232" font-size="10" fill="#475569">guidance</text>
+                </g>
+              </svg>
+            </div>
+            <div class="mt-3 flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
+              <span>New patient</span>
+              <span>Existing patient</span>
+              <span>Clinical report</span>
+            </div>
+          </div>
+          <div class="mt-4 grid flex-1 content-start gap-3 lg:grid-cols-2">
+            <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+              <h3 class="text-base font-semibold text-gray-900 dark:text-white">What you can do</h3>
+              <ul class="mt-2 space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                <li><strong>New:</strong> start a TB case.</li>
+                <li><strong>Existing:</strong> reopen a saved record.</li>
+                <li><strong>Report:</strong> review guidance.</li>
               </ul>
             </div>
             <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
-              <h3 class="font-semibold text-blue-800 dark:text-blue-300">Access control</h3>
-              <ul class="mt-2 space-y-2 text-sm text-blue-700 dark:text-blue-400">
-                <li>JWT authentication protects patient and alert data</li>
-                <li>Role-based backend authorization is enforced on protected endpoints</li>
-                <li>Only signed-in users can open clinical tabs</li>
-                <li>Sessions restore safely on the client after page load</li>
+              <h3 class="text-base font-semibold text-blue-900 dark:text-blue-100">After sign-in</h3>
+              <ul class="mt-2 space-y-2 text-sm text-blue-800 dark:text-blue-200">
+                <li>`Diagnose` update evidence.</li>
+                <li>`Patients` open records.</li>
+                <li>`Alerts` review notices.</li>
               </ul>
             </div>
           </div>
         </section>
 
-        <section class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
-          <h2 class="text-xl font-semibold mb-2 text-gray-900 dark:text-white">Sign in</h2>
-          <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">Use a seeded clinician or administrator account to unlock the protected tools.</p>
-          <form @submit.prevent="login" class="space-y-4">
+        <section class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-lg h-full flex flex-col">
+          <div class="rounded-2xl border border-emerald-200 bg-white p-4 dark:border-emerald-800 dark:bg-gray-900/30">
+            <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">Protected workspace</p>
+            <h2 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white lg:text-[1.8rem]">Welcome back</h2>
+            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+              Continue to diagnosis, patients, and alerts.
+            </p>
+            <div class="mt-3 grid gap-2 sm:grid-cols-3">
+              <div class="rounded-xl border border-emerald-100 bg-slate-50 px-3 py-2.5 dark:border-emerald-900/40 dark:bg-gray-900/40">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Diagnose</p>
+                <p class="mt-1 text-xs font-medium text-gray-900 dark:text-white">Review cases.</p>
+              </div>
+              <div class="rounded-xl border border-blue-100 bg-slate-50 px-3 py-2.5 dark:border-blue-900/40 dark:bg-gray-900/40">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Patients</p>
+                <p class="mt-1 text-xs font-medium text-gray-900 dark:text-white">Open records.</p>
+              </div>
+              <div class="rounded-xl border border-violet-100 bg-slate-50 px-3 py-2.5 dark:border-violet-900/40 dark:bg-gray-900/40">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-violet-700 dark:text-violet-300">Alerts</p>
+                <p class="mt-1 text-xs font-medium text-gray-900 dark:text-white">See notices.</p>
+              </div>
+            </div>
+          </div>
+          <form @submit.prevent="login" class="space-y-3 flex-1 flex flex-col">
             <div>
-              <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+              <label class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
               <input
                 v-model="loginEmail"
                 type="email"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                 placeholder="you@example.com"
                 required
               />
             </div>
             <div>
-              <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
-              <input
-                v-model="loginPassword"
-                type="password"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                placeholder="Password"
-                required
-              />
+              <label class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+              <div class="relative">
+                <input
+                  v-model="loginPassword"
+                  :type="showLoginPassword ? 'text' : 'password'"
+                  class="w-full rounded-lg border border-gray-300 px-4 py-2.5 pr-12 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  placeholder="Password"
+                  required
+                />
+                <button
+                  type="button"
+                  class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  @click="showLoginPassword = !showLoginPassword"
+                  :title="showLoginPassword ? 'Hide password' : 'Show password'"
+                >
+                  {{ showLoginPassword ? '🙈' : '👁️' }}
+                </button>
+              </div>
             </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              Backend setup and seeded accounts are created with `python bootstrap.py --runserver`.
-            </p>
-            <p v-if="loginError" class="text-sm text-red-600 dark:text-red-400">{{ loginError }}</p>
-            <button
-              type="submit"
-              :disabled="loading"
-              class="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-3 px-6 rounded-lg transition"
-            >
-              {{ loading ? 'Signing in...' : 'Sign in' }}
-            </button>
+            <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200">
+              <p class="text-sm font-semibold">Useful sign-in notes</p>
+              <ul class="mt-2 space-y-1 text-xs leading-5">
+                <li>Use the eye icon to check the password.</li>
+                <li>Email stays after refresh.</li>
+                <li>Click your name or role to log out.</li>
+              </ul>
+            </div>
+            <div class="grid gap-2 sm:grid-cols-2">
+              <div class="rounded-xl border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
+                <p class="text-sm font-semibold text-blue-900 dark:text-blue-100">Diagnose</p>
+                <p class="mt-1 text-xs leading-5 text-blue-800 dark:text-blue-200">Enter or continue evidence.</p>
+              </div>
+              <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-3 dark:border-indigo-800 dark:bg-indigo-900/20">
+                <p class="text-sm font-semibold text-indigo-900 dark:text-indigo-100">Patients</p>
+                <p class="mt-1 text-xs leading-5 text-indigo-800 dark:text-indigo-200">Open saved records.</p>
+              </div>
+              <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+                <p class="text-sm font-semibold text-amber-900 dark:text-amber-100">Alerts</p>
+                <p class="mt-1 text-xs leading-5 text-amber-800 dark:text-amber-200">Review follow-up notices.</p>
+              </div>
+              <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/30">
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">Protected</p>
+                <p class="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">Clinician and admin access only.</p>
+              </div>
+            </div>
+            <p v-if="loginError" class="text-sm font-medium text-red-600 dark:text-red-400">{{ loginError }}</p>
+            <div class="mt-auto pt-1">
+              <button
+                type="submit"
+                :disabled="loading"
+                class="w-full rounded-lg bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {{ loading ? 'Signing in...' : 'Sign in' }}
+              </button>
+            </div>
           </form>
         </section>
       </div>
 
       <!-- Diagnose View -->
       <div v-else-if="currentView === 'diagnose'">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="space-y-5">
+          <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">Guided diagnose flow</p>
+                <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Complete the case in small steps, not one long form.</h2>
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  Move step by step through identity, clinical clues, tests, and DST before generating the report.
+                </p>
+              </div>
+              <div class="grid gap-2 sm:grid-cols-3 lg:min-w-[420px]">
+                <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-900/20">
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Entry</p>
+                  <p class="mt-1 text-xs leading-5 text-emerald-800 dark:text-emerald-200">Use guided TB suggestions or type your own evidence.</p>
+                </div>
+                <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-800 dark:bg-blue-900/20">
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Order</p>
+                  <p class="mt-1 text-xs leading-5 text-blue-800 dark:text-blue-200">Keep the same clinician workflow for new and existing patients.</p>
+                </div>
+                <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-900/20">
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">Output</p>
+                  <p class="mt-1 text-xs leading-5 text-amber-800 dark:text-amber-200">Generate TB type, DST review, and treatment guidance at the end.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(860px,1.45fr)_minmax(560px,0.95fr)] items-start">
           <!-- Patient Form -->
-          <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
-            <h2 class="text-xl font-semibold mb-6 text-gray-900 dark:text-white">Patient Information</h2>
-            <form @submit.prevent="diagnosePatient" class="space-y-4">
-              <div class="grid grid-cols-2 gap-4">
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg min-w-0">
+            <div class="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Patient Information</h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Structured evidence entry for TB screening, species estimation, DST review, and treatment planning.</p>
+              </div>
+              <div class="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-gray-700/60 dark:text-gray-300">
+                Suggested items are TB-focused. Custom typing is always allowed.
+              </div>
+            </div>
+            <div class="mb-6 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+              <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">Step {{ currentDiagnosisStep }} of {{ diagnosisSteps.length }}</p>
+                  <h3 class="mt-1 text-base font-semibold text-gray-900 dark:text-white">{{ currentDiagnosisMeta.title }}</h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">{{ currentDiagnosisMeta.description }}</p>
+                </div>
+                <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  {{ Math.round((currentDiagnosisStep / diagnosisSteps.length) * 100) }}% complete
+                </div>
+              </div>
+              <div class="mt-4 grid gap-2 md:grid-cols-4">
+                <button
+                  v-for="step in diagnosisSteps"
+                  :key="step.id"
+                  type="button"
+                  @click="goToDiagnosisStep(step.id)"
+                  class="rounded-xl border px-3 py-3 text-left transition"
+                  :class="currentDiagnosisStep === step.id
+                    ? 'border-emerald-400 bg-white shadow-sm dark:border-emerald-500 dark:bg-gray-800'
+                    : 'border-gray-200 bg-white/70 hover:border-emerald-200 hover:bg-white dark:border-gray-700 dark:bg-gray-800/60 dark:hover:border-emerald-700'"
+                >
+                  <div class="flex items-center gap-3">
+                    <span
+                      class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold"
+                      :class="currentDiagnosisStep === step.id
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200'"
+                    >
+                      {{ step.id }}
+                    </span>
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ step.title }}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">{{ step.short }}</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+            <form @submit.prevent="diagnosePatient" class="space-y-5">
+              <section v-show="currentDiagnosisStep === 1" class="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+                <div class="mb-4">
+                  <h3 class="font-semibold text-gray-900 dark:text-white">1. Patient Identity</h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Basic patient details used for record linking and report display.</p>
+                </div>
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">First Name</label>
                   <input
@@ -166,7 +428,7 @@
                   />
                 </div>
               </div>
-              <div class="grid grid-cols-2 gap-4">
+              <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Patient ID</label>
                   <input
@@ -186,7 +448,7 @@
                   />
                 </div>
               </div>
-              <div class="grid grid-cols-2 gap-4">
+              <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Gender</label>
                   <select
@@ -208,24 +470,73 @@
                   />
                 </div>
               </div>
-              <div>
-                <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Symptoms</label>
-                <textarea
-                  v-model="patient.symptoms"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  rows="3"
-                  placeholder="Describe symptoms (e.g., Persistent cough, fever, night sweats, weight loss, chest pain, coughing blood)"
-                ></textarea>
-              </div>
-              <div>
-                <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Exposure History</label>
-                <textarea
-                  v-model="patient.exposure_history"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  rows="2"
-                  placeholder="Animal exposure, unpasteurized milk, travel region, wildlife contact, marine animals, livestock, rodents..."
-                ></textarea>
-              </div>
+              </section>
+
+              <section v-show="currentDiagnosisStep === 2" class="rounded-xl border border-gray-200 p-4 dark:border-gray-700 space-y-4">
+                <div>
+                  <h3 class="font-semibold text-gray-900 dark:text-white">2. Clinical Clues</h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Add symptoms and exposure history from the guided TB lists, or type your own item if not listed.</p>
+                </div>
+                <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/30">
+                  <div class="flex items-center justify-between gap-3">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Symptoms</label>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Type directly in the field. Suggested TB symptoms below can be clicked to append.</p>
+                    </div>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Step 1</span>
+                  </div>
+                  <textarea
+                    v-model="patient.symptoms"
+                    class="mt-3 w-full rounded-lg border border-gray-300 px-4 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    rows="3"
+                    placeholder="Describe symptoms or keep the stored patient text as it is"
+                  ></textarea>
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <button
+                      v-for="option in symptomOptions"
+                      :key="option"
+                      type="button"
+                      class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-gray-800 dark:text-emerald-300"
+                      @click="appendSuggestedValue('symptoms', option)"
+                    >
+                      + {{ option }}
+                    </button>
+                  </div>
+                </div>
+
+                <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/30">
+                  <div class="flex items-center justify-between gap-3">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Exposure History</label>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Existing patient exposure notes stay unchanged unless the clinician edits them.</p>
+                    </div>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Step 2</span>
+                  </div>
+                  <textarea
+                    v-model="patient.exposure_history"
+                    class="mt-3 w-full rounded-lg border border-gray-300 px-4 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    rows="3"
+                    placeholder="Enter or review household, travel, animal, dairy, wildlife, or occupational exposure"
+                  ></textarea>
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <button
+                      v-for="option in exposureOptions"
+                      :key="option"
+                      type="button"
+                      class="rounded-full border border-blue-200 bg-white px-3 py-1 text-xs text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-gray-800 dark:text-blue-300"
+                      @click="appendSuggestedValue('exposure_history', option)"
+                    >
+                      + {{ option }}
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              <section v-show="currentDiagnosisStep === 3" class="rounded-xl border border-gray-200 p-4 dark:border-gray-700 space-y-4">
+                <div>
+                  <h3 class="font-semibold text-gray-900 dark:text-white">3. Species And Test Results</h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Choose known results or leave bacteria on `Auto-detect` so the system estimates from the patient record.</p>
+                </div>
               <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">TB Bacteria Species</label>
@@ -256,7 +567,7 @@
                   </select>
                 </div>
               </div>
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Sputum Smear</label>
                   <select
@@ -280,7 +591,7 @@
                   </select>
                 </div>
               </div>
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Chest X-ray</label>
                   <select
@@ -328,7 +639,7 @@
                   </select>
                 </div>
               </div>
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">HIV Status</label>
                   <select
@@ -352,49 +663,123 @@
                   </select>
                 </div>
               </div>
+              </section>
+
+              <section v-show="currentDiagnosisStep === 4" class="rounded-xl border border-gray-200 p-4 dark:border-gray-700 space-y-4">
+                <div>
+                  <h3 class="font-semibold text-gray-900 dark:text-white">4. DST And Resistance Decision Support</h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Keep these as normal input fields. Suggested TB DST phrases and medicines can be appended when useful.</p>
+                </div>
               <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Antibiogram / DST Summary</label>
-                  <textarea
-                    v-model="patient.antibiogram_result"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    rows="2"
-                    placeholder="Example: rifampicin susceptible, isoniazid resistant, linezolid active"
-                  ></textarea>
+                  <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/30">
+                    <textarea
+                      v-model="patient.antibiogram_result"
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      rows="3"
+                      placeholder="Enter DST summary or keep stored text for an existing patient"
+                    ></textarea>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                      <button
+                        v-for="option in antibiogramOptions"
+                        :key="option"
+                        type="button"
+                        class="rounded-full border border-rose-200 bg-white px-3 py-1 text-xs text-rose-700 hover:bg-rose-100 dark:border-rose-700 dark:bg-gray-800 dark:text-rose-300"
+                        @click="appendSuggestedValue('antibiogram_result', option)"
+                      >
+                        + {{ option }}
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div class="space-y-4">
-                  <div>
+                  <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/30">
                     <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Resistant To</label>
                     <input
                       v-model="patient.resistant_to"
+                      list="tb-drug-options"
                       type="text"
-                      class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                      placeholder="rifampicin, isoniazid"
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      placeholder="Type resistant medicines or reuse stored patient text"
                     />
+                    <div class="mt-3 flex flex-wrap gap-2">
+                      <button
+                        v-for="option in drugOptions"
+                        :key="`res-${option}`"
+                        type="button"
+                        class="rounded-full border border-rose-200 bg-white px-3 py-1 text-xs text-rose-700 hover:bg-rose-100 dark:border-rose-700 dark:bg-gray-800 dark:text-rose-300"
+                        @click="appendSuggestedValue('resistant_to', option)"
+                      >
+                        + {{ option }}
+                      </button>
+                    </div>
                   </div>
-                  <div>
+                  <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/30">
                     <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Susceptible To</label>
                     <input
                       v-model="patient.susceptible_to"
+                      list="tb-drug-options"
                       type="text"
-                      class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                      placeholder="ethambutol, linezolid"
+                      class="w-full rounded-lg border border-gray-300 px-4 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      placeholder="Type susceptible medicines or reuse stored patient text"
                     />
+                    <div class="mt-3 flex flex-wrap gap-2">
+                      <button
+                        v-for="option in drugOptions"
+                        :key="`sus-${option}`"
+                        type="button"
+                        class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-gray-800 dark:text-emerald-300"
+                        @click="appendSuggestedValue('susceptible_to', option)"
+                      >
+                        + {{ option }}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-              <button
-                type="submit"
-                :disabled="loading"
-                class="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-3 px-6 rounded-lg transition"
-              >
-                {{ loading ? 'Analyzing...' : 'Analyze & Diagnose' }}
-              </button>
+              </section>
+              <div class="flex flex-col gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 dark:border-gray-700 dark:bg-gray-900/30 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ currentDiagnosisMeta.footer }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">You can move between steps without losing typed content.</p>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                  <button
+                    v-if="currentDiagnosisStep > 1"
+                    type="button"
+                    @click="previousDiagnosisStep"
+                    class="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                  >
+                    Previous step
+                  </button>
+                  <button
+                    v-if="currentDiagnosisStep < diagnosisSteps.length"
+                    type="button"
+                    @click="nextDiagnosisStep"
+                    class="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+                  >
+                    Next step
+                  </button>
+                  <button
+                    v-else
+                    type="submit"
+                    :disabled="loading"
+                    class="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {{ loading ? 'Analyzing...' : 'Analyze & Diagnose' }}
+                  </button>
+                </div>
+              </div>
             </form>
+
+            <datalist id="tb-drug-options">
+              <option v-for="option in drugOptions" :key="option" :value="option" />
+            </datalist>
           </div>
 
           <!-- Results -->
-          <div v-if="diagnosisResult" class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg space-y-6">
+          <div v-if="diagnosisResult" class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg space-y-6 min-w-0 xl:sticky xl:top-6 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Diagnostic Report</h2>
             
             <!-- Patient Info -->
@@ -609,6 +994,25 @@
               Disclaimer: This system is for educational purposes only. Always consult qualified medical professionals.
             </p>
           </div>
+
+          <div v-else class="rounded-xl border border-dashed border-gray-300 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800 xl:sticky xl:top-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Diagnostic Report</h2>
+            <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">
+              The report will appear here after you complete the guided form and click `Analyze & Diagnose`.
+            </p>
+            <div class="mt-4 grid gap-3">
+              <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-700/40">
+                <p class="text-sm font-medium text-gray-800 dark:text-gray-200">What the report will show</p>
+                <ul class="mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                  <li>TB risk and red flags</li>
+                  <li>Estimated bacteria and infection type</li>
+                  <li>DST / resistance interpretation</li>
+                  <li>Treatment plan and monitoring guidance</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
         </div>
       </div>
 
@@ -768,10 +1172,12 @@ const patientPages = ref(1)
 const patientsPage = ref(1)
 const patientPageSize = ref(20)
 const patientSort = ref('id_asc')
+const currentDiagnosisStep = ref(1)
 const currentUser = ref(null)
 const token = ref('')
 const loginEmail = ref('')
 const loginPassword = ref('')
+const showLoginPassword = ref(false)
 const loginError = ref('')
 
 const isLoggedIn = computed(() => !!token.value)
@@ -788,6 +1194,101 @@ const tabs = [
   { id: 'diagnose', label: 'Diagnose', icon: '🏥' },
   { id: 'patients', label: 'Patients', icon: '👥' },
   { id: 'alerts', label: 'Alerts', icon: '🔔' }
+]
+
+const diagnosisSteps = [
+  {
+    id: 1,
+    title: 'Patient Identity',
+    short: 'name and record',
+    description: 'Capture the core patient identity used to save, reopen, and display the clinical record.',
+    footer: 'Confirm the patient identity details before moving to symptoms.'
+  },
+  {
+    id: 2,
+    title: 'Clinical Clues',
+    short: 'symptoms and exposure',
+    description: 'Document TB symptoms and exposure history using suggested clues or direct typing.',
+    footer: 'Review symptoms and exposure history, then continue to laboratory and imaging results.'
+  },
+  {
+    id: 3,
+    title: 'Species And Tests',
+    short: 'results and evidence',
+    description: 'Enter bacteria selection, smear, culture, GeneXpert, x-ray, TST, IGRA, and related evidence.',
+    footer: 'Check test results before advancing to DST and resistance evidence.'
+  },
+  {
+    id: 4,
+    title: 'DST And Resistance',
+    short: 'drug decision support',
+    description: 'Complete antibiogram, resistance, and susceptibility details before generating the report.',
+    footer: 'Finish the last step and run the TB analysis when the record is ready.'
+  }
+]
+
+const symptomOptions = [
+  'Persistent cough for 2+ weeks',
+  'Hemoptysis',
+  'Fever',
+  'Night sweats',
+  'Weight loss',
+  'Chest pain',
+  'Fatigue',
+  'Breathlessness',
+  'Loss of appetite',
+  'Lymph node swelling',
+  'Back pain',
+  'Abdominal pain',
+  'Neck stiffness',
+  'Pleural chest pain'
+]
+
+const exposureOptions = [
+  'Household TB contact',
+  'Close contact with MDR-TB patient',
+  'Cattle exposure',
+  'Goat or sheep exposure',
+  'Unpasteurized milk intake',
+  'Rodent exposure',
+  'Marine mammal exposure',
+  'South Asia travel history',
+  'West Africa residence history',
+  'Horn of Africa travel history',
+  'Prison or crowded living conditions',
+  'Healthcare worker exposure',
+  'Previous untreated TB episode',
+  'Livestock herd exposure'
+]
+
+const antibiogramOptions = [
+  'Fully susceptible first-line profile',
+  'Rifampicin resistance detected',
+  'Isoniazid resistance detected',
+  'Pyrazinamide resistance suspected',
+  'MDR profile confirmed by DST',
+  'XDR profile suspected',
+  'Fluoroquinolone susceptible',
+  'Linezolid active',
+  'Clofazimine active',
+  'Reference laboratory confirmation recommended'
+]
+
+const drugOptions = [
+  'isoniazid',
+  'rifampicin',
+  'pyrazinamide',
+  'ethambutol',
+  'rifapentine',
+  'levofloxacin',
+  'moxifloxacin',
+  'bedaquiline',
+  'linezolid',
+  'clofazimine',
+  'cycloserine',
+  'delamanid',
+  'amikacin',
+  'kanamycin'
 ]
 
 const patient = ref({
@@ -823,6 +1324,7 @@ const patientRangeEnd = computed(() => {
   if (patientTotal.value === 0) return 0
   return Math.min(patientsPage.value * patientPageSize.value, patientTotal.value)
 })
+const currentDiagnosisMeta = computed(() => diagnosisSteps.find(step => step.id === currentDiagnosisStep.value) || diagnosisSteps[0])
 
 const riskColorClass = computed(() => {
   if (!diagnosisResult.value) return 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
@@ -866,6 +1368,42 @@ function toggleDarkMode() {
 function formatDate(dateStr) {
   if (!dateStr) return '-'
   return new Date(dateStr).toLocaleDateString()
+}
+
+function goToDiagnosisStep(stepId) {
+  const nextStep = Number(stepId)
+  if (!Number.isInteger(nextStep)) return
+  if (nextStep < 1 || nextStep > diagnosisSteps.length) return
+  currentDiagnosisStep.value = nextStep
+}
+
+function nextDiagnosisStep() {
+  if (currentDiagnosisStep.value >= diagnosisSteps.length) return
+  currentDiagnosisStep.value += 1
+}
+
+function previousDiagnosisStep() {
+  if (currentDiagnosisStep.value <= 1) return
+  currentDiagnosisStep.value -= 1
+}
+
+function appendSuggestedValue(field, suggestion) {
+  const value = String(suggestion || '').trim()
+  if (!value) return
+
+  const currentText = String(patient.value[field] || '').trim()
+  if (!currentText) {
+    patient.value[field] = value
+    return
+  }
+
+  const currentItems = currentText
+    .split(/[;,\n]/)
+    .map(item => item.trim().toLowerCase())
+    .filter(Boolean)
+
+  if (currentItems.includes(value.toLowerCase())) return
+  patient.value[field] = `${currentText}, ${value}`
 }
 
 function formatPercent(value) {
@@ -968,6 +1506,7 @@ async function login() {
     writeStoredValue('tb_token', token.value)
     writeStoredValue('tb_login_email', loginEmail.value)
     loginPassword.value = ''
+    showLoginPassword.value = false
     currentView.value = 'diagnose'
     await loadPatients()
     await loadAlerts()
@@ -1041,6 +1580,7 @@ async function markAsRead(alert) {
 
 function showPatientDetail(p) {
   patient.value = { ...patient.value, ...p }
+  currentDiagnosisStep.value = 1
   currentView.value = 'diagnose'
 }
 
