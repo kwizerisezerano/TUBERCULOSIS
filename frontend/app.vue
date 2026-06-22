@@ -491,6 +491,42 @@
                     rows="3"
                     placeholder="Describe symptoms or keep the stored patient text as it is"
                   ></textarea>
+                  <div class="mt-3">
+                    <button
+                      v-if="!openCustomCommaInputs.symptoms"
+                      type="button"
+                      class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:bg-gray-800 dark:text-emerald-300 dark:hover:bg-gray-700"
+                      @click="openCustomListInput('symptoms')"
+                    >
+                      <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" aria-hidden="true">
+                        <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                      </svg>
+                      Add symptom
+                    </button>
+                    <div v-else class="flex flex-col gap-2 sm:flex-row">
+                      <input
+                        v-model="customCommaInputs.symptoms"
+                        type="text"
+                        class="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        placeholder="Add one symptom"
+                        @keydown.enter.prevent="addCustomListValue('symptoms')"
+                      />
+                      <button
+                        type="button"
+                        class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                        @click="addCustomListValue('symptoms')"
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                        @click="closeCustomListInput('symptoms')"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                   <div class="mt-3 flex flex-wrap gap-2">
                     <button
                       v-for="option in symptomOptions"
@@ -518,6 +554,42 @@
                     rows="3"
                     placeholder="Enter or review household, travel, animal, dairy, wildlife, or occupational exposure"
                   ></textarea>
+                  <div class="mt-3">
+                    <button
+                      v-if="!openCustomCommaInputs.exposure_history"
+                      type="button"
+                      class="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:bg-gray-800 dark:text-blue-300 dark:hover:bg-gray-700"
+                      @click="openCustomListInput('exposure_history')"
+                    >
+                      <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" aria-hidden="true">
+                        <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                      </svg>
+                      Add exposure
+                    </button>
+                    <div v-else class="flex flex-col gap-2 sm:flex-row">
+                      <input
+                        v-model="customCommaInputs.exposure_history"
+                        type="text"
+                        class="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        placeholder="Add one exposure item"
+                        @keydown.enter.prevent="addCustomListValue('exposure_history')"
+                      />
+                      <button
+                        type="button"
+                        class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                        @click="addCustomListValue('exposure_history')"
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                        @click="closeCustomListInput('exposure_history')"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                   <div class="mt-3 flex flex-wrap gap-2">
                     <button
                       v-for="option in exposureOptions"
@@ -680,6 +752,42 @@
                       rows="3"
                       placeholder="Enter DST summary or keep stored text for an existing patient"
                     ></textarea>
+                    <div class="mt-3">
+                      <button
+                        v-if="!openCustomCommaInputs.antibiogram_result"
+                        type="button"
+                        class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 dark:border-rose-700 dark:bg-gray-800 dark:text-rose-300 dark:hover:bg-gray-700"
+                        @click="openCustomListInput('antibiogram_result')"
+                      >
+                        <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" aria-hidden="true">
+                          <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                        Add DST item
+                      </button>
+                      <div v-else class="flex flex-col gap-2 sm:flex-row">
+                        <input
+                          v-model="customCommaInputs.antibiogram_result"
+                          type="text"
+                          class="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                          placeholder="Add one DST item"
+                          @keydown.enter.prevent="addCustomListValue('antibiogram_result')"
+                        />
+                        <button
+                          type="button"
+                          class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"
+                          @click="addCustomListValue('antibiogram_result')"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                          @click="closeCustomListInput('antibiogram_result')"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
                     <div class="mt-3 flex flex-wrap gap-2">
                       <button
                         v-for="option in antibiogramOptions"
@@ -703,6 +811,43 @@
                       class="w-full rounded-lg border border-gray-300 px-4 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                       placeholder="Type resistant medicines or reuse stored patient text"
                     />
+                    <div class="mt-3">
+                      <button
+                        v-if="!openCustomCommaInputs.resistant_to"
+                        type="button"
+                        class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 dark:border-rose-700 dark:bg-gray-800 dark:text-rose-300 dark:hover:bg-gray-700"
+                        @click="openCustomListInput('resistant_to')"
+                      >
+                        <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" aria-hidden="true">
+                          <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                        Add resistant medicine
+                      </button>
+                      <div v-else class="flex flex-col gap-2 sm:flex-row">
+                        <input
+                          v-model="customCommaInputs.resistant_to"
+                          list="tb-drug-options"
+                          type="text"
+                          class="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                          placeholder="Add one resistant medicine"
+                          @keydown.enter.prevent="addCustomListValue('resistant_to')"
+                        />
+                        <button
+                          type="button"
+                          class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"
+                          @click="addCustomListValue('resistant_to')"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                          @click="closeCustomListInput('resistant_to')"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
                     <div class="mt-3 flex flex-wrap gap-2">
                       <button
                         v-for="option in drugOptions"
@@ -724,6 +869,43 @@
                       class="w-full rounded-lg border border-gray-300 px-4 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                       placeholder="Type susceptible medicines or reuse stored patient text"
                     />
+                    <div class="mt-3">
+                      <button
+                        v-if="!openCustomCommaInputs.susceptible_to"
+                        type="button"
+                        class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:bg-gray-800 dark:text-emerald-300 dark:hover:bg-gray-700"
+                        @click="openCustomListInput('susceptible_to')"
+                      >
+                        <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" aria-hidden="true">
+                          <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                        Add susceptible medicine
+                      </button>
+                      <div v-else class="flex flex-col gap-2 sm:flex-row">
+                        <input
+                          v-model="customCommaInputs.susceptible_to"
+                          list="tb-drug-options"
+                          type="text"
+                          class="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                          placeholder="Add one susceptible medicine"
+                          @keydown.enter.prevent="addCustomListValue('susceptible_to')"
+                        />
+                        <button
+                          type="button"
+                          class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                          @click="addCustomListValue('susceptible_to')"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                          @click="closeCustomListInput('susceptible_to')"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
                     <div class="mt-3 flex flex-wrap gap-2">
                       <button
                         v-for="option in drugOptions"
@@ -1314,6 +1496,20 @@ const patient = ref({
   hiv: 'No',
   diabetes: 'No'
 })
+const customCommaInputs = ref({
+  symptoms: '',
+  exposure_history: '',
+  antibiogram_result: '',
+  resistant_to: '',
+  susceptible_to: ''
+})
+const openCustomCommaInputs = ref({
+  symptoms: false,
+  exposure_history: false,
+  antibiogram_result: false,
+  resistant_to: false,
+  susceptible_to: false
+})
 
 const unreadAlerts = computed(() => alerts.value.filter(a => !a.is_read).length)
 const patientRangeStart = computed(() => {
@@ -1404,6 +1600,24 @@ function appendSuggestedValue(field, suggestion) {
 
   if (currentItems.includes(value.toLowerCase())) return
   patient.value[field] = `${currentText}, ${value}`
+}
+
+function openCustomListInput(field) {
+  if (!(field in openCustomCommaInputs.value)) return
+  openCustomCommaInputs.value[field] = true
+}
+
+function closeCustomListInput(field) {
+  if (!(field in openCustomCommaInputs.value)) return
+  customCommaInputs.value[field] = ''
+  openCustomCommaInputs.value[field] = false
+}
+
+function addCustomListValue(field) {
+  const draftValue = String(customCommaInputs.value[field] || '').trim()
+  if (!draftValue) return
+  appendSuggestedValue(field, draftValue)
+  closeCustomListInput(field)
 }
 
 function formatPercent(value) {
