@@ -138,6 +138,50 @@ This command:
 - trains models from database records
 - starts the backend API server
 
+### ML Model Information
+
+When the models are trained, you will see feature importance output in your terminal like this:
+
+```
+=== Model Information ===
+Model: Random Forest Classifier
+Parameters: n_estimators=300, max_depth=14, min_samples_split=5, min_samples_leaf=2, class_weight='balanced', random_state=42
+
+Feature Importances (%):
+  - genexpert_positive: 29.71%
+  - chest_xray_abnormal: 27.23%
+  - sputum_positive: 21.41%
+  - age: 10.03%
+  - has_fever: 3.52%
+  - has_weight_loss: 1.73%
+  - has_cough: 1.33%
+  - has_blood: 1.3%
+  - has_fatigue: 1.21%
+  - gender_female: 1.05%
+  - gender_male: 0.73%
+  - has_chest_pain: 0.48%
+  - has_night_sweats: 0.27%
+  - weight: 0.0%
+  - gender_other: 0.0%
+  - persistent_cough_duration_weeks: 0.0%
+  - contact_with_tb_patient_yes: 0.0%
+  - previous_tb_treatment_yes: 0.0%
+  - smoking_current: 0.0%
+  - smoking_former: 0.0%
+  - alcohol_regular: 0.0%
+  - oxygen_saturation_spo2: 0.0%
+  - hiv_yes: 0.0%
+  - diabetes_yes: 0.0%
+```
+
+**What does this mean?**
+
+Each feature importance percentage represents how much that factor contributed to the ML model's predictions:
+- **Top features (20-30%):** GenXpert test results, chest X-ray abnormalities, and sputum smear results are the strongest predictors of TB status
+- **Age (10%):** Age is also a significant factor
+- **Symptoms (1-4%):** Fever, weight loss, cough, blood in sputum, and fatigue contribute moderately
+- **Other features (<1%):** Gender, lifestyle factors, and other fields have minimal or no impact on the current model with the available training data
+
 ### Owner Dataset
 
 - Curated species-labeled dataset file: `backend/data/raw/owner_tb_species_dataset.csv`
