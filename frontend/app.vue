@@ -1604,6 +1604,18 @@ const TEXT = {
     SW: 'Kipindi chako kimeisha. Tafadhali ingia tena.',
     RW: 'Igihe cyo kwinjira cyarangiye. Ongera winjire.'
   },
+  invalidEmailOrPassword: {
+    EN: 'Invalid email or password',
+    FR: 'Email ou mot de passe invalide',
+    SW: 'Barua pepe au nenosiri si sahihi',
+    RW: 'Email cyangwa ijambo-banga si byo'
+  },
+  loginFailed: {
+    EN: 'Login failed. Ensure the backend server is running and your credentials are correct.',
+    FR: 'La connexion a échoué. Vérifiez que le serveur backend fonctionne et que vos identifiants sont corrects.',
+    SW: 'Kuingia kumeshindikana. Hakikisha seva ya backend inafanya kazi na taarifa zako ni sahihi.',
+    RW: 'Kwinjira byanze. Reba ko seriveri ya backend iri gukora kandi amakuru winjije ari yo.'
+  },
   headerSubtitle: {
     EN: 'Comprehensive Patient Analysis & Treatment',
     FR: 'Analyse complète du patient et traitement',
@@ -3391,12 +3403,15 @@ async function login() {
   try {
     const response = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-UI-Language': uiLanguage.value
+      },
       body: JSON.stringify({ email: loginEmail.value, password: loginPassword.value })
     })
     if (!response.ok) {
       const err = await response.json().catch(() => ({}))
-      loginError.value = err.msg || 'Invalid email or password'
+      loginError.value = err.msg || t(TEXT.invalidEmailOrPassword)
       return
     }
     const data = await response.json()
@@ -3410,7 +3425,7 @@ async function login() {
     await loadPatients()
     await loadAlerts()
   } catch (error) {
-    loginError.value = 'Login failed. Ensure the backend server is running and your credentials are correct.'
+    loginError.value = t(TEXT.loginFailed)
   } finally {
     loading.value = false
   }
