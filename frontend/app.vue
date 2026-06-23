@@ -1438,12 +1438,7 @@
                 <option value="created_desc">{{ t(TEXT.sortNewestCreated) }}</option>
                 <option value="created_asc">{{ t(TEXT.sortOldestCreated) }}</option>
               </select>
-            <button
-                @click="refreshPatients"
-                class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg"
-              >
-              🔄 {{ t(TEXT.refresh) }}
-              </button>
+
             </div>
           </div>
           
@@ -1510,12 +1505,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
           <div class="flex items-center justify-between mb-6">
               <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{{ t(TEXT.tabAlerts) }}</h2>
-            <button
-              @click="loadAlerts"
-              class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg"
-            >
-              🔄 {{ t(TEXT.refresh) }}
-            </button>
+
           </div>
           
           <div v-if="alerts.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
