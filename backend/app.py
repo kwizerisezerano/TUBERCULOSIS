@@ -3190,6 +3190,18 @@ def home():
     })
 
 
+@app.route('/api/model-info')
+def model_info():
+    model_info_path = os.path.join(os.path.dirname(__file__), 'models', 'model_info.json')
+    if os.path.exists(model_info_path):
+        with open(model_info_path, 'r') as f:
+            import json
+            return jsonify(json.load(f))
+    return jsonify({
+        'message': 'No model information available',
+        'reason': 'Model training may not have run yet'
+    })
+
 @app.route('/api/health')
 def health():
     with app.app_context():

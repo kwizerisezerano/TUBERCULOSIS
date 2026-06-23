@@ -2,6 +2,8 @@ import os
 import json
 import time
 import urllib.request
+import os
+import json
 import joblib
 import pandas as pd
 import numpy as np
@@ -460,6 +462,11 @@ def train_models_from_database():
 
     if not results:
         results["reason"] = "Not enough labeled data in database (need at least ~20 labeled rows per task)"
+
+    # Save results to JSON file
+    model_info_path = os.path.join(os.path.dirname(__file__), "model_info.json")
+    with open(model_info_path, "w") as f:
+        json.dump(results, f, indent=2)
 
     return results
 
