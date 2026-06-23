@@ -225,6 +225,28 @@ I18N = {
     "LABEL_TST": {"EN": "TST", "FR": "TST", "SW": "TST", "RW": "TST"},
     "LABEL_IGRA": {"EN": "IGRA", "FR": "IGRA", "SW": "IGRA", "RW": "IGRA"},
     "LABEL_DST": {"EN": "Antibiogram/DST", "FR": "Antibiogramme/DST", "SW": "Antibiogram/DST", "RW": "Antibiogram/DST"},
+    "INFECT_PULMONARY": {"EN": "Pulmonary TB", "FR": "TB pulmonaire", "SW": "TB ya mapafu", "RW": "TB yo mu bihaha"},
+    "INFECT_LYMPH_NODE": {"EN": "Lymph Node TB", "FR": "TB ganglionnaire", "SW": "TB ya vifuko vya limfu", "RW": "TB yo mu dusabo twa lympho"},
+    "INFECT_BONE_JOINT": {"EN": "Bone and Joint TB", "FR": "TB osseuse et articulaire", "SW": "TB y'amagufa n'ingingo", "RW": "TB yo mu magufa n'ingingo"},
+    "INFECT_MENINGITIS": {"EN": "TB Meningitis", "FR": "Méningite tuberculeuse", "SW": "TB yo mu bwonko", "RW": "TB yo mu bwonko"},
+    "INFECT_GENITOURINARY": {"EN": "Genitourinary TB", "FR": "TB génito-urinaire", "SW": "TB yo mu myanya ndangagitsina n'inkari", "RW": "TB yo mu myanya ndangagitsina n'inkari"},
+    "INFECT_ABDOMINAL": {"EN": "Abdominal TB", "FR": "TB abdominale", "SW": "TB yo mu nda", "RW": "TB yo mu nda"},
+    "INFECT_PLEURAL": {"EN": "Pleural TB", "FR": "TB pleurale", "SW": "TB yo ku gihu cy'ibihaha", "RW": "TB yo ku gihu cy'ibihaha"},
+    "INFECT_MILIARY": {"EN": "Miliary TB", "FR": "TB miliaire", "SW": "TB yakwirakwiriye umubiri wose", "RW": "TB yakwirakwiriye umubiri wose"},
+    "INFECT_LATENT": {"EN": "Latent TB Infection", "FR": "Infection tuberculeuse latente", "SW": "Ubwandu bwa TB butaragaragara", "RW": "Ubwandu bwa TB butaragaragara"},
+    "INFECT_TB_HIV": {"EN": "TB/HIV Co-infection", "FR": "Co-infection TB/VIH", "SW": "Ubwandu bwa TB na HIV icyarimwe", "RW": "Ubwandu bwa TB na VIH icyarimwe"},
+    "INFECT_NONE": {"EN": "No specific TB infection pattern confirmed", "FR": "Aucun schéma spécifique d'infection TB confirmé", "SW": "Nta bwandu bwa TB bwihariye bwemejwe", "RW": "Nta bwandu bwa TB bwihariye bwemejwe"},
+    "SITE_LUNGS": {"EN": "Lungs", "FR": "Poumons", "SW": "Mapafu", "RW": "Ibihaha"},
+    "SITE_LYMPH_NODES": {"EN": "Lymph nodes", "FR": "Ganglions lymphatiques", "SW": "Vifuko vya limfu", "RW": "Udusabo twa lympho"},
+    "SITE_BONES_JOINTS": {"EN": "Spine, bones, or joints", "FR": "Colonne, os ou articulations", "SW": "Uti wa mgongo, amagufa cyangwa ingingo", "RW": "Urutirigongo, amagufa cyangwa ingingo"},
+    "SITE_CNS": {"EN": "Central nervous system", "FR": "Système nerveux central", "SW": "Sisitemu yo hagati y'imyakura", "RW": "Sisitemu yo hagati y'imyakura"},
+    "SITE_GU": {"EN": "Genitourinary tract", "FR": "Voies génito-urinaires", "SW": "Imiyoboro y'inkari n'imyanya ndangagitsina", "RW": "Imiyoboro y'inkari n'imyanya ndangagitsina"},
+    "SITE_ABDOMEN": {"EN": "Abdomen/peritoneum", "FR": "Abdomen/péritoine", "SW": "Mu nda/peritoneum", "RW": "Mu nda/peritoneum"},
+    "SITE_PLEURA": {"EN": "Pleura", "FR": "Plèvre", "SW": "Igihu cy'ibihaha", "RW": "Igihu cy'ibihaha"},
+    "SITE_DISSEMINATED": {"EN": "Disseminated / whole body spread", "FR": "Disséminée / propagation dans tout le corps", "SW": "Byakwirakwiriye mu mubiri wose", "RW": "Byakwirakwiriye mu mubiri wose"},
+    "SITE_LATENT": {"EN": "No active organ disease", "FR": "Aucune atteinte active d'organe", "SW": "Nta gice cy'umubiri cyarwaye ku buryo bugaragara", "RW": "Nta gice cy'umubiri cyarwaye ku buryo bugaragara"},
+    "SITE_SYSTEMIC": {"EN": "Systemic comorbidity", "FR": "Comorbidité systémique", "SW": "Indi ndwara ikorana na yo mu mubiri", "RW": "Indi ndwara ijyana na yo mu mubiri"},
+    "SITE_UNSPECIFIED": {"EN": "Unspecified", "FR": "Non précisé", "SW": "Bitasobanuwe neza", "RW": "Bitasobanuwe neza"},
     "ALERT_EMAIL_SUBJECT": {
         "EN": "TB Diagnostic Alert: {alert_type}",
         "FR": "Alerte TB : {alert_type}",
@@ -770,31 +792,33 @@ def determine_resistance_profile(drug_resistant, genexpert, antibiogram_result=N
     }
 
 
-def build_infection_assessment(tb_analysis):
+def build_infection_assessment(tb_analysis, lang=None):
+    lang = lang or get_request_lang()
     infection_types = []
     seen = set()
 
     infection_rules = [
-        ("pulmonary", "Pulmonary TB", "Lungs"),
-        ("lymph node", "Lymph Node TB", "Lymph nodes"),
-        ("bone/joint", "Bone and Joint TB", "Spine, bones, or joints"),
-        ("meningitis", "TB Meningitis", "Central nervous system"),
-        ("genitourinary", "Genitourinary TB", "Genitourinary tract"),
-        ("abdominal", "Abdominal TB", "Abdomen/peritoneum"),
-        ("pleural", "Pleural TB", "Pleura"),
-        ("miliary", "Miliary TB", "Disseminated / whole body spread"),
-        ("latent", "Latent TB Infection", "No active organ disease"),
-        ("hiv", "TB/HIV Co-infection", "Systemic comorbidity"),
+        ("pulmonary", "INFECT_PULMONARY", "SITE_LUNGS"),
+        ("lymph node", "INFECT_LYMPH_NODE", "SITE_LYMPH_NODES"),
+        ("bone/joint", "INFECT_BONE_JOINT", "SITE_BONES_JOINTS"),
+        ("meningitis", "INFECT_MENINGITIS", "SITE_CNS"),
+        ("genitourinary", "INFECT_GENITOURINARY", "SITE_GU"),
+        ("abdominal", "INFECT_ABDOMINAL", "SITE_ABDOMEN"),
+        ("pleural", "INFECT_PLEURAL", "SITE_PLEURA"),
+        ("miliary", "INFECT_MILIARY", "SITE_DISSEMINATED"),
+        ("latent", "INFECT_LATENT", "SITE_LATENT"),
+        ("hiv", "INFECT_TB_HIV", "SITE_SYSTEMIC"),
     ]
 
     for tb_type in tb_analysis["tb_types"]:
         lower = tb_type.lower()
-        for key, label, site in infection_rules:
+        for key, label_key, site_key in infection_rules:
+            label = tr(label_key, lang=lang)
             if key in lower and label not in seen:
                 infection_types.append(
                     {
                         "label": label,
-                        "site": site,
+                        "site": tr(site_key, lang=lang),
                         "source_classification": tb_type,
                     }
                 )
@@ -803,8 +827,8 @@ def build_infection_assessment(tb_analysis):
     if not infection_types:
         infection_types.append(
             {
-                "label": "No specific TB infection pattern confirmed",
-                "site": "Unspecified",
+                "label": tr("INFECT_NONE", lang=lang),
+                "site": tr("SITE_UNSPECIFIED", lang=lang),
                 "source_classification": tb_analysis["who_category"],
             }
         )
@@ -1892,7 +1916,7 @@ def diagnose():
         species_result["species"],
     )
     bacteria_assessment = build_bacteria_assessment(species_result, tb_analysis)
-    infection_assessment = build_infection_assessment(tb_analysis)
+    infection_assessment = build_infection_assessment(tb_analysis, lang=lang)
 
     # Get WHO clinical info
     clinical_info = get_who_clinical_info(

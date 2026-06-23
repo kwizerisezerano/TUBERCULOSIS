@@ -820,15 +820,15 @@
                     v-model="patient.bacteria_species"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   >
-                    <option>Auto-detect</option>
-                    <option>Mycobacterium tuberculosis</option>
-                    <option>Mycobacterium bovis</option>
-                    <option>Mycobacterium africanum</option>
-                    <option>Mycobacterium canettii</option>
-                    <option>Mycobacterium microti</option>
-                    <option>Mycobacterium caprae</option>
-                    <option>Mycobacterium pinnipedii</option>
-                    <option>Mycobacterium orygis</option>
+                    <option value="Auto-detect">{{ t(TEXT.autoDetectLabel) }}</option>
+                    <option value="Mycobacterium tuberculosis">{{ t(TEXT.speciesTuberculosis) }}</option>
+                    <option value="Mycobacterium bovis">{{ t(TEXT.speciesBovis) }}</option>
+                    <option value="Mycobacterium africanum">{{ t(TEXT.speciesAfricanum) }}</option>
+                    <option value="Mycobacterium canettii">{{ t(TEXT.speciesCanettii) }}</option>
+                    <option value="Mycobacterium microti">{{ t(TEXT.speciesMicroti) }}</option>
+                    <option value="Mycobacterium caprae">{{ t(TEXT.speciesCaprae) }}</option>
+                    <option value="Mycobacterium pinnipedii">{{ t(TEXT.speciesPinnipedii) }}</option>
+                    <option value="Mycobacterium orygis">{{ t(TEXT.speciesOrygis) }}</option>
                   </select>
                 </div>
                 <div>
@@ -838,9 +838,9 @@
                     v-model="patient.tb_culture"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   >
-                    <option>Unknown</option>
-                    <option>Positive</option>
-                    <option>Negative</option>
+                    <option value="Unknown">{{ t(TEXT.statusUnknown) }}</option>
+                    <option value="Positive">{{ t(TEXT.statusPositive) }}</option>
+                    <option value="Negative">{{ t(TEXT.statusNegative) }}</option>
                   </select>
                 </div>
               </div>
@@ -852,9 +852,9 @@
                     v-model="patient.sputum_smear_test"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   >
-                    <option>Unknown</option>
-                    <option>Positive</option>
-                    <option>Negative</option>
+                    <option value="Unknown">{{ t(TEXT.statusUnknown) }}</option>
+                    <option value="Positive">{{ t(TEXT.statusPositive) }}</option>
+                    <option value="Negative">{{ t(TEXT.statusNegative) }}</option>
                   </select>
                 </div>
                 <div>
@@ -864,9 +864,9 @@
                     v-model="patient.genexpert_test"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   >
-                    <option>Unknown</option>
-                    <option>Positive</option>
-                    <option>Negative</option>
+                    <option value="Unknown">{{ t(TEXT.statusUnknown) }}</option>
+                    <option value="Positive">{{ t(TEXT.statusPositive) }}</option>
+                    <option value="Negative">{{ t(TEXT.statusNegative) }}</option>
                   </select>
                 </div>
               </div>
@@ -878,9 +878,9 @@
                     v-model="patient.chest_xray"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   >
-                    <option>Unknown</option>
-                    <option>Normal</option>
-                    <option>Abnormal</option>
+                    <option value="Unknown">{{ t(TEXT.statusUnknown) }}</option>
+                    <option value="Normal">{{ t(TEXT.statusNormal) }}</option>
+                    <option value="Abnormal">{{ t(TEXT.statusAbnormal) }}</option>
                   </select>
                 </div>
                 <div>
@@ -890,9 +890,9 @@
                     v-model="patient.drug_resistance"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   >
-                    <option>No</option>
-                    <option>Yes</option>
-                    <option>Unknown</option>
+                    <option value="No">{{ t(TEXT.statusNo) }}</option>
+                    <option value="Yes">{{ t(TEXT.statusYes) }}</option>
+                    <option value="Unknown">{{ t(TEXT.statusUnknown) }}</option>
                   </select>
                 </div>
               </div>
@@ -904,9 +904,9 @@
                     v-model="patient.tst"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   >
-                    <option>Unknown</option>
-                    <option>Positive</option>
-                    <option>Negative</option>
+                    <option value="Unknown">{{ t(TEXT.statusUnknown) }}</option>
+                    <option value="Positive">{{ t(TEXT.statusPositive) }}</option>
+                    <option value="Negative">{{ t(TEXT.statusNegative) }}</option>
                   </select>
                 </div>
                 <div>
@@ -916,9 +916,9 @@
                     v-model="patient.igra"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   >
-                    <option>Unknown</option>
-                    <option>Positive</option>
-                    <option>Negative</option>
+                    <option value="Unknown">{{ t(TEXT.statusUnknown) }}</option>
+                    <option value="Positive">{{ t(TEXT.statusPositive) }}</option>
+                    <option value="Negative">{{ t(TEXT.statusNegative) }}</option>
                   </select>
                 </div>
               </div>
@@ -930,9 +930,9 @@
                     v-model="patient.hiv"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   >
-                    <option>No</option>
-                    <option>Yes</option>
-                    <option>Unknown</option>
+                    <option value="No">{{ t(TEXT.statusNo) }}</option>
+                    <option value="Yes">{{ t(TEXT.statusYes) }}</option>
+                    <option value="Unknown">{{ t(TEXT.statusUnknown) }}</option>
                   </select>
                 </div>
                 <div>
@@ -942,9 +942,9 @@
                     v-model="patient.diabetes"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   >
-                    <option>No</option>
-                    <option>Yes</option>
-                    <option>Unknown</option>
+                    <option value="No">{{ t(TEXT.statusNo) }}</option>
+                    <option value="Yes">{{ t(TEXT.statusYes) }}</option>
+                    <option value="Unknown">{{ t(TEXT.statusUnknown) }}</option>
                   </select>
                 </div>
               </div>
@@ -1207,7 +1207,7 @@
               <h3 class="font-semibold text-gray-800 dark:text-gray-200">{{ t(TEXT.testEvaluation) }}</h3>
               <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p class="text-lg font-medium text-blue-800 dark:text-blue-300">
-                  {{ diagnosisResult.test_evaluation.classification }}
+                  {{ translateBackendText(diagnosisResult.test_evaluation.classification) }}
                 </p>
                 <p class="text-sm text-blue-700 dark:text-blue-400 mt-1">
                   {{ t(TEXT.confidenceLabel) }}: {{ diagnosisResult.test_evaluation.confidence_percent }}%
@@ -1225,22 +1225,22 @@
               <h3 class="font-semibold text-gray-800 dark:text-gray-200">{{ t(TEXT.tbBacteriaAssessment) }}</h3>
               <div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-800">
                 <p class="text-lg font-medium text-amber-800 dark:text-amber-300">
-                  {{ diagnosisResult.bacteria_assessment.species }}
+                  {{ translateBackendText(diagnosisResult.bacteria_assessment.species) }}
                 </p>
                 <p class="mt-1 text-sm text-amber-700 dark:text-amber-400">
-                  {{ t(TEXT.methodLabel) }}: {{ diagnosisResult.bacteria_assessment.mode }} | {{ t(TEXT.supportedSpeciesLabel) }}: {{ diagnosisResult.bacteria_assessment.supported_species_count }}
+                  {{ t(TEXT.methodLabel) }}: {{ translateBackendText(diagnosisResult.bacteria_assessment.mode) }} | {{ t(TEXT.supportedSpeciesLabel) }}: {{ diagnosisResult.bacteria_assessment.supported_species_count }}
                 </p>
                 <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                  {{ diagnosisResult.bacteria_assessment.description }}
+                  {{ translateBackendText(diagnosisResult.bacteria_assessment.description) }}
                 </p>
                 <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                  <strong>{{ t(TEXT.reasonLabel) }}:</strong> {{ diagnosisResult.bacteria_assessment.reason }}
+                  <strong>{{ t(TEXT.reasonLabel) }}:</strong> {{ translateBackendText(diagnosisResult.bacteria_assessment.reason) }}
                 </p>
                 <p class="text-sm text-gray-700 dark:text-gray-300">
-                  <strong>{{ t(TEXT.typicalSourceLabel) }}:</strong> {{ diagnosisResult.bacteria_assessment.typical_source }}
+                  <strong>{{ t(TEXT.typicalSourceLabel) }}:</strong> {{ translateBackendText(diagnosisResult.bacteria_assessment.typical_source) }}
                 </p>
                 <p class="text-sm text-gray-700 dark:text-gray-300">
-                  <strong>{{ t(TEXT.labNoteLabel) }}:</strong> {{ diagnosisResult.bacteria_assessment.lab_note }}
+                  <strong>{{ t(TEXT.labNoteLabel) }}:</strong> {{ translateBackendText(diagnosisResult.bacteria_assessment.lab_note) }}
                 </p>
               </div>
             </div>
@@ -1250,14 +1250,14 @@
               <h3 class="font-semibold text-gray-800 dark:text-gray-200">{{ t(TEXT.infectionAssessment) }}</h3>
               <div class="p-4 bg-sky-50 dark:bg-sky-900/30 rounded-lg border border-sky-200 dark:border-sky-800">
                 <p class="text-lg font-medium text-sky-800 dark:text-sky-300">
-                  {{ diagnosisResult.infection_assessment.primary_infection }}
+                  {{ translateBackendText(diagnosisResult.infection_assessment.primary_infection) }}
                 </p>
                 <ul class="mt-3 text-sm text-gray-700 dark:text-gray-300 space-y-1">
                   <li
                     v-for="(infection, i) in diagnosisResult.infection_assessment.infection_types"
                     :key="i"
                   >
-                    {{ infection.label }} - {{ infection.site }}
+                    {{ translateBackendText(infection.label) }} - {{ translateBackendText(infection.site) }}
                   </li>
                 </ul>
               </div>
@@ -1268,13 +1268,13 @@
               <h3 class="font-semibold text-gray-800 dark:text-gray-200">{{ t(TEXT.resistanceDstProfile) }}</h3>
               <div class="p-4 bg-rose-50 dark:bg-rose-900/30 rounded-lg border border-rose-200 dark:border-rose-800">
                 <p class="text-lg font-medium text-rose-800 dark:text-rose-300">
-                  {{ diagnosisResult.resistance_profile.classification }}
+                  {{ translateBackendText(diagnosisResult.resistance_profile.classification) }}
                 </p>
                 <p class="mt-1 text-sm text-rose-700 dark:text-rose-400">
-                  {{ t(TEXT.regimenLevelLabel) }}: {{ diagnosisResult.resistance_profile.regimen_level }}
+                  {{ t(TEXT.regimenLevelLabel) }}: {{ translateBackendText(diagnosisResult.resistance_profile.regimen_level) }}
                 </p>
                 <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                  <strong>{{ t(TEXT.antibiogramLabel) }}:</strong> {{ diagnosisResult.resistance_profile.antibiogram_result }}
+                  <strong>{{ t(TEXT.antibiogramLabel) }}:</strong> {{ translateBackendText(diagnosisResult.resistance_profile.antibiogram_result) }}
                 </p>
                 <p class="text-sm text-gray-700 dark:text-gray-300">
                   <strong>{{ t(TEXT.resistantToLabel) }}:</strong> {{ diagnosisResult.resistance_profile.resistant_to.join(', ') || t(TEXT.noneProvided) }}
@@ -1284,7 +1284,7 @@
                 </p>
                 <ul class="mt-3 text-sm text-gray-700 dark:text-gray-300 space-y-1">
                   <li v-for="(item, i) in diagnosisResult.resistance_profile.decision_basis" :key="i">
-                    {{ item }}
+                    {{ translateBackendText(item) }}
                   </li>
                 </ul>
               </div>
@@ -1298,7 +1298,7 @@
                   {{ t(TEXT.tbPredictionLabel) }}: {{ formatPredictionLabel(diagnosisResult.ml_prediction.tb_status?.prediction, 'tb') }}
                 </p>
                 <p v-if="diagnosisResult.ml_prediction.tb_status" class="mt-1 text-sm text-purple-700 dark:text-purple-400">
-                  {{ buildConfidenceSummary(diagnosisResult.ml_prediction.tb_status, 'tb') }}
+                    {{ buildConfidenceSummary(diagnosisResult.ml_prediction.tb_status, 'tb') }}
                 </p>
                 <div class="mt-2 text-sm space-y-1">
                   <p v-if="diagnosisResult.ml_prediction.drug_resistance" class="text-purple-700 dark:text-purple-400">
@@ -1324,48 +1324,48 @@
               <div class="p-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg border border-emerald-200 dark:border-emerald-800">
                 <div class="flex items-center justify-between mb-2">
                   <p class="font-semibold text-emerald-800 dark:text-emerald-300">
-                    {{ diagnosisResult.treatment_recommendation.regimen_name || diagnosisResult.treatment_recommendation.type || diagnosisResult.treatment_recommendation.category || t(TEXT.treatmentPlanFallback) }}
+                    {{ translateBackendText(diagnosisResult.treatment_recommendation.regimen_name || diagnosisResult.treatment_recommendation.type || diagnosisResult.treatment_recommendation.category || t(TEXT.treatmentPlanFallback)) }}
                   </p>
                   <span class="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded font-medium">
-                    {{ diagnosisResult.treatment_recommendation.urgency }}
+                    {{ translateBackendText(diagnosisResult.treatment_recommendation.urgency) }}
                   </span>
                 </div>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>{{ t(TEXT.categoryLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.category }}
+                  <strong>{{ t(TEXT.categoryLabel) }}:</strong> {{ translateBackendText(diagnosisResult.treatment_recommendation.category) }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>{{ t(TEXT.bacteriaLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.bacteria_species || diagnosisResult.bacteria_assessment?.species || t(TEXT.notAvailableInResponse) }}
+                  <strong>{{ t(TEXT.bacteriaLabel) }}:</strong> {{ translateBackendText(diagnosisResult.treatment_recommendation.bacteria_species || diagnosisResult.bacteria_assessment?.species || t(TEXT.notAvailableInResponse)) }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>{{ t(TEXT.infectionLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.infection_type || diagnosisResult.infection_assessment?.primary_infection || diagnosisResult.treatment_recommendation.category || t(TEXT.notAvailableInResponse) }}
+                  <strong>{{ t(TEXT.infectionLabel) }}:</strong> {{ translateBackendText(diagnosisResult.treatment_recommendation.infection_type || diagnosisResult.infection_assessment?.primary_infection || diagnosisResult.treatment_recommendation.category || t(TEXT.notAvailableInResponse)) }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>{{ t(TEXT.resistanceLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.resistance_class || diagnosisResult.resistance_profile?.classification || diagnosisResult.ml_prediction?.drug_resistance?.prediction || t(TEXT.notAvailableInResponse) }}
+                  <strong>{{ t(TEXT.resistanceLabel) }}:</strong> {{ translateBackendText(diagnosisResult.treatment_recommendation.resistance_class || diagnosisResult.resistance_profile?.classification || diagnosisResult.ml_prediction?.drug_resistance?.prediction || t(TEXT.notAvailableInResponse)) }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>{{ t(TEXT.levelLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.regimen_level || diagnosisResult.resistance_profile?.regimen_level || t(TEXT.whoRuleBasedLevel) }}
+                  <strong>{{ t(TEXT.levelLabel) }}:</strong> {{ translateBackendText(diagnosisResult.treatment_recommendation.regimen_level || diagnosisResult.resistance_profile?.regimen_level || t(TEXT.whoRuleBasedLevel)) }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>{{ t(TEXT.durationLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.duration }}
+                  <strong>{{ t(TEXT.durationLabel) }}:</strong> {{ translateBackendText(diagnosisResult.treatment_recommendation.duration) }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>{{ t(TEXT.drugsLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.drugs }}
+                  <strong>{{ t(TEXT.drugsLabel) }}:</strong> {{ translateBackendText(diagnosisResult.treatment_recommendation.drugs) }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>{{ t(TEXT.dosageLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.dosage }}
+                  <strong>{{ t(TEXT.dosageLabel) }}:</strong> {{ translateBackendText(diagnosisResult.treatment_recommendation.dosage) }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>{{ t(TEXT.administrationLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.administration }}
+                  <strong>{{ t(TEXT.administrationLabel) }}:</strong> {{ translateBackendText(diagnosisResult.treatment_recommendation.administration) }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>{{ t(TEXT.monitoringLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.monitoring }}
+                  <strong>{{ t(TEXT.monitoringLabel) }}:</strong> {{ translateBackendText(diagnosisResult.treatment_recommendation.monitoring) }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>{{ t(TEXT.guidelineLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.guideline_source || t(TEXT.whoTreatmentGuidance) }}
+                  <strong>{{ t(TEXT.guidelineLabel) }}:</strong> {{ translateBackendText(diagnosisResult.treatment_recommendation.guideline_source || t(TEXT.whoTreatmentGuidance)) }}
                 </p>
                 <ul v-if="diagnosisResult.treatment_recommendation.decision_basis?.length" class="mt-3 text-sm text-emerald-700 dark:text-emerald-400 space-y-1">
                   <li v-for="(item, i) in diagnosisResult.treatment_recommendation.decision_basis" :key="i">
-                    {{ item }}
+                    {{ translateBackendText(item) }}
                   </li>
                 </ul>
                 <div v-if="diagnosisResult.treatment_recommendation.treatment_options?.length > 1" class="mt-4">
@@ -1375,12 +1375,12 @@
                       v-for="(option, i) in diagnosisResult.treatment_recommendation.treatment_options.slice(1)"
                       :key="i"
                     >
-                      {{ option.name }} - {{ option.duration }} - {{ option.drugs }}
+                      {{ translateBackendText(option.name) }} - {{ translateBackendText(option.duration) }} - {{ translateBackendText(option.drugs) }}
                     </li>
                   </ul>
                 </div>
                 <p class="text-xs text-emerald-600 dark:text-emerald-500 mt-2">
-                  {{ diagnosisResult.treatment_recommendation.notes }}
+                  {{ translateBackendText(diagnosisResult.treatment_recommendation.notes) }}
                 </p>
               </div>
             </div>
@@ -1722,17 +1722,33 @@ const TEXT = {
   genderMale: { EN: 'Male', FR: 'Masculin', SW: 'Mwanaume', RW: 'Gabo' },
   genderFemale: { EN: 'Female', FR: 'Féminin', SW: 'Mwanamke', RW: 'Gore' },
   genderOther: { EN: 'Other', FR: 'Autre', SW: 'Nyingine', RW: 'Ikindi' },
+  autoDetectLabel: { EN: 'Auto-detect', FR: 'Détection auto', SW: 'Mfumo ujichagulie', RW: 'Sisitemu yihitiremo' },
+  speciesTuberculosis: { EN: 'Mycobacterium tuberculosis', FR: 'Mycobacterium tuberculosis', SW: 'Mycobacterium tuberculosis', RW: 'Mycobacterium tuberculosis' },
+  speciesBovis: { EN: 'Mycobacterium bovis', FR: 'Mycobacterium bovis', SW: 'Mycobacterium bovis', RW: 'Mycobacterium bovis' },
+  speciesAfricanum: { EN: 'Mycobacterium africanum', FR: 'Mycobacterium africanum', SW: 'Mycobacterium africanum', RW: 'Mycobacterium africanum' },
+  speciesCanettii: { EN: 'Mycobacterium canettii', FR: 'Mycobacterium canettii', SW: 'Mycobacterium canettii', RW: 'Mycobacterium canettii' },
+  speciesMicroti: { EN: 'Mycobacterium microti', FR: 'Mycobacterium microti', SW: 'Mycobacterium microti', RW: 'Mycobacterium microti' },
+  speciesCaprae: { EN: 'Mycobacterium caprae', FR: 'Mycobacterium caprae', SW: 'Mycobacterium caprae', RW: 'Mycobacterium caprae' },
+  speciesPinnipedii: { EN: 'Mycobacterium pinnipedii', FR: 'Mycobacterium pinnipedii', SW: 'Mycobacterium pinnipedii', RW: 'Mycobacterium pinnipedii' },
+  speciesOrygis: { EN: 'Mycobacterium orygis', FR: 'Mycobacterium orygis', SW: 'Mycobacterium orygis', RW: 'Mycobacterium orygis' },
+  statusUnknown: { EN: 'Unknown', FR: 'Inconnu', SW: 'Haijulikani', RW: 'Ntibizwi' },
+  statusPositive: { EN: 'Positive', FR: 'Positif', SW: 'Kimeonekana', RW: 'Cyagaragaye' },
+  statusNegative: { EN: 'Negative', FR: 'Négatif', SW: 'Hakitaonekana', RW: 'Nticyagaragaye' },
+  statusNormal: { EN: 'Normal', FR: 'Normal', SW: 'Kawaida', RW: 'Bisanzwe' },
+  statusAbnormal: { EN: 'Abnormal', FR: 'Anormal', SW: 'Isiyo ya kawaida', RW: 'Ntibisanzwe' },
+  statusYes: { EN: 'Yes', FR: 'Oui', SW: 'Ndiyo', RW: 'Yego' },
+  statusNo: { EN: 'No', FR: 'Non', SW: 'Hapana', RW: 'Oya' },
   cityLabel: { EN: 'City', FR: 'Ville', SW: 'Mji', RW: 'Umujyi' },
   cityPlaceholder: { EN: 'City', FR: 'Ville', SW: 'Mji', RW: 'Umujyi' },
   antibiogramSummaryLabel: { EN: 'Antibiogram / DST summary', FR: 'Résumé antibiogramme / DST', SW: 'Muhtasari wa antibiogram / DST', RW: 'Incamake ya antibiogram / DST' },
   addDstItem: { EN: 'Add DST item', FR: 'Ajouter élément DST', SW: 'Ongeza kipengele cha DST', RW: 'Ongeraho ikintu cya DST' },
   addOneDstItem: { EN: 'Add one DST item', FR: 'Ajouter un élément DST', SW: 'Ongeza kipengele kimoja cha DST', RW: 'Ongeraho ikintu kimwe cya DST' },
-  resistantToLabel: { EN: 'Resistant to', FR: 'Résistant à', SW: 'Inakataa', RW: 'Irwanya' },
-  susceptibleToLabel: { EN: 'Susceptible to', FR: 'Sensible à', SW: 'Inaitikia', RW: 'Yumva' },
-  addResistantMedicine: { EN: 'Add resistant medicine', FR: 'Ajouter médicament résistant', SW: 'Ongeza dawa inayokataliwa', RW: 'Ongeraho umuti urwanywe' },
-  addOneResistantMedicine: { EN: 'Add one resistant medicine', FR: 'Ajouter un médicament résistant', SW: 'Ongeza dawa moja inayokataliwa', RW: 'Ongeraho umuti umwe urwanywe' },
-  addSusceptibleMedicine: { EN: 'Add susceptible medicine', FR: 'Ajouter médicament sensible', SW: 'Ongeza dawa inayoitikiwa', RW: 'Ongeraho umuti wumvwa' },
-  addOneSusceptibleMedicine: { EN: 'Add one susceptible medicine', FR: 'Ajouter un médicament sensible', SW: 'Ongeza dawa moja inayoitikiwa', RW: 'Ongeraho umuti umwe wumvwa' },
+  resistantToLabel: { EN: 'Resistant to', FR: 'Résistant à', SW: 'Imiti isiyofataho', RW: 'Imiti idafataho' },
+  susceptibleToLabel: { EN: 'Susceptible to', FR: 'Sensible à', SW: 'Imiti ifataho', RW: 'Imiti ifataho' },
+  addResistantMedicine: { EN: 'Add resistant medicine', FR: 'Ajouter médicament résistant', SW: 'Ongeza umuti usiyofataho', RW: 'Ongeraho umuti udafataho' },
+  addOneResistantMedicine: { EN: 'Add one resistant medicine', FR: 'Ajouter un médicament résistant', SW: 'Ongeza umuti umwe usiyofataho', RW: 'Ongeraho umuti umwe udafataho' },
+  addSusceptibleMedicine: { EN: 'Add susceptible medicine', FR: 'Ajouter médicament sensible', SW: 'Ongeza umuti ufataho', RW: 'Ongeraho umuti ufataho' },
+  addOneSusceptibleMedicine: { EN: 'Add one susceptible medicine', FR: 'Ajouter un médicament sensible', SW: 'Ongeza umuti umwe ufataho', RW: 'Ongeraho umuti umwe ufataho' },
   stepOf: {
     EN: 'Step {current} of {total}',
     FR: 'Étape {current} sur {total}',
@@ -1756,26 +1772,26 @@ const TEXT = {
   symptomsHint: {
     EN: 'Type directly in the field. Suggested TB symptoms below can be clicked to append.',
     FR: "Saisissez directement. Les symptômes suggérés ci‑dessous peuvent être ajoutés en un clic.",
-    SW: 'Andika moja kwa moja. Dalili zilizopendekezwa hapa chini zinaweza kubofwa ili kuongezwa.',
-    RW: "Andika muri field. Ibimenyetso byatanzwe hasi ushobora kubikanda bikiyongeramo."
+    SW: 'Andika moja kwa moja. Dalili ziri hapa chini ushobora kuzikanda zikiyongeramo.',
+    RW: "Andika mu mwanya wabugenewe. Ibimenyetso biri hasi ushobora kubikanda bikiyongeramo."
   },
   exposureHint: {
     EN: 'Existing patient exposure notes stay unchanged unless the clinician edits them.',
     FR: "Les notes d'exposition restent inchangées sauf modification par le clinicien.",
-    SW: 'Maelezo ya exposure ya mgonjwa aliyepo hubaki hadi daktari ayabadilishe.',
-    RW: "Amakuru y'aho yandurira y'umurwayi usanzwe aguma uko ari keretse uyahinduye."
+    SW: 'Amakuru y’aho mgonjwa ashobora kuba yaranduriye aguma uko ari kugeza muganga ayahinduye.',
+    RW: "Amakuru y’aho umurwayi ashobora kuba yaranduriye aguma uko ari keretse muganga ayahinduye."
   },
   exposurePlaceholder: {
     EN: 'Enter or review household, travel, animal, dairy, wildlife, or occupational exposure',
     FR: "Saisir ou revoir exposition : domicile, voyage, animaux, lait, faune, profession",
-    SW: 'Ingiza/kagua exposure: nyumbani, safari, wanyama, maziwa, wanyamapori, kazi',
-    RW: "Andika/subiramo exposure: mu rugo, ingendo, amatungo, amata, inyamaswa, akazi"
+    SW: 'Andika cyangwa usubiremo aho ashobora kuba yaranduriye: nyumbani, safari, wanyama, maziwa, wanyamapori, kazi',
+    RW: "Andika cyangwa usubiremo aho ashobora kuba yaranduriye: mu rugo, ingendo, amatungo, amata, inyamaswa, akazi"
   },
   testsIntro: {
     EN: 'Choose known results or leave bacteria on `Auto-detect` so the system estimates from the patient record.',
     FR: "Choisissez les résultats connus ou laissez `Auto-detect` pour estimer selon le dossier.",
-    SW: 'Chagua majibu unayojua au acha `Auto-detect` mfumo ukadirie kwa rekodi.',
-    RW: "Hitamo ibisubizo uziko cyangwa usige `Auto-detect` sisitemu igereranye kuri dosiye."
+    SW: 'Hitamo ibisubizo uziko cyangwa usige `Mfumo ujichagulie` sisitemu ibigereranye ishingiye kuri rekodi.',
+    RW: "Hitamo ibisubizo uziko cyangwa usige `Sisitemu yihitiremo` kugira ngo ibigereranye ishingiye kuri dosiye."
   },
   dstIntro: {
     EN: 'Keep these as normal input fields. Suggested TB DST phrases and medicines can be appended when useful.',
@@ -1792,14 +1808,14 @@ const TEXT = {
   resistantToPlaceholder: {
     EN: 'Type resistant medicines or reuse stored patient text',
     FR: 'Saisir médicaments résistants ou réutiliser le texte existant',
-    SW: 'Andika dawa zinazokataliwa (resistant) au tumia zilizohifadhiwa',
-    RW: 'Andika imiti irwanywe (resistant) cyangwa ukoreshe ibitswe'
+    SW: 'Andika imiti isiyofataho cyangwa ukoreshe ibisanzwe byabitswe',
+    RW: 'Andika imiti idafataho cyangwa ukoreshe ibisanzwe byabitswe'
   },
   susceptibleToPlaceholder: {
     EN: 'Type susceptible medicines or reuse stored patient text',
     FR: 'Saisir médicaments sensibles ou réutiliser le texte existant',
-    SW: 'Andika dawa zinazokubaliwa (susceptible) au tumia zilizohifadhiwa',
-    RW: 'Andika imiti yumvwa (susceptible) cyangwa ukoreshe ibitswe'
+    SW: 'Andika imiti ifataho cyangwa ukoreshe ibisanzwe byabitswe',
+    RW: 'Andika imiti ifataho cyangwa ukoreshe ibisanzwe byabitswe'
   },
   reportWillShow: { EN: 'What the report will show', FR: 'Ce que montre le rapport', SW: 'Ripoti itaonyesha nini', RW: 'Ibyo raporo izerekana' },
   reportItemRisk: { EN: 'TB risk and red flags', FR: 'Risque TB et signaux rouges', SW: 'Hatari ya TB na dalili hatari', RW: 'Ibyago bya TB n’ibimenyetso bikomeye' },
@@ -1811,20 +1827,20 @@ const TEXT = {
   reasonLabel: { EN: 'Reason', FR: 'Raison', SW: 'Sababu', RW: 'Impamvu' },
   typicalSourceLabel: { EN: 'Typical source', FR: 'Source habituelle', SW: 'Chanzo cha kawaida', RW: 'Aho bikunze guturuka' },
   labNoteLabel: { EN: 'Lab note', FR: 'Note labo', SW: 'Maelezo ya maabara', RW: 'Icyitonderwa cya labo' },
-  infectionAssessment: { EN: 'Infection assessment', FR: "Évaluation de l'infection", SW: 'Tathmini ya maambukizi', RW: 'Isuzuma rya infection' },
-  resistanceDstProfile: { EN: 'Resistance / DST profile', FR: 'Profil résistance / DST', SW: 'Profaili ya usugu / DST', RW: 'Profil ya resistance / DST' },
-  regimenLevelLabel: { EN: 'Regimen level', FR: 'Niveau du schéma', SW: 'Kiwango cha mpango wa dawa', RW: 'Urwego rwa regimen' },
+  infectionAssessment: { EN: 'Infection assessment', FR: "Évaluation de l'infection", SW: 'Tathmini ya maambukizi', RW: 'Isuzuma ry’ubwandu' },
+  resistanceDstProfile: { EN: 'Resistance / DST profile', FR: 'Profil résistance / DST', SW: 'Muhtasari wa usugu / DST', RW: 'Umwirondoro w’ukudafata kw’imiti / DST' },
+  regimenLevelLabel: { EN: 'Regimen level', FR: 'Niveau du schéma', SW: 'Urwego rw’imiti', RW: 'Urwego rw’imiti' },
   antibiogramLabel: { EN: 'Antibiogram', FR: 'Antibiogramme', SW: 'Antibiogram', RW: 'Antibiogram' },
   noneProvided: { EN: 'None provided', FR: 'Aucun fourni', SW: 'Hakuna kilichotolewa', RW: 'Nta byatanzwe' },
-  mlPrediction: { EN: 'ML prediction', FR: 'Prédiction ML', SW: 'Utabiri wa ML', RW: 'Ihanura rya ML' },
+  mlPrediction: { EN: 'ML prediction', FR: 'Prédiction ML', SW: 'Utabiri wa porogaramu', RW: 'Ihanura rya porogaramu' },
   tbPredictionLabel: { EN: 'TB prediction', FR: 'Prédiction TB', SW: 'Utabiri wa TB', RW: 'Ihanura rya TB' },
   drugResistancePredictionLabel: { EN: 'Drug resistance prediction', FR: 'Prédiction de résistance', SW: 'Utabiri wa usugu wa dawa', RW: 'Ihanura rya resistance y’imiti' },
   treatmentRecommendation: { EN: 'Treatment recommendation', FR: 'Recommandation de traitement', SW: 'Pendekezo la matibabu', RW: 'Inama y’ubuvuzi' },
   treatmentPlanFallback: { EN: 'Treatment plan', FR: 'Plan de traitement', SW: 'Mpango wa matibabu', RW: 'Gahunda y’ubuvuzi' },
   categoryLabel: { EN: 'Category', FR: 'Catégorie', SW: 'Kategoria', RW: 'Icyiciro' },
   bacteriaLabel: { EN: 'Bacteria', FR: 'Bactérie', SW: 'Bakteria', RW: 'Udukoko' },
-  infectionLabel: { EN: 'Infection', FR: 'Infection', SW: 'Maambukizi', RW: 'Infection' },
-  resistanceLabel: { EN: 'Resistance', FR: 'Résistance', SW: 'Usugu', RW: 'Resistance' },
+  infectionLabel: { EN: 'Infection', FR: 'Infection', SW: 'Maambukizi', RW: 'Ubwandu' },
+  resistanceLabel: { EN: 'Resistance', FR: 'Résistance', SW: 'Usugu', RW: 'Ukudafata kw’imiti' },
   levelLabel: { EN: 'Level', FR: 'Niveau', SW: 'Kiwango', RW: 'Urwego' },
   durationLabel: { EN: 'Duration', FR: 'Durée', SW: 'Muda', RW: 'Igihe' },
   drugsLabel: { EN: 'Drugs', FR: 'Médicaments', SW: 'Dawa', RW: 'Imiti' },
@@ -1836,6 +1852,142 @@ const TEXT = {
   notAvailableInResponse: { EN: 'Not available in this response', FR: 'Non disponible dans cette réponse', SW: 'Haipatikani kwenye jibu hili', RW: 'Ntiboneka muri iki gisubizo' },
   whoRuleBasedLevel: { EN: 'WHO rule-based treatment level', FR: 'Niveau de traitement basé sur les règles OMS', SW: 'Kiwango cha matibabu kulingana na sheria za WHO', RW: 'Urwego rw’ubuvuzi rushingiye ku mabwiriza ya WHO' },
   whoTreatmentGuidance: { EN: 'WHO-aligned TB treatment guidance', FR: "Guide de traitement TB aligné sur l'OMS", SW: 'Mwongozo wa matibabu ya TB unaolingana na WHO', RW: 'Ubuyobozi bw’ubuvuzi bwa TB bujyanye na WHO' },
+  notAvailable: { EN: 'Not available', FR: 'Non disponible', SW: 'Haipatikani', RW: 'Ntibihari' },
+  tbLikely: { EN: 'TB likely', FR: 'TB probable', SW: 'Birakekwa ko ari TB', RW: 'Birakekwa ko ari TB' },
+  tbNotLikely: { EN: 'TB not likely', FR: 'TB peu probable', SW: 'Biragoye ko yaba ari TB', RW: 'Biragoye ko yaba ari TB' },
+  drugResistanceLikely: { EN: 'Drug resistance likely', FR: 'Résistance probable', SW: 'Birashoboka ko imiti itafataho', RW: 'Birashoboka ko imiti idafataho' },
+  drugResistanceNotPredicted: { EN: 'Drug resistance not predicted', FR: 'Résistance non prédite', SW: 'Nta kimenyetso kigaragaza ko imiti itafataho', RW: 'Nta kimenyetso kigaragaza ko imiti idafataho' },
+  noModelConfidence: { EN: 'No model confidence available.', FR: 'Aucune confiance du modèle disponible.', SW: 'Nta rugero rw’icyizere cya porogaramu rubonetse.', RW: 'Nta rugero rw’icyizere cya porogaramu rubonetse.' },
+  modelConfidenceSummary: {
+    EN: '{label} with {confidence} model confidence.',
+    FR: '{label} avec {confidence} de confiance du modèle.',
+    SW: '{label} ku rugero rw’icyizere cya porogaramu rungana na {confidence}.',
+    RW: '{label} ku rugero rw’icyizere cya porogaramu rungana na {confidence}.'
+  },
+  modeDefault: { EN: 'default', FR: 'défaut', SW: 'byahiswemo mbere', RW: 'byahiswemo mbere' },
+  regimenFirstLine: { EN: 'first-line', FR: 'première ligne', SW: 'dawa za kwanza', RW: 'umurongo wa mbere' },
+  regimenSecondLine: { EN: 'second-line', FR: 'deuxième ligne', SW: 'dawa za pili', RW: 'umurongo wa kabiri' },
+  regimenModifiedFirstLine: { EN: 'modified first-line', FR: 'première ligne modifiée', SW: 'dawa za kwanza zilizahindurwa', RW: 'umurongo wa mbere wahinduwe' },
+  regimenIndividualizedSecondLine: { EN: 'individualized second-line', FR: 'deuxième ligne individualisée', SW: 'dawa za pili zilizabinafsishwa', RW: 'umurongo wa kabiri wabugenewe' },
+  regimenPreventiveTherapy: { EN: 'preventive therapy', FR: 'thérapie préventive', SW: 'tiba ya kinga', RW: 'ubuvuzi bwo kwirinda' },
+  urgencyHigh: { EN: 'HIGH', FR: 'ÉLEVÉ', SW: 'KUBWA', RW: 'HEJURU' },
+  urgencyUrgent: { EN: 'URGENT', FR: 'URGENT', SW: 'HARAKA', RW: 'BYIHUTIRWA' },
+  urgencyCritical: { EN: 'CRITICAL - LIFE THREATENING', FR: 'CRITIQUE - MENACE VITALE', SW: 'HATARI KUBWA KWA MAISHA', RW: 'BIREMEREYE - BISHYIRA UBUZIMA MU KAGA' },
+  pulmonaryTb: { EN: 'Pulmonary TB', FR: 'TB pulmonaire', SW: 'TB ya mapafu', RW: 'TB yo mu bihaha' },
+  lungsLabel: { EN: 'Lungs', FR: 'Poumons', SW: 'Mapafu', RW: 'Ibihaha' },
+  lymphNodeTb: { EN: 'Lymph Node TB', FR: 'TB ganglionnaire', SW: 'TB ya vifuko vya limfu', RW: 'TB yo mu dusabo twa lympho' },
+  lymphNodesLabel: { EN: 'Lymph nodes', FR: 'Ganglions lymphatiques', SW: 'Vifuko vya limfu', RW: 'Udusabo twa lympho' },
+  boneJointTb: { EN: 'Bone and Joint TB', FR: 'TB osseuse et articulaire', SW: "TB y'amagufa n'ingingo", RW: "TB yo mu magufa n'ingingo" },
+  bonesJointsSite: { EN: 'Spine, bones, or joints', FR: 'Colonne, os ou articulations', SW: "Uti wa mgongo, amagufa cyangwa ingingo", RW: "Urutirigongo, amagufa cyangwa ingingo" },
+  tbMeningitis: { EN: 'TB Meningitis', FR: 'Méningite tuberculeuse', SW: 'TB yo mu bwonko', RW: 'TB yo mu bwonko' },
+  centralNervousSystem: { EN: 'Central nervous system', FR: 'Système nerveux central', SW: "Sisitemu yo hagati y'imyakura", RW: "Sisitemu yo hagati y'imyakura" },
+  genitourinaryTb: { EN: 'Genitourinary TB', FR: 'TB génito-urinaire', SW: "TB yo mu myanya ndangagitsina n'inkari", RW: "TB yo mu myanya ndangagitsina n'inkari" },
+  genitourinaryTract: { EN: 'Genitourinary tract', FR: 'Voies génito-urinaires', SW: "Imiyoboro y'inkari n'imyanya ndangagitsina", RW: "Imiyoboro y'inkari n'imyanya ndangagitsina" },
+  abdominalTb: { EN: 'Abdominal TB', FR: 'TB abdominale', SW: 'TB yo mu nda', RW: 'TB yo mu nda' },
+  abdomenPeritoneum: { EN: 'Abdomen/peritoneum', FR: 'Abdomen/péritoine', SW: 'Mu nda/peritoneum', RW: 'Mu nda/peritoneum' },
+  pleuralTb: { EN: 'Pleural TB', FR: 'TB pleurale', SW: "TB yo ku gihu cy'ibihaha", RW: "TB yo ku gihu cy'ibihaha" },
+  pleuraLabel: { EN: 'Pleura', FR: 'Plèvre', SW: "Igihu cy'ibihaha", RW: "Igihu cy'ibihaha" },
+  miliaryTb: { EN: 'Miliary TB', FR: 'TB miliaire', SW: "TB yakwirakwiriye umubiri wose", RW: "TB yakwirakwiriye umubiri wose" },
+  disseminatedSite: { EN: 'Disseminated / whole body spread', FR: 'Disséminée / propagation dans tout le corps', SW: "Byakwirakwiriye mu mubiri wose", RW: "Byakwirakwiriye mu mubiri wose" },
+  latentTbInfection: { EN: 'Latent TB Infection', FR: 'Infection tuberculeuse latente', SW: 'Ubwandu bwa TB butaragaragara', RW: 'Ubwandu bwa TB butaragaragara' },
+  noActiveOrganDisease: { EN: 'No active organ disease', FR: "Aucune atteinte active d'organe", SW: "Nta gice cy'umubiri cyarwaye ku buryo bugaragara", RW: "Nta gice cy'umubiri cyarwaye ku buryo bugaragara" },
+  tbHivCoinfection: { EN: 'TB/HIV Co-infection', FR: 'Co-infection TB/VIH', SW: 'Ubwandu bwa TB na HIV icyarimwe', RW: 'Ubwandu bwa TB na VIH icyarimwe' },
+  systemicComorbidity: { EN: 'Systemic comorbidity', FR: 'Comorbidité systémique', SW: "Indi ndwara ikorana na yo mu mubiri", RW: "Indi ndwara ijyana na yo mu mubiri" },
+  backendSpeciesDescMtuberculosis: {
+    EN: 'The most common cause of human tuberculosis worldwide.',
+    FR: 'La cause la plus fréquente de tuberculose humaine dans le monde.',
+    SW: 'Hiki ndicho chanzo kinachoonekana zaidi cha TB kwa binadamu duniani.',
+    RW: 'Ubu ni bwo bwoko bukunze gutera igituntu ku bantu ku isi.'
+  },
+  backendSpeciesReasonDefault: {
+    EN: 'Defaulted to the most common human TB species because the patient record did not contain enough species-specific evidence.',
+    FR: "Choix par défaut de l'espèce humaine la plus fréquente car le dossier ne contenait pas assez d'éléments spécifiques.",
+    SW: 'Mfumo umechagua aina ya kawaida zaidi ya TB ya binadamu kwa sababu rekodi ya mgonjwa haina ushahidi wa kutosha wa aina mahususi.',
+    RW: "Sisitemu yahisemo ubwoko bwa TB busanzwe buboneka ku bantu kuko dosiye y'umurwayi itari ifite ibimenyetso bihagije byihariye ku bwoko."
+  },
+  backendTypicalSourceHuman: {
+    EN: 'Human-to-human airborne transmission.',
+    FR: 'Transmission aérienne d’une personne à une autre.',
+    SW: 'Maambukizi ya hewani kutoka mtu mmoja kwenda kwa mwingine.',
+    RW: 'Yandurira mu mwuka iva ku muntu umwe ujya ku wundi.'
+  },
+  backendLabNoteRoutineMtbc: {
+    EN: 'Routine TB molecular tests and culture commonly target this species within the MTBC.',
+    FR: 'Les tests moléculaires TB de routine et la culture ciblent souvent cette espèce dans le MTBC.',
+    SW: 'Vipimo vya kawaida vya TB vya molekuli na culture mara nyingi hulenga aina hii ndani ya MTBC.',
+    RW: 'Ibizamini bya TB bisanzwe bya molekuli na culture bikunze kwibanda kuri ubu bwoko muri MTBC.'
+  },
+  backendGuidelineWhoEngine: {
+    EN: 'WHO-aligned TB rule engine with species notes, infection-site classification, and DST-aware regimen escalation.',
+    FR: "Moteur de règles TB aligné sur l'OMS avec notes d'espèce, classification du site d'infection et escalade guidée par DST.",
+    SW: 'Mfumo wa miongozo ya TB unaolingana na WHO ufite maelezo y’ubwoko, aho maambukizi ari, na uteuzi w’imiti ushingiye kuri DST.',
+    RW: 'Sisitemu y’amabwiriza ya TB ihuje na WHO, ifite ibisobanuro by’ubwoko, aho ubwandu buri, n’igenamigambi ry’imiti rishingiye kuri DST.'
+  },
+  primaryTbClassification: { EN: 'Primary TB classification', FR: 'Classification TB principale', SW: 'Uainishaji mkuu wa TB', RW: 'Icyiciro nyamukuru cya TB' },
+  bacteriaEstimate: { EN: 'Bacteria estimate', FR: 'Estimation de la bactérie', SW: 'Makadirio ya bakteria', RW: 'Ikigereranyo cy’udukoko' },
+  resistanceClassLabel: { EN: 'Resistance class', FR: 'Classe de résistance', SW: 'Icyiciro cy’usugu', RW: 'Icyiciro cy’ukudafata kw’imiti' },
+  antibiogramDstSummary: { EN: 'Antibiogram/DST summary', FR: 'Résumé antibiogramme/DST', SW: 'Muhtasari wa antibiogram/DST', RW: 'Incamake ya antibiogram/DST' },
+  backendChosenMdr: {
+    EN: 'Chosen because rifampicin and isoniazid resistance is present or strongly suspected.',
+    FR: "Choisi car une résistance à la rifampicine et à l'isoniazide est présente ou fortement suspectée.",
+    SW: 'Byahiswemo kwa sababu usugu wa rifampicin na isoniazid urahari cyangwa ukekwa cyane.',
+    RW: 'Byahiswemo kuko kudafata kwa rifampicin na isoniazid kuboneka cyangwa gukekwa cyane.'
+  },
+  duration18to24Months: { EN: '18-24 months', FR: '18-24 mois', SW: 'miezi 18-24', RW: 'amezi 18-24' },
+  duration18to24MonthsTotal: { EN: '18-24 months total', FR: '18-24 mois zose', SW: 'jumla ya miezi 18-24', RW: 'amezi 18-24 yose hamwe' },
+  whoMdrRegimen: { EN: 'WHO MDR-TB second-line regimen', FR: 'Schéma OMS MDR-TB de deuxième ligne', SW: 'Gahunda ya WHO ya MDR-TB yo ku murongo wa pili', RW: 'Gahunda ya WHO ya MDR-TB yo ku murongo wa kabiri' },
+  presumptivePulmonaryTb: { EN: 'PRESUMPTIVE PULMONARY TB (PTB)', FR: 'TB PULMONAIRE PRÉSUMÉE (PTB)', SW: 'TB YA MAPAFU INAYOSHUKIWA (PTB)', RW: 'TB Y’IBIHAHA IKEKWA (PTB)' },
+  noSpecificTbPattern: {
+    EN: 'No specific TB infection pattern confirmed',
+    FR: "Aucun profil spécifique d'infection TB confirmé",
+    SW: 'Nta bwandu bwa TB bwihariye bwemejwe',
+    RW: 'Nta bwandu bwa TB bwihariye bwemejwe'
+  },
+  unspecifiedLabel: { EN: 'Unspecified', FR: 'Non précisé', SW: 'Bitasobanuwe neza', RW: 'Bitasobanuwe neza' },
+  dsTbLabel: { EN: 'Drug-sensitive TB (DS-TB)', FR: 'TB sensible aux médicaments (DS-TB)', SW: 'TB yumva imiti (DS-TB)', RW: 'TB yumva imiti (DS-TB)' },
+  notProvided: { EN: 'Not provided', FR: 'Non fourni', SW: 'Nta byatanzwe', RW: 'Nta byatanzwe' },
+  observationFurtherTesting: {
+    EN: 'OBSERVATION AND FURTHER TESTING',
+    FR: 'OBSERVATION ET EXAMENS COMPLÉMENTAIRES',
+    SW: 'GUKURIKIRANA NO GUKORA IBINDI BIZAMINI',
+    RW: 'GUKURIKIRANA NO GUKORA IBINDI BIZAMINI'
+  },
+  moderateLabel: { EN: 'MODERATE', FR: 'MODÉRÉ', SW: 'HAGATI', RW: 'BIRINGANIYE' },
+  noEvidenceOfTb: { EN: 'NO EVIDENCE OF TB', FR: 'AUCUNE PREUVE DE TB', SW: 'NTA BIMENYETSO BYA TB', RW: 'NTA BIMENYETSO BYA TB' },
+  durationNa: { EN: 'N/A', FR: 'N/A', SW: 'Nta gihe cyagenwe', RW: 'Nta gihe cyagenwe' },
+  noAntiTbTreatmentHighSuspicion: {
+    EN: 'No anti-TB treatment unless clinical suspicion remains high',
+    FR: "Pas de traitement anti-TB sauf si la suspicion clinique reste élevée",
+    SW: 'Nta miti ya TB itangwa keretse ibimenyetso bikomeje gukekwa cyane',
+    RW: 'Nta miti ya TB itangwa keretse gukeka indwara bikomeje kuba byinshi'
+  },
+  dosageNa: {
+    EN: 'Intensive: N/A, Continuation: N/A',
+    FR: 'Phase intensive : N/A, continuation : N/A',
+    SW: 'Icyiciro cya mbere: nta cyagenwe, gukomeza: nta cyagenwe',
+    RW: 'Icyiciro cya mbere: nta cyagenwe, gukomeza: nta cyagenwe'
+  },
+  administrationNa: {
+    EN: 'Intensive phase: N/A; continuation phase: N/A; daily DOTS/supervised dosing where feasible.',
+    FR: 'Phase intensive : N/A ; phase de continuation : N/A ; DOTS/itangwa rikurikiranwa buri munsi igihe bishoboka.',
+    SW: 'Icyiciro cya mbere: nta cyagenwe; gukomeza: nta cyagenwe; DOTS/itangwa rikurikiranwa buri munsi aho bishoboka.',
+    RW: 'Icyiciro cya mbere: nta cyagenwe; gukomeza: nta cyagenwe; DOTS/itangwa rikurikiranwa buri munsi aho bishoboka.'
+  },
+  monitorSymptomsAlternativeDx: {
+    EN: 'Monitor symptoms, consider other diagnoses',
+    FR: 'Surveiller les symptômes, envisager d’autres diagnostics',
+    SW: 'Komeza gukurikirana ibimenyetso no gusuzuma izindi ndwara',
+    RW: 'Komeza gukurikirana ibimenyetso no gusuzuma izindi ndwara'
+  },
+  monitorCloselyRepeatTests: {
+    EN: 'Monitor closely, repeat tests as indicated, evaluate for alternative diagnoses',
+    FR: 'Surveiller étroitement, répéter les tests si nécessaire et rechercher d’autres diagnostics',
+    SW: 'Komeza gukurikiranwa neza, usubiremo ibizamini igihe bikenewe, kandi usuzume izindi ndwara',
+    RW: 'Komeza gukurikiranwa neza, usubiremo ibizamini igihe bikenewe, kandi usuzume izindi ndwara'
+  },
+  tbCultureLabel: { EN: 'TB culture', FR: 'Culture TB', SW: 'Culture ya TB', RW: 'Culture ya TB' },
+  tstShortLabel: { EN: 'TST', FR: 'TST', SW: 'TST', RW: 'TST' },
+  igraShortLabel: { EN: 'IGRA', FR: 'IGRA', SW: 'IGRA', RW: 'IGRA' },
   reportItemDst: {
     EN: 'DST / resistance interpretation',
     FR: 'Interprétation DST / résistance',
@@ -3324,30 +3476,124 @@ function formatPercent(value) {
 
 function formatPredictionLabel(value, type = 'tb') {
   const normalized = String(value || '').trim().toLowerCase()
-  if (!normalized) return 'Not available'
+  if (!normalized) return t(TEXT.notAvailable)
   if (type === 'tb') {
-    if (normalized === 'yes' || normalized === 'positive') return 'TB likely'
-    if (normalized === 'no' || normalized === 'negative') return 'TB not likely'
+    if (normalized === 'yes' || normalized === 'positive') return t(TEXT.tbLikely)
+    if (normalized === 'no' || normalized === 'negative') return t(TEXT.tbNotLikely)
   }
   if (type === 'resistance') {
-    if (normalized === 'yes' || normalized === 'positive') return 'Drug resistance likely'
-    if (normalized === 'no' || normalized === 'negative') return 'Drug resistance not predicted'
+    if (normalized === 'yes' || normalized === 'positive') return t(TEXT.drugResistanceLikely)
+    if (normalized === 'no' || normalized === 'negative') return t(TEXT.drugResistanceNotPredicted)
   }
-  return value
+  return translateBackendText(value)
 }
 
 function buildConfidenceSummary(predictionBlock, type = 'tb') {
-  if (!predictionBlock) return 'No model confidence available.'
+  if (!predictionBlock) return t(TEXT.noModelConfidence)
   const predictionLabel = formatPredictionLabel(predictionBlock.prediction, type)
-  return `${predictionLabel} with ${formatPercent(predictionBlock.confidence)} model confidence.`
+  return tf(TEXT.modelConfidenceSummary, { label: predictionLabel, confidence: formatPercent(predictionBlock.confidence) })
 }
 
 function formatProbabilityList(probabilities) {
   if (!probabilities || typeof probabilities !== 'object') return []
   return Object.entries(probabilities).map(([label, value]) => ({
-    label,
+    label: translateBackendText(label),
     value: formatPercent(value)
   }))
+}
+
+function translateBackendText(value) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return raw
+
+  const exact = {
+    'Unknown': t(TEXT.statusUnknown),
+    'Not provided': t(TEXT.notProvided),
+    'No': t(TEXT.statusNo),
+    'Yes': t(TEXT.statusYes),
+    'default': t(TEXT.modeDefault),
+    'first-line': t(TEXT.regimenFirstLine),
+    'second-line': t(TEXT.regimenSecondLine),
+    'modified first-line': t(TEXT.regimenModifiedFirstLine),
+    'individualized second-line': t(TEXT.regimenIndividualizedSecondLine),
+    'preventive therapy': t(TEXT.regimenPreventiveTherapy),
+    'HIGH': t(TEXT.urgencyHigh),
+    'URGENT': t(TEXT.urgencyUrgent),
+    'CRITICAL - LIFE THREATENING': t(TEXT.urgencyCritical),
+    'Pulmonary TB': t(TEXT.pulmonaryTb),
+    'Lungs': t(TEXT.lungsLabel),
+    'Lymph Node TB': t(TEXT.lymphNodeTb),
+    'Lymph nodes': t(TEXT.lymphNodesLabel),
+    'Bone and Joint TB': t(TEXT.boneJointTb),
+    'Spine, bones, or joints': t(TEXT.bonesJointsSite),
+    'TB Meningitis': t(TEXT.tbMeningitis),
+    'Central nervous system': t(TEXT.centralNervousSystem),
+    'Genitourinary TB': t(TEXT.genitourinaryTb),
+    'Genitourinary tract': t(TEXT.genitourinaryTract),
+    'Abdominal TB': t(TEXT.abdominalTb),
+    'Abdomen/peritoneum': t(TEXT.abdomenPeritoneum),
+    'Pleural TB': t(TEXT.pleuralTb),
+    'Pleura': t(TEXT.pleuraLabel),
+    'Miliary TB': t(TEXT.miliaryTb),
+    'Disseminated / whole body spread': t(TEXT.disseminatedSite),
+    'Latent TB Infection': t(TEXT.latentTbInfection),
+    'No active organ disease': t(TEXT.noActiveOrganDisease),
+    'TB/HIV Co-infection': t(TEXT.tbHivCoinfection),
+    'Systemic comorbidity': t(TEXT.systemicComorbidity),
+    'The most common cause of human tuberculosis worldwide.': t(TEXT.backendSpeciesDescMtuberculosis),
+    'Defaulted to the most common human TB species because the patient record did not contain enough species-specific evidence.': t(TEXT.backendSpeciesReasonDefault),
+    'Human-to-human airborne transmission.': t(TEXT.backendTypicalSourceHuman),
+    'Routine TB molecular tests and culture commonly target this species within the MTBC.': t(TEXT.backendLabNoteRoutineMtbc),
+    'WHO-aligned TB rule engine with species notes, infection-site classification, and DST-aware regimen escalation.': t(TEXT.backendGuidelineWhoEngine),
+    'Chosen because rifampicin and isoniazid resistance is present or strongly suspected.': t(TEXT.backendChosenMdr),
+    'TB not likely': t(TEXT.tbNotLikely),
+    'Drug resistance not predicted': t(TEXT.drugResistanceNotPredicted),
+    'TB likely': t(TEXT.tbLikely),
+    'Drug resistance likely': t(TEXT.drugResistanceLikely),
+    '18-24 months': t(TEXT.duration18to24Months),
+    '18-24 months total': t(TEXT.duration18to24MonthsTotal),
+    'WHO MDR-TB second-line regimen': t(TEXT.whoMdrRegimen),
+    'PRESUMPTIVE PULMONARY TB (PTB)': t(TEXT.presumptivePulmonaryTb),
+    'No specific TB infection pattern confirmed': t(TEXT.noSpecificTbPattern),
+    'Drug-sensitive TB (DS-TB)': t(TEXT.dsTbLabel),
+    'OBSERVATION AND FURTHER TESTING': t(TEXT.observationFurtherTesting),
+    'MODERATE': t(TEXT.moderateLabel),
+    'NO EVIDENCE OF TB': t(TEXT.noEvidenceOfTb),
+    'N/A': t(TEXT.durationNa),
+    'No anti-TB treatment unless clinical suspicion remains high': t(TEXT.noAntiTbTreatmentHighSuspicion),
+    'Intensive: N/A, Continuation: N/A': t(TEXT.dosageNa),
+    'Intensive phase: N/A; continuation phase: N/A; daily DOTS/supervised dosing where feasible.': t(TEXT.administrationNa),
+    'Monitor symptoms, consider other diagnoses': t(TEXT.monitorSymptomsAlternativeDx),
+    'Monitor closely, repeat tests as indicated, evaluate for alternative diagnoses': t(TEXT.monitorCloselyRepeatTests)
+  }
+  if (exact[raw]) return exact[raw]
+
+  if (raw.startsWith('Primary TB classification: ')) {
+    return `${t(TEXT.primaryTbClassification)}: ${translateBackendText(raw.slice('Primary TB classification: '.length))}`
+  }
+  if (raw.startsWith('Bacteria estimate: ')) {
+    return `${t(TEXT.bacteriaEstimate)}: ${translateBackendText(raw.slice('Bacteria estimate: '.length))}`
+  }
+  if (raw.startsWith('Resistance class: ')) {
+    return `${t(TEXT.resistanceClassLabel)}: ${translateBackendText(raw.slice('Resistance class: '.length))}`
+  }
+  if (raw.startsWith('Antibiogram/DST summary: ')) {
+    return `${t(TEXT.antibiogramDstSummary)}: ${translateBackendText(raw.slice('Antibiogram/DST summary: '.length))}`
+  }
+  if (raw.startsWith('TB culture: ')) {
+    return `${t(TEXT.tbCultureLabel)}: ${translateBackendText(raw.slice('TB culture: '.length))}`
+  }
+  if (raw.startsWith('TST: ')) {
+    return `${t(TEXT.tstShortLabel)}: ${translateBackendText(raw.slice('TST: '.length))}`
+  }
+  if (raw.startsWith('IGRA: ')) {
+    return `${t(TEXT.igraShortLabel)}: ${translateBackendText(raw.slice('IGRA: '.length))}`
+  }
+  if (raw.startsWith('No specific TB infection pattern confirmed - ')) {
+    return `${t(TEXT.noSpecificTbPattern)} - ${translateBackendText(raw.slice('No specific TB infection pattern confirmed - '.length))}`
+  }
+
+  return raw
 }
 
 function clearSession(preserveEmail = true) {
