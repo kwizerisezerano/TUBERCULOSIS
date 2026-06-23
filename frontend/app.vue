@@ -618,6 +618,90 @@
                     :placeholder="t(TEXT.cityPlaceholder)"
                   />
                 </div>
+                <div>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.weightLabel) }}</label>
+                  <input
+                    v-model.number="patient.weight"
+                    type="number"
+                    step="0.1"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    :placeholder="t(TEXT.weightLabel)"
+                  />
+                </div>
+                <div>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.persistentCoughDurationLabel) }}</label>
+                  <input
+                    v-model.number="patient.persistent_cough_duration_weeks"
+                    type="number"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    :placeholder="t(TEXT.persistentCoughDurationLabel)"
+                  />
+                </div>
+              </div>
+
+              <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.contactWithTbPatientLabel) }}</label>
+                  <select
+                    v-model="patient.contact_with_tb_patient"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option>{{ t(TEXT.yesLabel) }}</option>
+                    <option>{{ t(TEXT.noLabel) }}</option>
+                    <option>{{ t(TEXT.smokingUnknown) }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.previousTbTreatmentLabel) }}</label>
+                  <select
+                    v-model="patient.previous_tb_treatment"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option>{{ t(TEXT.yesLabel) }}</option>
+                    <option>{{ t(TEXT.noLabel) }}</option>
+                    <option>{{ t(TEXT.smokingUnknown) }}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.smokingStatusLabel) }}</label>
+                  <select
+                    v-model="patient.smoking_status"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option>{{ t(TEXT.smokingNever) }}</option>
+                    <option>{{ t(TEXT.smokingFormer) }}</option>
+                    <option>{{ t(TEXT.smokingCurrent) }}</option>
+                    <option>{{ t(TEXT.smokingUnknown) }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.alcoholUseLabel) }}</label>
+                  <select
+                    v-model="patient.alcohol_use"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option>{{ t(TEXT.alcoholNever) }}</option>
+                    <option>{{ t(TEXT.alcoholOccasional) }}</option>
+                    <option>{{ t(TEXT.alcoholRegular) }}</option>
+                    <option>{{ t(TEXT.alcoholUnknown) }}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.oxygenSaturationLabel) }}</label>
+                <input
+                  v-model.number="patient.oxygen_saturation_spo2"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  :placeholder="t(TEXT.oxygenSaturationLabel)"
+                />
               </div>
               </section>
 
@@ -2071,6 +2155,21 @@ const TEXT = {
     SW: 'Muundo wa XDR unashukiwa',
     RW: 'Incamake ya XDR inekewa'
   },
+  weightLabel: { EN: 'Weight (kg)', FR: 'Poids (kg)', SW: 'Uzito (kg)', RW: 'Uburo (kg)' },
+  persistentCoughDurationLabel: { EN: 'Persistent cough duration (weeks)', FR: 'Durée de toux persistante (semaines)', SW: 'Muda wa kukohoa kushikamana (wiki)', RW: 'Igihishwa cyo guteranya kumenya (ibyumweru)' },
+  contactWithTbPatientLabel: { EN: 'Contact with TB patient', FR: 'Contact avec patient TB', SW: 'Mawasiliano na mgonjwa wa TB', RW: 'Kumenya n’umurwayi wa TB' },
+  previousTbTreatmentLabel: { EN: 'Previous TB treatment', FR: 'Traitement TB antérieur', SW: 'Matibabu ya TB ya kwanza', RW: 'Ubuvuzi bwa TB bujejeje' },
+  smokingStatusLabel: { EN: 'Smoking status', FR: 'Statut tabagique', SW: 'Hali ya kuzungumua', RW: 'Imimeri y’okumenya' },
+  smokingNever: { EN: 'Never', FR: 'Jamais', SW: 'Kamwe', RW: 'Nta maringa' },
+  smokingFormer: { EN: 'Former', FR: 'Ancien', SW: 'Mwanzo', RW: 'Wanjejeje' },
+  smokingCurrent: { EN: 'Current', FR: 'Actuel', SW: 'Sasa', RW: 'Ubu' },
+  smokingUnknown: { EN: 'Unknown', FR: 'Inconnu', SW: 'Haijulikani', RW: 'Ntibizwi' },
+  alcoholUseLabel: { EN: 'Alcohol use', FR: 'Consommation alcool', SW: 'Matumizi ya pombe', RW: 'Okumenya wisi' },
+  alcoholNever: { EN: 'Never', FR: 'Jamais', SW: 'Kamwe', RW: 'Nta maringa' },
+  alcoholOccasional: { EN: 'Occasional', FR: 'Occasionnel', SW: 'Mara kwa mara', RW: 'Kahemba kahemba' },
+  alcoholRegular: { EN: 'Regular', FR: 'Régulier', SW: 'Kwa kawaida', RW: 'Burundi' },
+  alcoholUnknown: { EN: 'Unknown', FR: 'Inconnu', SW: 'Haijulikani', RW: 'Ntibizwi' },
+  oxygenSaturationLabel: { EN: 'Oxygen saturation (SpO₂, %)', FR: 'Saturation oxygène (SpO₂, %)', SW: 'Saturation ya oksijeni (SpO₂, %)', RW: 'Okusimbirwa w’oksijene (SpO₂, %)' },
   tbCultureLabel: { EN: 'TB culture', FR: 'Culture TB', SW: 'Culture ya TB', RW: 'Culture ya TB' },
   tstShortLabel: { EN: 'TST', FR: 'TST', SW: 'TST', RW: 'TST' },
   igraShortLabel: { EN: 'IGRA', FR: 'IGRA', SW: 'IGRA', RW: 'IGRA' },
@@ -3417,9 +3516,13 @@ const patient = ref({
   last_name: '',
   age: 30,
   gender: 'Male',
+  weight: null,
   city: '',
   symptoms: '',
   exposure_history: '',
+  persistent_cough_duration_weeks: null,
+  contact_with_tb_patient: 'Unknown',
+  previous_tb_treatment: 'Unknown',
   bacteria_species: 'Auto-detect',
   tb_culture: 'Unknown',
   sputum_smear_test: 'Unknown',
@@ -3432,7 +3535,10 @@ const patient = ref({
   susceptible_to: '',
   drug_resistance: 'No',
   hiv: 'No',
-  diabetes: 'No'
+  diabetes: 'No',
+  smoking_status: 'Unknown',
+  alcohol_use: 'Unknown',
+  oxygen_saturation_spo2: null
 })
 const customCommaInputs = ref({
   symptoms: '',

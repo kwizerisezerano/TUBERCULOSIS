@@ -109,11 +109,41 @@ def get_patient_features(patient):
     except Exception:
         age = 30
 
+    weight = _get_value(patient, "weight", None)
+    try:
+        weight = float(weight) if weight is not None else 70.0
+    except Exception:
+        weight = 70.0
+
+    persistent_cough_weeks = _get_value(patient, "persistent_cough_duration_weeks", None)
+    try:
+        persistent_cough_weeks = int(persistent_cough_weeks) if persistent_cough_weeks is not None else 0
+    except Exception:
+        persistent_cough_weeks = 0
+
+    contact_tb = _normalize_yes_no(_get_value(patient, "contact_with_tb_patient", None)) or "No"
+    previous_tb_tx = _normalize_yes_no(_get_value(patient, "previous_tb_treatment", None)) or "No"
+    smoking_status = str(_get_value(patient, "smoking_status", "") or "").strip()
+    alcohol_use = str(_get_value(patient, "alcohol_use", "") or "").strip()
+    spo2 = _get_value(patient, "oxygen_saturation_spo2", None)
+    try:
+        spo2 = float(spo2) if spo2 is not None else 98.0
+    except Exception:
+        spo2 = 98.0
+
     return {
         "age": age,
+        "weight": weight,
         "gender_male": 1 if gender == "Male" else 0,
         "gender_female": 1 if gender == "Female" else 0,
         "gender_other": 1 if gender == "Other" else 0,
+        "persistent_cough_duration_weeks": persistent_cough_weeks,
+        "contact_with_tb_patient_yes": 1 if contact_tb == "Yes" else 0,
+        "previous_tb_treatment_yes": 1 if previous_tb_tx == "Yes" else 0,
+        "smoking_current": 1 if "Current" in smoking_status else 0,
+        "smoking_former": 1 if "Former" in smoking_status else 0,
+        "alcohol_regular": 1 if "Regular" in alcohol_use else 0,
+        "oxygen_saturation_spo2": spo2,
         "has_fever": symptoms_features["has_fever"],
         "has_cough": symptoms_features["has_cough"],
         "has_weight_loss": symptoms_features["has_weight_loss"],
@@ -240,6 +270,14 @@ def _train_classifier(df, model_filename, encoder_filename):
 
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
+    
+    # Calculate feature importances as percentages
+    importances = model.feature_importances_
+    feature_importances = {}
+    total_importance = sum(importances)
+    for i, feature in enumerate(X.columns):
+        feature_importances[feature] = round((importances[i] / total_importance) * 100, 2)
+
     # #region debug-point D:predictions
     _emit_debug_event(
         "D",
@@ -260,9 +298,27 @@ def _train_classifier(df, model_filename, encoder_filename):
     joblib.dump(le, encoder_path)
     all_labels = list(range(len(le.classes_)))
 
+    # Print model info
+    print("\n=== Model Information ===")
+    print(f"Model: Random Forest Classifier")
+    print(f"Parameters: n_estimators=300, max_depth=14, min_samples_split=5, min_samples_leaf=2, class_weight='balanced', random_state=42")
+    print(f"\nFeature Importances (%):")
+    for feat, imp in sorted(feature_importances.items(), key=lambda x: x[1], reverse=True):
+        print(f"  - {feat}: {imp}%")
+
     return {
         "accuracy": float(accuracy),
         "feature_names": list(X.columns),
+        "feature_importances": feature_importances,
+        "model_params": {
+            "model_type": "RandomForestClassifier",
+            "n_estimators": 300,
+            "max_depth": 14,
+            "min_samples_split": 5,
+            "min_samples_leaf": 2,
+            "class_weight": "balanced",
+            "random_state": 42,
+        },
         "classes": list(le.classes_),
         "class_counts": class_counts,
         "model_path": model_path,

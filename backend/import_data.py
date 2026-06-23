@@ -50,7 +50,7 @@ def clean_text(text):
 def normalize_gender(gender):
     """Normalize gender values"""
     if pd.isna(gender):
-        return "Unknown"
+        return None  # Let's collect mode fill this later
     gender = str(gender).lower().strip()
     if gender in ['m', 'male', '1']:
         return "Male"
@@ -93,6 +93,57 @@ def normalize_optional_result(value):
         return "Negative"
     return value
 
+
+def preprocess_and_fill_missing(df, patient_dict_list):
+    """Preprocess dataframe and fill missing values using mode"""
+    # Calculate mode values from normalized data
+    from collections import Counter
+    mode_gender = None
+    mode_age = None
+    mode_hiv = "No"
+    mode_diabetes = "No"
+
+    # Collect normalized values to compute mode
+    genders = []
+    ages = []
+    hivs = []
+    diabetes_list = []
+    for p in patient_dict_list:
+        if p.get('gender'):
+            genders.append(p['gender'])
+        if p.get('age'):
+            ages.append(p['age'])
+        if p.get('hiv'):
+            hivs.append(p['hiv'])
+        if p.get('diabetes'):
+            diabetes_list.append(p['diabetes'])
+
+    if genders:
+        mode_gender = Counter(genders).most_common(1)[0][0]
+    if ages:
+        mode_age = Counter(ages).most_common(1)[0][0]
+    if hivs:
+        mode_hiv = Counter(hivs).most_common(1)[0][0]
+    if diabetes_list:
+        mode_diabetes = Counter(diabetes_list).most_common(1)[0][0]
+
+    # Fill missing values
+    for p in patient_dict_list:
+        if not p.get('gender') and mode_gender:
+            p['gender'] = mode_gender
+        elif not p.get('gender'):
+            p['gender'] = "Male"  # Fallback
+        if not p.get('age') and mode_age:
+            p['age'] = mode_age
+        elif not p.get('age'):
+            p['age'] = 35  # Fallback
+        if not p.get('hiv'):
+            p['hiv'] = mode_hiv
+        if not p.get('diabetes'):
+            p['diabetes'] = mode_diabetes
+
+    return patient_dict_list
+
 def upsert_external_dataset_row(dataset_name, source_key, record):
     existing = ExternalDatasetRow.query.filter_by(dataset_name=dataset_name, source_key=source_key).first()
     if existing:
@@ -113,7 +164,7 @@ def import_tb_symptdata_april2024(file_path):
         print(f"  Found {len(df)} rows")
 
         symptom_columns = [c for c in df.columns if c.strip().lower() not in {"prediction"}]
-        imported_count = 0
+        patient_dicts = []
 
         for idx, row in df.iterrows():
             patient_id = f"SYM2024_{idx+1:06d}"
@@ -138,24 +189,31 @@ def import_tb_symptdata_april2024(file_path):
             except Exception:
                 tb_label = None
 
-            patient = Patient(
-                patient_id=patient_id,
-                first_name=f"Patient{idx+1}",
-                last_name="",
-                age=35,
-                gender="Unknown",
-                city="",
-                symptoms=symptoms,
-                sputum_smear_test="Unknown",
-                genexpert_test="Unknown",
-                chest_xray="Unknown",
-                drug_resistance="Unknown",
-                hiv="Unknown",
-                diabetes="Unknown",
-                tb_status_label=tb_label,
-                source_dataset="TB_SymptdataApril2024",
-                source_row_id=str(idx + 1)
-            )
+            patient_dicts.append({
+                "patient_id": patient_id,
+                "first_name": f"Patient{idx+1}",
+                "last_name": "",
+                "age": 35,
+                "gender": None,
+                "city": "",
+                "symptoms": symptoms,
+                "sputum_smear_test": "Unknown",
+                "genexpert_test": "Unknown",
+                "chest_xray": "Unknown",
+                "drug_resistance": "Unknown",
+                "hiv": "No",
+                "diabetes": "No",
+                "tb_status_label": tb_label,
+                "source_dataset": "TB_SymptdataApril2024",
+                "source_row_id": str(idx + 1)
+            })
+
+        # Preprocess and fill missing values
+        patient_dicts = preprocess_and_fill_missing(df, patient_dicts)
+
+        imported_count = 0
+        for p_dict in patient_dicts:
+            patient = Patient(**p_dict)
             db.session.add(patient)
             imported_count += 1
 

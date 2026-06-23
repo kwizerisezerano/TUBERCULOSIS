@@ -51,6 +51,7 @@ class Patient(db.Model):
     last_name = db.Column(db.String(100))
     age = db.Column(db.Integer)
     gender = db.Column(db.String(50))
+    weight = db.Column(db.Float)  # kg
     tb_status_label = db.Column(db.String(50))
     source_dataset = db.Column(db.String(100))
     source_row_id = db.Column(db.String(100))
@@ -59,6 +60,9 @@ class Patient(db.Model):
     date_of_diagnosis = db.Column(db.Integer)
     symptoms = db.Column(db.Text)
     exposure_history = db.Column(db.Text)
+    persistent_cough_duration_weeks = db.Column(db.Integer)
+    contact_with_tb_patient = db.Column(db.String(50))  # Yes/No/Unknown
+    previous_tb_treatment = db.Column(db.String(50))  # Yes/No/Unknown
     sputum_smear_test = db.Column(db.String(50))
     genexpert_test = db.Column(db.String(50))
     chest_xray = db.Column(db.String(50))
@@ -74,8 +78,9 @@ class Patient(db.Model):
     diabetes = db.Column(db.String(50))
     hiv = db.Column(db.String(50))
     chronic_lung_disease = db.Column(db.String(50))
-    smoking_status = db.Column(db.String(100))
-    alcohol_consumption = db.Column(db.String(100))
+    smoking_status = db.Column(db.String(100))  # Never/Former/Current/Unknown
+    alcohol_use = db.Column(db.String(100))  # Never/Occasional/Regular/Unknown
+    oxygen_saturation_spo2 = db.Column(db.Float)  # %
     living_conditions = db.Column(db.String(100))
     access_to_healthcare = db.Column(db.String(50))
     city = db.Column(db.String(100))
@@ -91,6 +96,7 @@ class Patient(db.Model):
             "last_name": self.last_name,
             "age": self.age,
             "gender": self.gender,
+            "weight": self.weight,
             "tb_status_label": self.tb_status_label,
             "source_dataset": self.source_dataset,
             "source_row_id": self.source_row_id,
@@ -98,6 +104,9 @@ class Patient(db.Model):
             "occupation": self.occupation,
             "symptoms": self.symptoms,
             "exposure_history": self.exposure_history,
+            "persistent_cough_duration_weeks": self.persistent_cough_duration_weeks,
+            "contact_with_tb_patient": self.contact_with_tb_patient,
+            "previous_tb_treatment": self.previous_tb_treatment,
             "sputum_smear_test": self.sputum_smear_test,
             "genexpert_test": self.genexpert_test,
             "chest_xray": self.chest_xray,
@@ -107,6 +116,9 @@ class Patient(db.Model):
             "treatment_outcome": self.treatment_outcome,
             "hiv": self.hiv,
             "diabetes": self.diabetes,
+            "smoking_status": self.smoking_status,
+            "alcohol_use": self.alcohol_use,
+            "oxygen_saturation_spo2": self.oxygen_saturation_spo2,
             "city": self.city,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
