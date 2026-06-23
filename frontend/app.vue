@@ -25,6 +25,18 @@
             </div>
           </div>
           <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+              <span class="text-xs font-semibold uppercase tracking-wide">{{ t(TEXT.langShort) }}</span>
+              <select
+                v-model="uiLanguage"
+                class="bg-transparent text-sm font-medium outline-none"
+                aria-label="Language"
+              >
+                <option v-for="lang in languageOptions" :key="lang.code" :value="lang.code">
+                  {{ lang.code }} - {{ t(lang.label) }}
+                </option>
+              </select>
+            </div>
             <button
               v-if="isLoggedIn"
               @click="logout"
@@ -80,9 +92,182 @@
 
     <!-- Main Content -->
     <main class="w-full max-w-none px-4 sm:px-6 lg:px-10 2xl:px-12 py-6">
-      <div v-if="!isLoggedIn" class="grid grid-cols-1 items-stretch gap-5 xl:min-h-[calc(100vh-11rem)] xl:grid-cols-2">
+      <div v-if="!isLoggedIn">
+        <div class="mb-5 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">{{ t(TEXT.publicAreaLabel) }}</p>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ t(TEXT.publicAreaHint) }}</p>
+          </div>
+          <div class="flex rounded-xl bg-gray-100 p-1 dark:bg-gray-700/60">
+            <button
+              type="button"
+              class="rounded-lg px-4 py-2 text-sm font-semibold transition"
+              :class="publicView === 'index' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-900/40 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'"
+              @click="publicView = 'index'"
+            >
+              {{ t(TEXT.homeTitle) }}
+            </button>
+            <button
+              type="button"
+              class="rounded-lg px-4 py-2 text-sm font-semibold transition"
+              :class="publicView === 'login' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-900/40 dark:text-white' : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'"
+              @click="publicView = 'login'"
+            >
+              {{ t(TEXT.loginTitle) }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="publicView === 'index'" class="space-y-5">
+          <section class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div class="max-w-3xl">
+                <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">{{ t(TEXT.indexKicker) }}</p>
+                <h2 class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ t(TEXT.indexHeadline) }}</h2>
+                <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">{{ t(TEXT.indexSubhead) }}</p>
+              </div>
+              <div class="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  class="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                  @click="publicView = 'login'"
+                >
+                  {{ t(TEXT.goToLogin) }}
+                </button>
+                <button
+                  type="button"
+                  class="rounded-lg border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-100 dark:hover:bg-gray-900/50"
+                  @click="fieldGuideOpen = !fieldGuideOpen"
+                >
+                  {{ fieldGuideOpen ? t(TEXT.hideDetails) : t(TEXT.showDetails) }}
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div
+              v-for="card in indexSectionCards"
+              :key="card.id"
+              class="flex h-full flex-col rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+            >
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">{{ t(card.kicker) }}</p>
+              <p class="mt-2 text-base font-semibold text-gray-900 dark:text-white">{{ t(card.title) }}</p>
+              <p class="mt-1 flex-1 text-sm leading-6 text-gray-600 dark:text-gray-300">{{ t(card.body) }}</p>
+              <button
+                type="button"
+                class="mt-4 mt-auto inline-flex w-full items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                @click="selectIndexSection(card.id)"
+              >
+                {{ t(TEXT.showThisSection) }}
+              </button>
+            </div>
+          </section>
+
+          <section class="rounded-xl border border-emerald-200 bg-emerald-50 p-6 dark:border-emerald-800 dark:bg-emerald-900/20">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p class="text-sm font-semibold text-emerald-900 dark:text-emerald-100">{{ t(TEXT.fieldGuideTitle) }}</p>
+                <p class="mt-1 text-xs leading-5 text-emerald-800 dark:text-emerald-200">{{ t(TEXT.fieldGuideSubtitle) }}</p>
+              </div>
+              <button
+                type="button"
+                class="inline-flex items-center justify-center rounded-lg bg-white px-3 py-2 text-xs font-semibold text-emerald-800 shadow-sm ring-1 ring-emerald-200 transition hover:bg-emerald-100 dark:bg-gray-900/40 dark:text-emerald-100 dark:ring-emerald-800 dark:hover:bg-emerald-900/30"
+                @click="fieldGuideOpen = !fieldGuideOpen"
+              >
+                {{ fieldGuideOpen ? t(TEXT.hideDetails) : t(TEXT.showDetails) }}
+              </button>
+            </div>
+
+            <div v-show="fieldGuideOpen" class="mt-4 space-y-3">
+              <div class="flex flex-col gap-3 rounded-xl border border-emerald-100 bg-white p-4 dark:border-emerald-900/50 dark:bg-gray-800/60 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t(TEXT.filterTitle) }}</p>
+                  <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">{{ t(TEXT.filterSubtitle) }}</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    class="rounded-full px-3 py-2 text-xs font-semibold transition"
+                    :class="indexSelectedSection === 'all'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-900/30 dark:text-gray-200 dark:hover:bg-gray-900/50'"
+                    @click="selectIndexSection('all')"
+                  >
+                    {{ t(TEXT.showAllSections) }}
+                  </button>
+                  <button
+                    v-for="card in indexSectionCards"
+                    :key="`filter-${card.id}`"
+                    type="button"
+                    class="rounded-full px-3 py-2 text-xs font-semibold transition"
+                    :class="indexSelectedSection === card.id
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-900/30 dark:text-gray-200 dark:hover:bg-gray-900/50'"
+                    @click="selectIndexSection(card.id)"
+                  >
+                    {{ t(card.title) }}
+                  </button>
+                </div>
+              </div>
+              <div
+                v-for="group in visibleIndexFieldGroups"
+                :key="group.id"
+                class="rounded-2xl border border-emerald-100 bg-white p-5 dark:border-emerald-900/50 dark:bg-gray-800/60"
+              >
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t(group.title) }}</p>
+                    <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">{{ t(group.description) }}</p>
+                  </div>
+                </div>
+
+                <div class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  <div
+                    v-for="item in group.items"
+                    :key="`${group.id}-${item.id}`"
+                    class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/30"
+                  >
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t(item.title) }}</p>
+                    <ul class="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-200">
+                      <li v-for="(line, idx) in t(item.lines)" :key="`${group.id}-${item.id}-${idx}`">
+                        {{ line }}
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="rounded-xl border border-emerald-100 bg-white p-4 dark:border-emerald-900/50 dark:bg-gray-800/60">
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t(TEXT.aiUseTitle) }}</p>
+                <div class="mt-2 grid gap-2 md:grid-cols-2">
+                  <div
+                    v-for="row in aiUseRows"
+                    :key="`public-${row.id}`"
+                    class="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:bg-gray-900/30 dark:text-gray-200"
+                  >
+                    <p class="font-semibold">{{ t(row.field) }}</p>
+                    <p class="text-xs text-gray-600 dark:text-gray-300">{{ t(row.purpose) }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="rounded-xl border border-emerald-100 bg-white p-4 dark:border-emerald-900/50 dark:bg-gray-800/60">
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t(TEXT.additionalDataTitle) }}</p>
+                <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">{{ t(TEXT.additionalDataSubtitle) }}</p>
+                <ul class="mt-3 grid gap-2 text-sm text-gray-700 dark:text-gray-200 sm:grid-cols-2">
+                  <li v-for="(line, idx) in t(TEXT.additionalDataList)" :key="`public-add-${idx}`" class="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-900/30">
+                    {{ line }}
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </section>
+        </div>
+
+      <div v-else class="grid grid-cols-1 items-stretch gap-5 xl:min-h-[calc(100vh-11rem)] xl:grid-cols-2">
         <section class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-lg h-full flex flex-col">
-          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Clinical Sign-In</p>
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">{{ t(TEXT.loginTitle) }}</p>
           <h2 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white lg:text-[1.9rem]">From patient data to TB decision.</h2>
           <p class="mt-2 max-w-3xl text-sm leading-6 text-gray-600 dark:text-gray-300">
             Open a case, review evidence, generate one guided report.
@@ -123,7 +308,7 @@
                   <circle cx="102" cy="75" r="2.3" fill="#34d399"/>
                 </g>
                 <text x="147" y="205" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">TB System</text>
-                <text x="147" y="226" text-anchor="middle" font-size="12" fill="#475569">sign in</text>
+                <text x="147" y="226" text-anchor="middle" font-size="12" fill="#475569">login</text>
                 <text x="147" y="243" text-anchor="middle" font-size="12" fill="#475569">evaluate</text>
                 <text x="147" y="260" text-anchor="middle" font-size="12" fill="#475569">guide care</text>
 
@@ -320,6 +505,7 @@
             </div>
           </form>
         </section>
+      </div>
       </div>
 
       <!-- Diagnose View -->
@@ -609,9 +795,64 @@
                   <h3 class="font-semibold text-gray-900 dark:text-white">3. Species And Test Results</h3>
                   <p class="text-sm text-gray-500 dark:text-gray-400">Choose known results or leave bacteria on `Auto-detect` so the system estimates from the patient record.</p>
                 </div>
+              <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p class="text-sm font-semibold text-emerald-900 dark:text-emerald-100">{{ t(TEXT.fieldGuideTitle) }}</p>
+                    <p class="mt-1 text-xs leading-5 text-emerald-800 dark:text-emerald-200">{{ t(TEXT.fieldGuideSubtitle) }}</p>
+                  </div>
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center rounded-lg bg-white px-3 py-2 text-xs font-semibold text-emerald-800 shadow-sm ring-1 ring-emerald-200 transition hover:bg-emerald-100 dark:bg-gray-900/40 dark:text-emerald-100 dark:ring-emerald-800 dark:hover:bg-emerald-900/30"
+                    @click="fieldGuideOpen = !fieldGuideOpen"
+                  >
+                    {{ fieldGuideOpen ? t(TEXT.hideDetails) : t(TEXT.showDetails) }}
+                  </button>
+                </div>
+
+                <div v-show="fieldGuideOpen" class="mt-4 space-y-3">
+                  <div
+                    v-for="item in fieldGuideItems"
+                    :key="item.id"
+                    class="rounded-xl border border-emerald-100 bg-white p-4 dark:border-emerald-900/50 dark:bg-gray-800/60"
+                  >
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t(item.title) }}</p>
+                    <ul class="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-200">
+                      <li v-for="(line, idx) in t(item.lines)" :key="`${item.id}-${idx}`">
+                        {{ line }}
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="rounded-xl border border-emerald-100 bg-white p-4 dark:border-emerald-900/50 dark:bg-gray-800/60">
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t(TEXT.aiUseTitle) }}</p>
+                    <div class="mt-2 grid gap-2 md:grid-cols-2">
+                      <div
+                        v-for="row in aiUseRows"
+                        :key="row.id"
+                        class="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:bg-gray-900/30 dark:text-gray-200"
+                      >
+                        <p class="font-semibold">{{ t(row.field) }}</p>
+                        <p class="text-xs text-gray-600 dark:text-gray-300">{{ t(row.purpose) }}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="rounded-xl border border-emerald-100 bg-white p-4 dark:border-emerald-900/50 dark:bg-gray-800/60">
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t(TEXT.additionalDataTitle) }}</p>
+                    <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">{{ t(TEXT.additionalDataSubtitle) }}</p>
+                    <ul class="mt-3 grid gap-2 text-sm text-gray-700 dark:text-gray-200 sm:grid-cols-2">
+                      <li v-for="(line, idx) in t(TEXT.additionalDataList)" :key="`add-${idx}`" class="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-900/30">
+                        {{ line }}
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
               <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">TB Bacteria Species</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ fieldLabel('bacteria_species') }}</label>
+                  <p class="mb-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ fieldHelp('bacteria_species') }}</p>
                   <select
                     v-model="patient.bacteria_species"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
@@ -628,7 +869,8 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">TB Culture</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ fieldLabel('tb_culture') }}</label>
+                  <p class="mb-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ fieldHelp('tb_culture') }}</p>
                   <select
                     v-model="patient.tb_culture"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
@@ -641,7 +883,8 @@
               </div>
               <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Sputum Smear</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ fieldLabel('sputum_smear_test') }}</label>
+                  <p class="mb-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ fieldHelp('sputum_smear_test') }}</p>
                   <select
                     v-model="patient.sputum_smear_test"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
@@ -652,7 +895,8 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">GeneXpert</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ fieldLabel('genexpert_test') }}</label>
+                  <p class="mb-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ fieldHelp('genexpert_test') }}</p>
                   <select
                     v-model="patient.genexpert_test"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
@@ -665,7 +909,8 @@
               </div>
               <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Chest X-ray</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ fieldLabel('chest_xray') }}</label>
+                  <p class="mb-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ fieldHelp('chest_xray') }}</p>
                   <select
                     v-model="patient.chest_xray"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
@@ -676,7 +921,8 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Drug Resistance</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ fieldLabel('drug_resistance') }}</label>
+                  <p class="mb-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ fieldHelp('drug_resistance') }}</p>
                   <select
                     v-model="patient.drug_resistance"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
@@ -689,7 +935,8 @@
               </div>
               <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">TST</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ fieldLabel('tst') }}</label>
+                  <p class="mb-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ fieldHelp('tst') }}</p>
                   <select
                     v-model="patient.tst"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
@@ -700,7 +947,8 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">IGRA</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ fieldLabel('igra') }}</label>
+                  <p class="mb-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ fieldHelp('igra') }}</p>
                   <select
                     v-model="patient.igra"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
@@ -713,7 +961,8 @@
               </div>
               <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">HIV Status</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ fieldLabel('hiv') }}</label>
+                  <p class="mb-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ fieldHelp('hiv') }}</p>
                   <select
                     v-model="patient.hiv"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
@@ -724,7 +973,8 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Diabetes</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ fieldLabel('diabetes') }}</label>
+                  <p class="mb-2 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ fieldHelp('diabetes') }}</p>
                   <select
                     v-model="patient.diabetes"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
@@ -1338,9 +1588,938 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 
 const API_BASE = 'http://localhost:5000/api'
+
+const languageOptions = [
+  { code: 'EN', label: { EN: 'English', FR: 'Anglais', SW: 'Kiingereza', RW: 'Icyongereza' } },
+  { code: 'FR', label: { EN: 'French', FR: 'Français', SW: 'Kifaransa', RW: 'Igifaransa' } },
+  { code: 'SW', label: { EN: 'Swahili', FR: 'Swahili', SW: 'Kiswahili', RW: 'Igiswahili' } },
+  { code: 'RW', label: { EN: 'Kinyarwanda', FR: 'Kinyarwanda', SW: 'Kinyarwanda', RW: 'Ikinyarwanda' } }
+]
+
+const TEXT = {
+  langShort: { EN: 'Lang', FR: 'Langue', SW: 'Lugha', RW: 'Ururimi' },
+  publicAreaLabel: { EN: 'Public area', FR: 'Espace public', SW: 'Eneo la umma', RW: 'Aho bose babona' },
+  publicAreaHint: {
+    EN: 'Read the index page explanation, then go to Login to access the protected workspace.',
+    FR: "Lisez l'explication (index), puis allez à Connexion pour accéder à l'espace protégé.",
+    SW: 'Soma maelezo ya index, kisha nenda Login ili kufungua sehemu iliyolindwa.',
+    RW: "Soma ibisobanuro byo kuri index, hanyuma ujye kuri Login ukuze winjire ahakingiwe."
+  },
+  homeTitle: { EN: 'Index', FR: 'Accueil', SW: 'Mwanzo', RW: 'Ahabanza' },
+  loginTitle: { EN: 'Login', FR: 'Connexion', SW: 'Ingia', RW: 'Kwinjira' },
+  showThisSection: { EN: 'Open section', FR: 'Ouvrir section', SW: 'Fungua sehemu', RW: 'Fungura igice' },
+  filterTitle: { EN: 'Show by section', FR: 'Afficher par section', SW: 'Onyesha kwa sehemu', RW: 'Erekana ukoresheje ibice' },
+  filterSubtitle: {
+    EN: 'Choose “Show all” or a single section to focus on.',
+    FR: 'Choisissez “Tout afficher” ou une seule section.',
+    SW: 'Chagua “Onyesha zote” au sehemu moja.',
+    RW: 'Hitamo “Erekana byose” cyangwa igice kimwe.'
+  },
+  showAllSections: { EN: 'Show all', FR: 'Tout afficher', SW: 'Onyesha zote', RW: 'Erekana byose' },
+  indexKicker: {
+    EN: 'TB Diagnostic System',
+    FR: 'Système de diagnostic TB',
+    SW: 'Mfumo wa uchunguzi wa TB',
+    RW: 'Sisitemu yo gusuzuma igituntu'
+  },
+  indexHeadline: {
+    EN: 'Index page: TB confirmation features explained',
+    FR: "Page index : explication des éléments pour confirmer la TB",
+    SW: 'Ukurasa wa index: maelezo ya vipengele vya kuthibitisha TB',
+    RW: "Index: ibisobanuro by'ibifasha kwemeza igituntu"
+  },
+  indexSubhead: {
+    EN: 'This index explains every field you will see during diagnosis (identity, symptoms, exposure, tests, DST) in simple language (RW/SW/FR/EN).',
+    FR: "Cette page index explique tous les champs utilisés pendant le diagnostic (identité, symptômes, exposition, tests, DST) en langage simple (RW/SW/FR/EN).",
+    SW: 'Ukurasa huu wa index unaeleza kila sehemu utakayoona wakati wa uchunguzi (utambulisho, dalili, historia ya kuambukizwa, vipimo, DST) kwa maneno rahisi (RW/SW/FR/EN).',
+    RW: "Uru rupapuro rwa index rusobanura buri gice uzabona mu isuzuma (amakuru y’umurwayi, ibimenyetso, aho ashobora kwandurira, ibizamini, DST) mu magambo yoroshye (RW/SW/FR/EN)."
+  },
+  goToLogin: { EN: 'Go to Login', FR: 'Aller à Connexion', SW: 'Nenda Login', RW: 'Jya kuri Login' },
+  fieldGuideTitle: {
+    EN: 'Here is what each field means in your TB Diagnostic System',
+    FR: 'Voici ce que signifie chaque champ dans votre système de diagnostic de la TB',
+    SW: 'Hivi ndivyo kila sehemu inamaanisha kwenye mfumo wako wa uchunguzi wa TB',
+    RW: "Dore ibisobanuro bya buri gice muri sisitemu yawe yo gusuzuma igituntu"
+  },
+  fieldGuideSubtitle: {
+    EN: 'Simple explanation (for clinicians and non-clinicians) + why the information matters for confirming TB and choosing treatment.',
+    FR: "Explication simple (pour cliniciens et non-cliniciens) + pourquoi l'information est importante pour confirmer la TB et choisir le traitement.",
+    SW: 'Maelezo rahisi (kwa wataalamu na wasio wataalamu) + kwa nini taarifa ni muhimu kuthibitisha TB na kuchagua matibabu.',
+    RW: "Ibisobanuro byoroshye (abaforomo/abaganga n'abandi) + impamvu ibi bisabwa mu kwemeza igituntu no guhitamo imiti."
+  },
+  showDetails: { EN: 'Show details', FR: 'Voir détails', SW: 'Onyesha maelezo', RW: 'Erekana ibisobanuro' },
+  hideDetails: { EN: 'Hide details', FR: 'Masquer', SW: 'Ficha', RW: 'Hisha' },
+  aiUseTitle: {
+    EN: 'How your AI model could use these fields',
+    FR: "Comment le modèle IA peut utiliser ces champs",
+    SW: 'Jinsi modeli ya AI inaweza kutumia hizi sehemu',
+    RW: "Uko AI yakoresha ibi bice"
+  },
+  additionalDataTitle: {
+    EN: 'Optional extra data (not all are in the form yet)',
+    FR: "Données supplémentaires (pas toutes dans le formulaire pour l'instant)",
+    SW: 'Taarifa za ziada (sio zote zipo kwenye fomu kwa sasa)',
+    RW: "Amakuru y’inyongera (si yose ari kuri form ubu)"
+  },
+  additionalDataSubtitle: {
+    EN: 'These can improve accuracy and clinical context, especially when lab results are missing or unclear.',
+    FR: "Ces informations améliorent la précision et le contexte clinique, surtout quand les résultats de labo manquent ou sont peu clairs.",
+    SW: 'Husaidia kuongeza usahihi na muktadha wa kitabibu, hasa vipimo vya maabara vinapokosekana au kuwa na mashaka.',
+    RW: "Bifasha kongera ukuri n’isobanurampamvu, cyane iyo ibisubizo bya labo bibuze cyangwa bitumvikana."
+  },
+  additionalDataList: {
+    EN: [
+      'Age',
+      'Sex',
+      'Weight',
+      'Persistent cough duration',
+      'Fever',
+      'Night sweats',
+      'Weight loss',
+      'Chest pain',
+      'Shortness of breath',
+      'Contact with TB patient',
+      'Previous TB treatment',
+      'Smoking history',
+      'Alcohol use',
+      'Oxygen saturation (SpO₂)'
+    ],
+    FR: [
+      'Âge',
+      'Sexe',
+      'Poids',
+      'Durée de la toux persistante',
+      'Fièvre',
+      'Sueurs nocturnes',
+      'Perte de poids',
+      'Douleur thoracique',
+      'Essoufflement',
+      'Contact avec un patient TB',
+      'Traitement TB antérieur',
+      'Tabagisme',
+      "Consommation d'alcool",
+      'Saturation en oxygène (SpO₂)'
+    ],
+    SW: [
+      'Umri',
+      'Jinsia',
+      'Uzito',
+      'Muda wa kikohozi kinachoendelea',
+      'Homa',
+      'Kutokwa jasho usiku',
+      'Kupungua uzito',
+      'Maumivu ya kifua',
+      'Upungufu wa pumzi',
+      'Kuwasiliana na mgonjwa wa TB',
+      'Tiba ya TB hapo awali',
+      'Historia ya uvutaji sigara',
+      'Matumizi ya pombe',
+      'Kiwango cha oksijeni (SpO₂)'
+    ],
+    RW: [
+      'Imyaka',
+      'Igitsina',
+      'Ibiro',
+      "Igihe inkorora imaze (nk'ibyumweru 2+)",
+      'Umuriro',
+      "Kubira icyuya nijoro",
+      "Kugabanuka kw'ibiro",
+      "Kubabara mu gatuza",
+      "Kubura umwuka",
+      "Kuba warahuye n'ufite igituntu",
+      "Kuba warigeze kuvurwa igituntu",
+      "Kunywa itabi (history)",
+      "Kunywa inzoga (history)",
+      'Oksijeni mu maraso (SpO₂)'
+    ]
+  }
+}
+
+const uiLanguage = ref('EN')
+const fieldGuideOpen = ref(true)
+const publicView = ref('index')
+const indexSelectedSection = ref('all')
+
+function t(valueByLanguage) {
+  if (Array.isArray(valueByLanguage)) return valueByLanguage
+  if (!valueByLanguage || typeof valueByLanguage !== 'object') return String(valueByLanguage || '')
+  return valueByLanguage[uiLanguage.value] ?? valueByLanguage.EN ?? ''
+}
+
+const FIELD_LABELS = {
+  bacteria_species: {
+    EN: 'TB Bacteria Species',
+    FR: 'Espèce de bactérie TB',
+    SW: 'Aina ya bakteria wa TB',
+    RW: "Ubwoko bw'udukoko dutera igituntu"
+  },
+  tb_culture: {
+    EN: 'TB Culture',
+    FR: 'Culture TB',
+    SW: 'Utamaduni wa TB (Culture)',
+    RW: 'Culture ya TB (gukura udukoko muri labo)'
+  },
+  sputum_smear_test: {
+    EN: 'Sputum Smear',
+    FR: "Frottis d'expectoration",
+    SW: 'Sputum Smear',
+    RW: "Sputum Smear (Isuzuma ry'igikororwa)"
+  },
+  genexpert_test: {
+    EN: 'GeneXpert',
+    FR: 'GeneXpert',
+    SW: 'GeneXpert',
+    RW: 'GeneXpert'
+  },
+  chest_xray: {
+    EN: 'Chest X-ray',
+    FR: 'Radiographie thoracique',
+    SW: 'X-ray ya kifua',
+    RW: "Ifoto ya X-ray y'igituza"
+  },
+  drug_resistance: {
+    EN: 'Drug Resistance',
+    FR: 'Résistance aux médicaments',
+    SW: 'Ustahimilivu wa dawa',
+    RW: "Kudakurikiza/kurwanya imiti (Resistance)"
+  },
+  tst: {
+    EN: 'TST (Tuberculin Skin Test)',
+    FR: 'TST (Test cutané à la tuberculine)',
+    SW: 'TST (Kipimo cha ngozi)',
+    RW: "TST (Ikizamini cyo ku ruhu)"
+  },
+  igra: {
+    EN: 'IGRA (Blood test)',
+    FR: 'IGRA (Test sanguin)',
+    SW: 'IGRA (Kipimo cha damu)',
+    RW: "IGRA (Ikizamini cy'amaraso)"
+  },
+  hiv: {
+    EN: 'HIV Status',
+    FR: 'Statut VIH',
+    SW: 'Hali ya VVU (HIV)',
+    RW: 'HIV Status (Uburwayi bwa SIDA/VIH)'
+  },
+  diabetes: {
+    EN: 'Diabetes',
+    FR: 'Diabète',
+    SW: 'Kisukari (Diabetes)',
+    RW: 'Diyabete (Indwara ya sukari)'
+  }
+}
+
+const FIELD_HELP = {
+  bacteria_species: {
+    EN: 'The type of TB-causing bacteria. Choose Auto-detect to let the system estimate based on the full patient record.',
+    FR: "Le type de bactérie responsable de la TB. Choisissez Auto-detect pour laisser le système estimer à partir du dossier du patient.",
+    SW: 'Aina ya bakteria wanaosababisha TB. Chagua Auto-detect ili mfumo ukadirie kulingana na taarifa zote za mgonjwa.',
+    RW: "Ubwoko bw'udukoko dutera igituntu. Hitamo Auto-detect kugirango sisitemu ibigereranye ikoresheje amakuru yose y'umurwayi."
+  },
+  tb_culture: {
+    EN: 'A lab test where a sample is grown to detect TB bacteria. One of the most reliable confirmations.',
+    FR: "Test de laboratoire où l'échantillon est cultivé pour détecter la bactérie. Très fiable pour confirmer la TB.",
+    SW: 'Kipimo cha maabara ambacho sampuli hukuzwa ili kuonekana bakteria wa TB. Ni kipimo cha kuaminika sana kuthibitisha TB.',
+    RW: "Ikizamini cya labo aho bafata sample bakayikuzamo udukoko (culture) kugira ngo barebe TB. Ni kimwe mu bipimo byizewe cyane mu kwemeza igituntu."
+  },
+  sputum_smear_test: {
+    EN: 'Microscope check of coughed-up mucus (sputum) to see TB bacteria. Simple question: “TB bacteria found in coughed-up mucus?” Fast and cheap, but less sensitive than GeneXpert.',
+    FR: "Examen au microscope des crachats (sputum) pour voir les bacilles TB. Question simple : « Bacilles TB trouvés dans les crachats ? » Rapide et peu coûteux, mais moins sensible que GeneXpert.",
+    SW: 'Uchunguzi wa makohozi (sputum) kwa darubini kuona bakteria wa TB. Swali rahisi: “Je, bakteria wa TB wamepatikana kwenye makohozi?” Ni wa haraka na nafuu, lakini si nyeti kama GeneXpert.',
+    RW: "Gusuzuma igikororwa (ibikororwa umuntu akorora bivuye mu bihaha) harebwa niba harimo udukoko dutera igituntu. Ikibazo cyoroshye: “Ese mu gikororwa habonetse udukoko dutera igituntu?” Birihuta kandi birahendutse, ariko ntibibona neza nka GeneXpert."
+  },
+  genexpert_test: {
+    EN: 'A molecular test that detects TB DNA and some drug resistance. WHO-recommended rapid TB test.',
+    FR: "Test moléculaire qui détecte l'ADN de la TB et certaines résistances. Test rapide recommandé par l’OMS.",
+    SW: 'Kipimo cha kijenetiki (molecular) kinachotambua DNA ya TB na baadhi ya usugu wa dawa. Kinapendekezwa na WHO kwa uchunguzi wa haraka.',
+    RW: "Ikizamini cya molecular gimenya DNA ya TB kandi kigatanga n'ibimenyetso bimwe by'ukudakurikiza imiti. WHO igisaba nk'ikizamini cyihuse."
+  },
+  chest_xray: {
+    EN: 'Imaging to check lung changes that may suggest TB (infiltrates, cavities, nodules, pleural effusion).',
+    FR: "Imagerie pour détecter des anomalies pulmonaires pouvant suggérer la TB (infiltrats, cavernes, nodules, épanchement pleural).",
+    SW: 'Picha ya mapafu ku X-ray kuona mabadiliko yanayoweza kuashiria TB (infiltrates, mashimo/cavities, nodules, maji kwenye kifua).',
+    RW: "Ifoto ya X-ray ireba impinduka mu bihaha zishobora kugaragaza TB (infiltrates, cavities, nodules, amazi mu gatuza)."
+  },
+  drug_resistance: {
+    EN: 'Shows if TB may be resistant to standard medicines (e.g., MDR-TB, XDR-TB). This changes the treatment regimen.',
+    FR: "Indique si la TB peut résister aux médicaments standards (ex. MDR-TB, XDR-TB). Cela change le schéma thérapeutique.",
+    SW: 'Inaonyesha kama TB inaweza kuwa sugu kwa dawa za kawaida (mf. MDR-TB, XDR-TB). Hii hubadilisha mpango wa matibabu.',
+    RW: "Kwerekana niba TB ishobora kurwanya imiti isanzwe (nka MDR-TB, XDR-TB). Ibi bihindura gahunda yo kuvura."
+  },
+  tst: {
+    EN: 'Skin test to detect TB infection (exposure). It cannot separate active TB from latent TB.',
+    FR: "Test cutané pour détecter l’infection TB (exposition). Ne distingue pas TB active et TB latente.",
+    SW: 'Kipimo cha ngozi kuonyesha maambukizi/kuwahi kuathiriwa na TB. Hakitofautishi TB iliyo hai na TB iliyolala (latent).',
+    RW: "Ikizamini cyo ku ruhu kigaragaza kuba umuntu yarahuye na TB. Ntigishobora gutandukanya TB ikora na TB yihishe (latent)."
+  },
+  igra: {
+    EN: 'Blood test to detect TB infection (e.g., QuantiFERON-TB Gold, T‑SPOT.TB). Often more specific than TST.',
+    FR: "Test sanguin pour détecter l’infection TB (ex. QuantiFERON-TB Gold, T‑SPOT.TB). Souvent plus spécifique que le TST.",
+    SW: 'Kipimo cha damu kugundua maambukizi ya TB (mf. QuantiFERON-TB Gold, T‑SPOT.TB). Mara nyingi ni sahihi zaidi kuliko TST.',
+    RW: "Ikizamini cy'amaraso gishaka infection ya TB (nka QuantiFERON-TB Gold, T‑SPOT.TB). Akenshi kiba gifite ukwizerwa kurusha TST."
+  },
+  hiv: {
+    EN: 'HIV greatly increases the risk of developing active TB and can change urgency and treatment monitoring.',
+    FR: "Le VIH augmente fortement le risque de TB active et peut changer l’urgence et la surveillance du traitement.",
+    SW: 'VVU (HIV) huongeza sana hatari ya kupata TB iliyo hai na inaweza kubadilisha uharaka na ufuatiliaji wa matibabu.',
+    RW: "HIV yongera cyane ibyago byo kugira TB ikora kandi ishobora guhindura uko kwihutira kuvura no gukurikirana umurwayi."
+  },
+  diabetes: {
+    EN: 'Diabetes increases susceptibility to TB and can affect treatment outcomes.',
+    FR: "Le diabète augmente la susceptibilité à la TB et peut affecter les résultats du traitement.",
+    SW: 'Kisukari huongeza uwezekano wa kupata TB na kinaweza kuathiri matokeo ya matibabu.',
+    RW: "Indwara ya sukari yongera ibyago byo kugira TB kandi ishobora kugira ingaruka ku musaruro w'ubuvuzi."
+  }
+}
+
+const indexSectionCards = [
+  {
+    id: 'identity',
+    kicker: { EN: 'Section 1', FR: 'Section 1', SW: 'Sehemu 1', RW: 'Igice 1' },
+    title: { EN: 'Patient identity', FR: 'Identité du patient', SW: 'Utambulisho', RW: "Amakuru y'umurwayi" },
+    body: {
+      EN: 'Used to save/reopen records and avoid mixing patients.',
+      FR: 'Sert à enregistrer/rouvrir le dossier et éviter les confusions.',
+      SW: 'Hutumika kuhifadhi/kufungua rekodi na kuepuka kuchanganya wagonjwa.',
+      RW: "Bifasha kubika no kongera gufungura dosiye y'umurwayi no kwirinda kuyivanga."
+    }
+  },
+  {
+    id: 'clues',
+    kicker: { EN: 'Section 2', FR: 'Section 2', SW: 'Sehemu 2', RW: 'Igice 2' },
+    title: { EN: 'Symptoms & exposure', FR: 'Symptômes & exposition', SW: 'Dalili & kuambukizwa', RW: 'Ibimenyetso & aho yandurira' },
+    body: {
+      EN: 'Shows risk and urgency even before lab tests.',
+      FR: "Montre le risque et l'urgence même avant les tests.",
+      SW: 'Huonyesha hatari na uharaka hata kabla ya vipimo.',
+      RW: "Bigaragaza ibyago n'ukwihutira no mbere y'ibizamini."
+    }
+  },
+  {
+    id: 'tests',
+    kicker: { EN: 'Section 3', FR: 'Section 3', SW: 'Sehemu 3', RW: 'Igice 3' },
+    title: { EN: 'Tests & imaging', FR: 'Tests & imagerie', SW: 'Vipimo & picha', RW: 'Ibizamini & X-ray' },
+    body: {
+      EN: 'Culture, smear, GeneXpert, X‑ray help confirm TB.',
+      FR: 'Culture, frottis, GeneXpert, radio aident à confirmer la TB.',
+      SW: 'Culture, smear, GeneXpert, X‑ray husaidia kuthibitisha TB.',
+      RW: "Culture, smear, GeneXpert, X‑ray bifasha kwemeza TB."
+    }
+  },
+  {
+    id: 'dst',
+    kicker: { EN: 'Section 4', FR: 'Section 4', SW: 'Sehemu 4', RW: 'Igice 4' },
+    title: { EN: 'DST & treatment support', FR: 'DST & traitement', SW: 'DST & matibabu', RW: 'DST & ubuvuzi' },
+    body: {
+      EN: 'Resistance and DST guide which medicines to use.',
+      FR: 'La résistance et le DST guident le choix des médicaments.',
+      SW: 'Usugu wa dawa na DST huongoza uchaguzi wa dawa.',
+      RW: "Resistance na DST bifasha guhitamo imiti."
+    }
+  }
+]
+
+const baseIndexFieldGroups = [
+  {
+    id: 'identity',
+    title: { EN: '1) Patient identity fields', FR: "1) Champs d'identité", SW: '1) Sehemu za utambulisho', RW: "1) Amakuru y'umurwayi" },
+    description: {
+      EN: 'These fields help uniquely identify the patient and manage follow-up.',
+      FR: "Ces champs servent à identifier le patient et assurer le suivi.",
+      SW: 'Sehemu hizi husaidia kumtambua mgonjwa na kufuatilia matokeo.',
+      RW: "Ibi bifasha kumenya neza umurwayi no gukurikirana dosiye ye."
+    },
+    items: [
+      {
+        id: 'patient_id',
+        title: { EN: 'Patient ID', FR: 'ID patient', SW: 'Namba ya mgonjwa', RW: "ID y'umurwayi" },
+        lines: {
+          EN: ['Unique number/code for the patient record.', 'Importance: helps reopen the correct record and avoid duplicates.'],
+          FR: ['Numéro/code unique du dossier patient.', "Importance : permet de rouvrir le bon dossier et éviter les doublons."],
+          SW: ['Namba/kanuni ya kipekee ya rekodi ya mgonjwa.', 'Umuhimu: husaidia kufungua rekodi sahihi na kuepuka kurudia.'],
+          RW: ["Nimero/code yihariye ya dosiye y'umurwayi.", "Icy’ingenzi: bifasha gufungura dosiye nyayo no kwirinda kwandikisha kabiri."]
+        }
+      },
+      {
+        id: 'names',
+        title: { EN: 'First name & Last name', FR: 'Prénom & Nom', SW: 'Jina la kwanza & la mwisho', RW: 'Izina & Irindi zina' },
+        lines: {
+          EN: ['The patient’s names used on the report and for searching.', 'Importance: reduces confusion between patients.'],
+          FR: ["Noms du patient utilisés dans le rapport et la recherche.", 'Importance : réduit les confusions.'],
+          SW: ['Majina ya mgonjwa hutumika kwenye ripoti na utafutaji.', 'Umuhimu: hupunguza kuchanganya wagonjwa.'],
+          RW: ["Amazina y'umurwayi agaragara muri raporo no mu gushakisha.", "Icy’ingenzi: bifasha kwirinda kuyivanga n’abandi."]
+        }
+      },
+      {
+        id: 'age_gender',
+        title: { EN: 'Age & Gender', FR: 'Âge & Sexe', SW: 'Umri & Jinsia', RW: 'Imyaka & Igitsina' },
+        lines: {
+          EN: ['Basic patient profile.', 'Importance: supports risk estimation and treatment considerations.'],
+          FR: ['Profil de base du patient.', "Importance : aide à estimer le risque et orienter le traitement."],
+          SW: ['Taarifa za msingi za mgonjwa.', 'Umuhimu: husaidia kukadiria hatari na kuchagua matibabu.'],
+          RW: ["Amakuru y'ibanze y'umurwayi.", "Icy’ingenzi: bifasha kugereranya ibyago no guhitamo ubuvuzi."]
+        }
+      },
+      {
+        id: 'city',
+        title: { EN: 'City', FR: 'Ville', SW: 'Mji', RW: 'Umujyi/Aho atuye' },
+        lines: {
+          EN: ['Where the patient lives or is seen.', 'Importance: helps follow-up and public health reporting.'],
+          FR: ['Lieu de résidence ou de consultation.', "Importance : aide au suivi et au signalement de santé publique."],
+          SW: ['Mahali mgonjwa anaishi au anapoonekana.', 'Umuhimu: husaidia ufuatiliaji na taarifa za afya ya umma.'],
+          RW: ["Aho umurwayi atuye cyangwa aho yitabwaho.", "Icy’ingenzi: bifasha gukurikirana no gutanga amakuru ku rwego rw'ubuzima rusange."]
+        }
+      }
+    ]
+  },
+  {
+    id: 'clues',
+    title: { EN: '2) Clinical clues (symptoms and exposure)', FR: "2) Indices cliniques (symptômes et exposition)", SW: '2) Dalili na kuambukizwa', RW: '2) Ibimenyetso n’aho yandurira' },
+    description: {
+      EN: 'These are often the first signs that raise TB suspicion, especially when tests are missing.',
+      FR: "Souvent les premiers signes de suspicion de TB, surtout si les tests manquent.",
+      SW: 'Mara nyingi ni ishara za mwanzo zinazozua shaka ya TB, hasa vipimo vikikosekana.',
+      RW: "Akenshi ni byo bitangira gutera amakenga ya TB, cyane iyo ibizamini bibuze."
+    },
+    items: [
+      {
+        id: 'symptoms',
+        title: { EN: 'Symptoms', FR: 'Symptômes', SW: 'Dalili', RW: 'Ibimenyetso' },
+        lines: {
+          EN: ['List symptoms (cough, fever, night sweats, weight loss, chest pain, etc.).', 'Importance: helps estimate TB risk and urgency.'],
+          FR: ['Listez les symptômes (toux, fièvre, sueurs nocturnes, perte de poids, douleur thoracique, etc.).', "Importance : aide à estimer le risque et l'urgence."],
+          SW: ['Orodhesha dalili (kikohozi, homa, jasho usiku, kupungua uzito, maumivu ya kifua, n.k.).', 'Umuhimu: husaidia kukadiria hatari na uharaka.'],
+          RW: ["Andika ibimenyetso (inkorora, umuriro, kubira icyuya nijoro, kugabanuka ibiro, kubabara mu gatuza, n'ibindi).", "Icy’ingenzi: bifasha kugereranya ibyago n'ukwihutira kwitabwaho."]
+        }
+      },
+      {
+        id: 'exposure',
+        title: { EN: 'Exposure history', FR: "Historique d'exposition", SW: 'Historia ya kuambukizwa', RW: "Amateka y'aho yandurira" },
+        lines: {
+          EN: ['Contact with a TB patient, crowded living, prison, healthcare work, animal/milk exposure, etc.', 'Importance: supports the suspicion and may hint at species source.'],
+          FR: ["Contact TB, vie en promiscuité, prison, travail de santé, exposition animale/lait, etc.", "Importance : renforce la suspicion et peut orienter la source."],
+          SW: ['Kuwasiliana na mgonjwa wa TB, makazi yenye msongamano, gereza, kazi ya afya, wanyama/maziwa, n.k.', 'Umuhimu: huongeza ushahidi wa shaka na inaweza kuonyesha chanzo.'],
+          RW: ["Guhura n'ufite TB, kuba mu buzima bufite ubucucike, gereza, gukora mu buvuzi, amatungo/amata, n'ibindi.", "Icy’ingenzi: byongera ibimenyetso bya TB kandi bishobora no kwerekana aho byaturutse."]
+        }
+      }
+    ]
+  },
+  {
+    id: 'dst',
+    title: { EN: '4) DST and resistance details', FR: '4) Détails DST et résistance', SW: '4) Maelezo ya DST na usugu', RW: '4) Ibisobanuro bya DST na resistance' },
+    description: {
+      EN: 'These fields help decide which drugs are likely to work.',
+      FR: 'Ces champs aident à choisir les médicaments efficaces.',
+      SW: 'Sehemu hizi husaidia kuchagua dawa zitakazofanya kazi.',
+      RW: "Ibi bifasha guhitamo imiti ishobora gukora."
+    },
+    items: [
+      {
+        id: 'antibiogram',
+        title: { EN: 'Antibiogram / DST summary', FR: 'Antibiogramme / Résumé DST', SW: 'Muhtasari wa DST', RW: 'Incamake ya DST' },
+        lines: {
+          EN: ['Write DST notes (lab summary) about resistance/susceptibility.', 'Importance: supports the treatment regimen decision.'],
+          FR: ["Saisissez le résumé DST (labo) sur résistance/sensibilité.", "Importance : guide le schéma thérapeutique."],
+          SW: ['Andika muhtasari wa DST (maabara) kuhusu usugu/ustahimilivu.', 'Umuhimu: husaidia kuchagua mpango wa matibabu.'],
+          RW: ["Andika incamake ya DST (ibyo labo yavuze) ku kurwanya/kwumva imiti.", "Icy’ingenzi: bifasha guhitamo gahunda y'ubuvuzi."]
+        }
+      },
+      {
+        id: 'resistant_to',
+        title: { EN: 'Resistant to', FR: 'Résistant à', SW: 'Inakataa dawa', RW: 'Irwanya iyi miti' },
+        lines: {
+          EN: ['List medicines that the TB bacteria resist.', 'Importance: avoid ineffective drugs.'],
+          FR: ['Listez les médicaments auxquels la TB résiste.', "Importance : éviter les traitements inefficaces."],
+          SW: ['Orodhesha dawa ambazo TB inazikataa (resistant).', 'Umuhimu: kuepuka dawa zisizofanya kazi.'],
+          RW: ['Andika imiti TB irwanya (resistant).', "Icy’ingenzi: kwirinda imiti itazakora."]
+        }
+      },
+      {
+        id: 'susceptible_to',
+        title: { EN: 'Susceptible to', FR: 'Sensible à', SW: 'Inakubali dawa', RW: 'Yumva iyi miti' },
+        lines: {
+          EN: ['List medicines that are likely effective against the TB bacteria.', 'Importance: helps select the safest effective regimen.'],
+          FR: ["Listez les médicaments probablement efficaces.", "Importance : aide à choisir le traitement le plus sûr et efficace."],
+          SW: ['Orodhesha dawa zinazoweza kufanya kazi dhidi ya TB.', 'Umuhimu: husaidia kuchagua mpango salama na wenye ufanisi.'],
+          RW: ['Andika imiti ishobora gukora kuri TB (susceptible).', "Icy’ingenzi: bifasha guhitamo gahunda itekanye kandi ikora."]
+        }
+      }
+    ]
+  }
+]
+
+function fieldLabel(key) {
+  return t(FIELD_LABELS[key] || { EN: key })
+}
+
+function fieldHelp(key) {
+  return t(FIELD_HELP[key] || { EN: '' })
+}
+
+const fieldGuideItems = [
+  {
+    id: 'bacteria_species',
+    title: FIELD_LABELS.bacteria_species,
+    lines: {
+      EN: [
+        'The type of TB-causing bacteria identified in the patient.',
+        'Auto-detect → System predicts the most likely species based on patient data.',
+        'Mycobacterium tuberculosis → Most common cause of human TB.',
+        'Mycobacterium bovis → Often from infected cattle or unpasteurized milk.',
+        'Mycobacterium africanum → Common in some African regions.',
+        'Mycobacterium canettii → Rare species found in limited areas.',
+        'Mycobacterium microti → Rare, mainly infects animals but can infect humans.',
+        'Importance: Helps interpret exposure sources and supports the overall diagnosis and treatment plan.'
+      ],
+      FR: [
+        "Le type de bactérie responsable de la TB chez le patient.",
+        "Auto-detect → Le système prédit l'espèce la plus probable selon les données.",
+        'Mycobacterium tuberculosis → Cause la plus fréquente de TB humaine.',
+        'Mycobacterium bovis → Souvent lié au bétail ou au lait non pasteurisé.',
+        'Mycobacterium africanum → Fréquent dans certaines régions africaines.',
+        'Mycobacterium canettii → Espèce rare dans des zones limitées.',
+        "Mycobacterium microti → Rare, surtout chez l'animal mais possible chez l'humain.",
+        "Importance : Aide à interpréter la source d'exposition et à soutenir le diagnostic et le plan thérapeutique."
+      ],
+      SW: [
+        'Aina ya bakteria wanaosababisha TB iliyotambuliwa kwa mgonjwa.',
+        'Auto-detect → Mfumo hukadiria aina inayowezekana zaidi kulingana na taarifa za mgonjwa.',
+        'Mycobacterium tuberculosis → Sababu ya kawaida zaidi ya TB kwa binadamu.',
+        'Mycobacterium bovis → Mara nyingi hutoka kwa ng’ombe walioambukizwa au maziwa yasiyochemshwa/pasteurized.',
+        'Mycobacterium africanum → Huonekana zaidi katika baadhi ya maeneo ya Afrika.',
+        'Mycobacterium canettii → Ni nadra na hupatikana maeneo machache.',
+        'Mycobacterium microti → Ni nadra, huambukiza wanyama zaidi lakini inaweza kwa binadamu.',
+        'Umuhimu: Husaidia kuelewa chanzo cha maambukizi na kuimarisha uamuzi wa uchunguzi na matibabu.'
+      ],
+      RW: [
+        "Ubwoko bw'udukoko dutera igituntu bwagaragajwe ku murwayi.",
+        'Auto-detect → Sisitemu igereranya ubwoko bushoboka kurusha ubundi ikoresheje amakuru y’umurwayi.',
+        'Mycobacterium tuberculosis → Bikunze gutera igituntu ku bantu.',
+        "Mycobacterium bovis → Ishobora kuzanwa n’amatungo (inka) cyangwa kunywa amata atapasteurizwemo.",
+        'Mycobacterium africanum → Igaragara cyane mu bice bimwe by’Afurika.',
+        'Mycobacterium canettii → Ni gake kandi iboneka ahantu hake.',
+        'Mycobacterium microti → Ni gake, ikunze gufata inyamaswa ariko ishobora no gufata abantu.',
+        "Icy’ingenzi: Bifasha gusobanukirwa aho kwandura bishobora kuba byaturutse, kandi bigafasha gufata umwanzuro w'isuzuma n'ubuvuzi."
+      ]
+    }
+  },
+  {
+    id: 'tb_culture',
+    title: FIELD_LABELS.tb_culture,
+    lines: {
+      EN: [
+        'A laboratory test where a patient sample is grown to detect TB bacteria.',
+        'Positive → TB bacteria grew in the laboratory.',
+        'Negative → No TB bacteria detected.',
+        'Unknown → Test not performed or result unavailable.',
+        'Importance: Considered one of the most reliable methods for confirming TB.'
+      ],
+      FR: [
+        "Test de laboratoire où l'échantillon du patient est cultivé pour détecter la TB.",
+        'Positive → La bactérie TB a poussé au laboratoire.',
+        'Negative → Aucune bactérie TB détectée.',
+        'Unknown → Test non réalisé ou résultat indisponible.',
+        'Importance : Une des méthodes les plus fiables pour confirmer la TB.'
+      ],
+      SW: [
+        'Kipimo cha maabara ambacho sampuli ya mgonjwa hukuzwa ili kugundua bakteria wa TB.',
+        'Positive → Bakteria wa TB wamekua maabarani.',
+        'Negative → Hakuna bakteria wa TB waliogunduliwa.',
+        'Unknown → Kipimo hakikufanyika au majibu hayapo.',
+        'Umuhimu: Ni miongoni mwa vipimo vinavyoaminika zaidi kuthibitisha TB.'
+      ],
+      RW: [
+        'Ikizamini cya labo aho sample y’umurwayi ikurizwa (culture) kugira ngo hamenyekane udukoko twa TB.',
+        'Positive → Udukoko twa TB twakuze muri labo.',
+        'Negative → Nta dukoko twa TB twabonetse.',
+        'Unknown → Ikizamini nticyakozwe cyangwa ibisubizo ntibihari.',
+        'Icy’ingenzi: Ni kimwe mu bizamini byizewe cyane mu kwemeza igituntu.'
+      ]
+    }
+  },
+  {
+    id: 'sputum_smear_test',
+    title: FIELD_LABELS.sputum_smear_test,
+    lines: {
+      EN: [
+        'Microscopic examination of sputum (mucus coughed from the lungs).',
+        'Simple wording: “TB bacteria found in coughed-up mucus?”',
+        'Positive → TB bacteria seen under microscope.',
+        'Negative → No bacteria seen.',
+        'Unknown → No result available.',
+        'Importance: Quick and inexpensive test but less sensitive than GeneXpert.'
+      ],
+      FR: [
+        "Examen au microscope des crachats (mucus provenant des poumons).",
+        'Formulation simple : « Bacilles TB trouvés dans les crachats ? »',
+        'Positive → Bacilles TB visibles au microscope.',
+        'Negative → Aucune bactérie vue.',
+        'Unknown → Résultat non disponible.',
+        'Importance : Rapide et peu coûteux, mais moins sensible que GeneXpert.'
+      ],
+      SW: [
+        'Uchunguzi wa makohozi (kamasi kutoka mapafuni) kwa darubini.',
+        'Maneno rahisi: “Je, bakteria wa TB wamepatikana kwenye makohozi?”',
+        'Positive → Bakteria wa TB wanaonekana kwa darubini.',
+        'Negative → Hakuna bakteria wanaoonekana.',
+        'Unknown → Hakuna majibu.',
+        'Umuhimu: Ni wa haraka na nafuu, lakini si nyeti kama GeneXpert.'
+      ],
+      RW: [
+        "Gusuzuma igikororwa (ibikororwa umuntu akorora bivuye mu bihaha) harebwa uko biri ku mikorosikopi.",
+        "Imvugo yoroshye: “Ese mu gikororwa habonetse udukoko dutera igituntu?”",
+        "Positive → Mu gikororwa habonetse udukoko dutera igituntu.",
+        "Negative → Nta dukoko twabonetse.",
+        "Unknown → Nta gisubizo gihari.",
+        "Icy’ingenzi: Birihuta kandi birahendutse, ariko ntibibona neza nka GeneXpert."
+      ]
+    }
+  },
+  {
+    id: 'genexpert_test',
+    title: FIELD_LABELS.genexpert_test,
+    lines: {
+      EN: [
+        'A molecular test that detects TB DNA and some drug resistance.',
+        'Positive → TB DNA detected.',
+        'Negative → TB DNA not detected.',
+        'Unknown → Test not done.',
+        'Importance: Recommended by the World Health Organization as a rapid TB diagnostic test.'
+      ],
+      FR: [
+        "Test moléculaire qui détecte l'ADN de la TB et certaines résistances.",
+        'Positive → ADN TB détecté.',
+        'Negative → ADN TB non détecté.',
+        'Unknown → Test non réalisé.',
+        "Importance : Recommandé par l'OMS comme test rapide de diagnostic de la TB."
+      ],
+      SW: [
+        'Kipimo cha molecular kinachotambua DNA ya TB na baadhi ya usugu wa dawa.',
+        'Positive → DNA ya TB imegunduliwa.',
+        'Negative → DNA ya TB haijagunduliwa.',
+        'Unknown → Kipimo hakikufanyika.',
+        'Umuhimu: Kinapendekezwa na WHO kama kipimo cha haraka cha TB.'
+      ],
+      RW: [
+        "Ikizamini cya molecular gimenya DNA ya TB kandi kigatanga n'ibimenyetso bimwe by'ukudakurikiza imiti.",
+        'Positive → DNA ya TB yabonetse.',
+        'Negative → DNA ya TB ntiyabonetse.',
+        'Unknown → Ikizamini nticyakozwe.',
+        "Icy’ingenzi: WHO igisaba nk'ikizamini cyihuse cyo gusuzuma TB."
+      ]
+    }
+  },
+  {
+    id: 'chest_xray',
+    title: FIELD_LABELS.chest_xray,
+    lines: {
+      EN: [
+        'Imaging test used to identify lung abnormalities suggestive of TB.',
+        'Normal → No signs of TB visible.',
+        'Abnormal/Suggestive of TB → Findings may indicate TB.',
+        'Unknown → No X-ray result available.',
+        'Common TB X-ray findings: lung infiltrates, cavities, nodules, pleural effusion.'
+      ],
+      FR: [
+        "Imagerie pour identifier des anomalies pulmonaires suggérant une TB.",
+        'Normal → Aucun signe visible de TB.',
+        'Abnormal/Suggestive of TB → Les images peuvent indiquer une TB.',
+        'Unknown → Résultat non disponible.',
+        'Trouvailles fréquentes : infiltrats, cavernes, nodules, épanchement pleural.'
+      ],
+      SW: [
+        'Kipimo cha picha (X-ray) kuona mabadiliko ya mapafu yanayoweza kuashiria TB.',
+        'Normal → Hakuna dalili ya TB inayoonekana.',
+        'Abnormal/Suggestive of TB → Matokeo yanaweza kuonyesha TB.',
+        'Unknown → Hakuna majibu ya X-ray.',
+        'Mara nyingi huonekana: infiltrates, cavities, nodules, maji kwenye kifua (pleural effusion).'
+      ],
+      RW: [
+        "Ifoto ya X-ray ikoreshwa kureba impinduka mu bihaha zishobora kugaragaza igituntu.",
+        "Normal → Nta kimenyetso cya TB kigaragara.",
+        "Abnormal/Suggestive of TB → Ibiboneka bishobora kugaragaza TB.",
+        "Unknown → Nta gisubizo cya X-ray gihari.",
+        "Ibisanzwe biboneka: infiltrates, cavities, nodules, amazi mu gatuza (pleural effusion)."
+      ]
+    }
+  },
+  {
+    id: 'drug_resistance',
+    title: FIELD_LABELS.drug_resistance,
+    lines: {
+      EN: [
+        'Whether the TB bacteria are resistant to standard TB medications.',
+        'No → Drug-sensitive TB.',
+        'Yes → Drug-resistant TB.',
+        'Examples: MDR-TB (Multidrug-Resistant TB), XDR-TB (Extensively Drug-Resistant TB).',
+        'Importance: Determines which treatment regimen should be used.'
+      ],
+      FR: [
+        "Indique si la bactérie TB est résistante aux médicaments standards.",
+        'No → TB sensible aux médicaments.',
+        'Yes → TB résistante.',
+        'Exemples : MDR-TB, XDR-TB.',
+        'Importance : Détermine le schéma thérapeutique à utiliser.'
+      ],
+      SW: [
+        'Kama bakteria wa TB wana usugu kwa dawa za kawaida za TB.',
+        'No → TB inayotibika kwa dawa za kawaida.',
+        'Yes → TB sugu kwa dawa.',
+        'Mifano: MDR-TB, XDR-TB.',
+        'Umuhimu: Huamua mpango wa dawa utakao tumika.'
+      ],
+      RW: [
+        "Kwerekana niba udukoko twa TB turwanya imiti isanzwe ya TB.",
+        'No → TB yumva imiti (drug-sensitive).',
+        'Yes → TB irwanya imiti (drug-resistant).',
+        'Ingero: MDR-TB, XDR-TB.',
+        "Icy’ingenzi: Bifasha guhitamo gahunda y'imiti ikoreshwa."
+      ]
+    }
+  },
+  {
+    id: 'tst',
+    title: FIELD_LABELS.tst,
+    lines: {
+      EN: [
+        'Skin test used to detect TB infection (exposure).',
+        'Positive → Exposure to TB bacteria likely.',
+        'Negative → No evidence of infection.',
+        'Unknown → Not tested.',
+        'Note: Cannot distinguish active TB from latent TB.'
+      ],
+      FR: [
+        "Test cutané pour détecter l'infection TB (exposition).",
+        'Positive → Exposition probable.',
+        "Negative → Pas d'argument d'infection.",
+        'Unknown → Non testé.',
+        'Note : Ne distingue pas TB active et TB latente.'
+      ],
+      SW: [
+        'Kipimo cha ngozi kugundua maambukizi ya TB (kuwahi kuathiriwa).',
+        'Positive → Inaonyesha huenda uliwahi kuathiriwa na TB.',
+        'Negative → Hakuna ushahidi wa maambukizi.',
+        'Unknown → Hakikufanyika.',
+        'Kumbuka: Hakitofautishi TB iliyo hai na TB iliyolala (latent).'
+      ],
+      RW: [
+        "Ikizamini cyo ku ruhu kigaragaza infection/ko wahuye na TB.",
+        "Positive → Birashoboka ko wahuye n’udukoko twa TB.",
+        "Negative → Nta kimenyetso cy'uko wanduye.",
+        "Unknown → Nticyakozwe.",
+        "Icyitonderwa: Ntigitandukanya TB ikora na TB yihishe (latent)."
+      ]
+    }
+  },
+  {
+    id: 'igra',
+    title: FIELD_LABELS.igra,
+    lines: {
+      EN: [
+        'Blood test used to detect TB infection.',
+        'Positive → Immune response suggests TB infection.',
+        'Negative → No evidence of TB infection.',
+        'Unknown → Test not performed.',
+        'Examples: QuantiFERON‑TB Gold, T‑SPOT.TB. Advantage: More specific than TST.'
+      ],
+      FR: [
+        "Test sanguin pour détecter l'infection TB.",
+        'Positive → La réponse immunitaire suggère une infection TB.',
+        "Negative → Pas d'argument d'infection TB.",
+        'Unknown → Test non réalisé.',
+        'Exemples : QuantiFERON‑TB Gold, T‑SPOT.TB. Avantage : plus spécifique que le TST.'
+      ],
+      SW: [
+        'Kipimo cha damu kugundua maambukizi ya TB.',
+        'Positive → Kinga ya mwili inaonyesha maambukizi ya TB.',
+        'Negative → Hakuna ushahidi wa maambukizi ya TB.',
+        'Unknown → Kipimo hakikufanyika.',
+        'Mifano: QuantiFERON‑TB Gold, T‑SPOT.TB. Faida: Ni sahihi zaidi kuliko TST.'
+      ],
+      RW: [
+        "Ikizamini cy'amaraso gishaka infection ya TB.",
+        "Positive → Uko umubiri witwara bugaragaza infection ya TB.",
+        "Negative → Nta kimenyetso cy'infection ya TB.",
+        "Unknown → Ikizamini nticyakozwe.",
+        "Ingero: QuantiFERON‑TB Gold, T‑SPOT.TB. Ibyiza: Akenshi kiba gifite ukwizerwa kurusha TST."
+      ]
+    }
+  },
+  {
+    id: 'hiv',
+    title: FIELD_LABELS.hiv,
+    lines: {
+      EN: [
+        'Whether the patient is infected with HIV.',
+        'Yes → HIV positive.',
+        'No → HIV negative.',
+        'Unknown → Status not known.',
+        'Importance: HIV greatly increases the risk of developing active TB.'
+      ],
+      FR: [
+        'Indique si le patient est infecté par le VIH.',
+        'Yes → VIH positif.',
+        'No → VIH négatif.',
+        'Unknown → Statut inconnu.',
+        'Importance : Le VIH augmente fortement le risque de TB active.'
+      ],
+      SW: [
+        'Kama mgonjwa ana VVU (HIV) au la.',
+        'Yes → VVU chanya.',
+        'No → VVU hasi.',
+        'Unknown → Haijulikani.',
+        'Umuhimu: VVU huongeza sana hatari ya kupata TB iliyo hai.'
+      ],
+      RW: [
+        'Kwerekana niba umurwayi afite HIV.',
+        'Yes → HIV positive.',
+        'No → HIV negative.',
+        'Unknown → Ntibizwi.',
+        "Icy’ingenzi: HIV yongera cyane ibyago byo kugira TB ikora."
+      ]
+    }
+  },
+  {
+    id: 'diabetes',
+    title: FIELD_LABELS.diabetes,
+    lines: {
+      EN: [
+        'Whether the patient has diabetes.',
+        'Yes → Patient has diabetes.',
+        'No → Patient does not have diabetes.',
+        'Unknown → Status not known.',
+        'Importance: Diabetes increases susceptibility to TB and can affect treatment outcomes.'
+      ],
+      FR: [
+        'Indique si le patient est diabétique.',
+        'Yes → Diabète présent.',
+        'No → Pas de diabète.',
+        'Unknown → Statut inconnu.',
+        'Importance : Le diabète augmente la susceptibilité à la TB et peut affecter le traitement.'
+      ],
+      SW: [
+        'Kama mgonjwa ana kisukari (diabetes) au la.',
+        'Yes → Ana kisukari.',
+        'No → Hana kisukari.',
+        'Unknown → Haijulikani.',
+        'Umuhimu: Kisukari huongeza uwezekano wa TB na huathiri matokeo ya tiba.'
+      ],
+      RW: [
+        "Kwerekana niba umurwayi afite indwara ya sukari (diabetes).",
+        'Yes → Afite diabetes.',
+        'No → Nta diabetes afite.',
+        'Unknown → Ntibizwi.',
+        "Icy’ingenzi: Diabetes yongera ibyago bya TB kandi ishobora kugira ingaruka ku musaruro w'ubuvuzi."
+      ]
+    }
+  }
+]
+
+const indexFieldGroups = computed(() => {
+  const identity = baseIndexFieldGroups.find(group => group.id === 'identity')
+  const clues = baseIndexFieldGroups.find(group => group.id === 'clues')
+  const dst = baseIndexFieldGroups.find(group => group.id === 'dst')
+
+  const tests = {
+    id: 'tests',
+    title: {
+      EN: '3) Tests, imaging, and risk conditions',
+      FR: '3) Tests, imagerie et facteurs de risque',
+      SW: '3) Vipimo, picha, na vihatarishi',
+      RW: '3) Ibizamini, X-ray, n’ibindi byongera ibyago'
+    },
+    description: {
+      EN: 'These results are commonly used to confirm TB and understand severity.',
+      FR: 'Ces résultats servent souvent à confirmer la TB et évaluer la gravité.',
+      SW: 'Majibu haya hutumika kuthibitisha TB na kupima ukali.',
+      RW: 'Ibi bisubizo bikoreshwa kwemeza TB no gusobanukirwa ubukana.'
+    },
+    items: fieldGuideItems
+  }
+
+  return [identity, clues, tests, dst].filter(Boolean)
+})
+
+const visibleIndexFieldGroups = computed(() => {
+  if (indexSelectedSection.value === 'all') return indexFieldGroups.value
+  return indexFieldGroups.value.filter(group => group.id === indexSelectedSection.value)
+})
+
+function selectIndexSection(sectionId) {
+  indexSelectedSection.value = sectionId === 'all' ? 'all' : String(sectionId || 'all')
+  fieldGuideOpen.value = true
+}
+
+const aiUseRows = [
+  {
+    id: 'ai1',
+    field: FIELD_LABELS.bacteria_species,
+    purpose: {
+      EN: 'Predict causative species',
+      FR: "Prédire l'espèce causale",
+      SW: 'Kutabiri aina ya bakteria',
+      RW: "Gugerageza ubwoko bw'udukoko"
+    }
+  },
+  {
+    id: 'ai2',
+    field: FIELD_LABELS.tb_culture,
+    purpose: { EN: 'Confirm TB diagnosis', FR: 'Confirmer le diagnostic TB', SW: 'Kuthibitisha TB', RW: "Kwemeza igituntu" }
+  },
+  {
+    id: 'ai3',
+    field: FIELD_LABELS.sputum_smear_test,
+    purpose: {
+      EN: 'Detect infectious pulmonary TB',
+      FR: 'Détecter la TB pulmonaire contagieuse',
+      SW: 'Kugundua TB ya mapafu inayoambukiza',
+      RW: 'Kumenya TB y’ibihaha ishobora kwanduza'
+    }
+  },
+  {
+    id: 'ai4',
+    field: FIELD_LABELS.genexpert_test,
+    purpose: { EN: 'Detect TB and resistance', FR: 'Détecter TB et résistance', SW: 'Kugundua TB na usugu wa dawa', RW: 'Kumenya TB n’uko irwanya imiti' }
+  },
+  {
+    id: 'ai5',
+    field: FIELD_LABELS.chest_xray,
+    purpose: { EN: 'Identify lung damage/signs', FR: 'Identifier signes pulmonaires', SW: 'Kuona dalili/uharibifu wa mapafu', RW: 'Kureba ibimenyetso mu bihaha' }
+  },
+  {
+    id: 'ai6',
+    field: FIELD_LABELS.drug_resistance,
+    purpose: { EN: 'Select appropriate drugs', FR: 'Choisir les médicaments adaptés', SW: 'Kuchagua dawa sahihi', RW: 'Guhitamo imiti iboneye' }
+  },
+  {
+    id: 'ai7',
+    field: FIELD_LABELS.tst,
+    purpose: { EN: 'Detect TB infection', FR: "Détecter l'infection TB", SW: 'Kugundua maambukizi ya TB', RW: 'Kumenya infection ya TB' }
+  },
+  {
+    id: 'ai8',
+    field: FIELD_LABELS.igra,
+    purpose: { EN: 'Detect TB infection', FR: "Détecter l'infection TB", SW: 'Kugundua maambukizi ya TB', RW: 'Kumenya infection ya TB' }
+  },
+  {
+    id: 'ai9',
+    field: FIELD_LABELS.hiv,
+    purpose: { EN: 'Assess risk and severity', FR: 'Évaluer le risque et la gravité', SW: 'Kupima hatari na ukali', RW: 'Gupima ibyago n’ubukana' }
+  },
+  {
+    id: 'ai10',
+    field: FIELD_LABELS.diabetes,
+    purpose: {
+      EN: 'Assess risk and treatment outcomes',
+      FR: 'Évaluer le risque et la réponse au traitement',
+      SW: 'Kupima hatari na matokeo ya tiba',
+      RW: "Gupima ibyago n'uko azitwara ku miti"
+    }
+  }
+]
 
 const isDarkMode = ref(false)
 const currentView = ref('diagnose')
@@ -1813,6 +2992,7 @@ onMounted(() => {
   token.value = readStoredValue('tb_token')
   loginEmail.value = readStoredValue('tb_login_email')
   isDarkMode.value = readStoredValue('tb_dark_mode', 'light') === 'dark'
+  uiLanguage.value = readStoredValue('tb_ui_language', 'EN')
   applyDarkMode(isDarkMode.value)
 
   if (token.value) {
@@ -1823,5 +3003,9 @@ onMounted(() => {
     loadPatients()
     loadAlerts()
   }
+})
+
+watch(uiLanguage, (value) => {
+  writeStoredValue('tb_ui_language', String(value || 'EN'))
 })
 </script>
