@@ -66,6 +66,9 @@ class Patient(db.Model):
     sputum_smear_test = db.Column(db.String(50))
     genexpert_test = db.Column(db.String(50))
     chest_xray = db.Column(db.String(50))
+    tb_culture = db.Column(db.String(50))
+    tst = db.Column(db.String(50))
+    igra = db.Column(db.String(50))
     bacteria_species = db.Column(db.String(100))
     treatment_type = db.Column(db.String(100))
     duration_of_treatment = db.Column(db.Integer)
@@ -110,6 +113,9 @@ class Patient(db.Model):
             "sputum_smear_test": self.sputum_smear_test,
             "genexpert_test": self.genexpert_test,
             "chest_xray": self.chest_xray,
+            "tb_culture": self.tb_culture,
+            "tst": self.tst,
+            "igra": self.igra,
             "bacteria_species": self.bacteria_species,
             "treatment_type": self.treatment_type,
             "drug_resistance": self.drug_resistance,
