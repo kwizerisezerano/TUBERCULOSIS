@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import subprocess
 import sys
@@ -337,6 +338,1425 @@ I18N = {
         "SW": "Hakuna alama za usugu zilizotolewa; hushughulikiwa kama TB inayoitikia dawa hadi DST ibadilishe mpango.",
         "RW": "Nta bimenyetso bya resistance byatanzwe; ifatwa nka TB yumva imiti keretse DST ihinduye gahunda.",
     },
+    "ALERT_LABEL": {
+        "EN": "TB alert",
+        "FR": "Alerte TB",
+        "SW": "Tahadhari ya TB",
+        "RW": "Itangazo rya TB",
+    },
+    "TRAIN_MODEL_FAILED": {
+        "EN": "Model training failed",
+        "FR": "L'entraînement du modèle a échoué",
+        "SW": "Mafunzo ya modeli yameshindwa",
+        "RW": "Gutoza modeli byanze",
+    },
+    "IMPORT_DATA_FAILED": {
+        "EN": "Data import failed",
+        "FR": "L'importation des données a échoué",
+        "SW": "Uingizaji wa data umeshindwa",
+        "RW": "Kwinjiza data byanze",
+    },
+}
+
+LITERAL_I18N = {
+    "Mycobacterium tuberculosis": {"EN": "Mycobacterium tuberculosis", "FR": "Mycobacterium tuberculosis", "SW": "Mycobacterium tuberculosis", "RW": "Mycobacterium tuberculosis"},
+    "Mycobacterium bovis": {"EN": "Mycobacterium bovis", "FR": "Mycobacterium bovis", "SW": "Mycobacterium bovis", "RW": "Mycobacterium bovis"},
+    "Mycobacterium africanum": {"EN": "Mycobacterium africanum", "FR": "Mycobacterium africanum", "SW": "Mycobacterium africanum", "RW": "Mycobacterium africanum"},
+    "Mycobacterium canettii": {"EN": "Mycobacterium canettii", "FR": "Mycobacterium canettii", "SW": "Mycobacterium canettii", "RW": "Mycobacterium canettii"},
+    "Mycobacterium microti": {"EN": "Mycobacterium microti", "FR": "Mycobacterium microti", "SW": "Mycobacterium microti", "RW": "Mycobacterium microti"},
+    "Mycobacterium caprae": {"EN": "Mycobacterium caprae", "FR": "Mycobacterium caprae", "SW": "Mycobacterium caprae", "RW": "Mycobacterium caprae"},
+    "Mycobacterium pinnipedii": {"EN": "Mycobacterium pinnipedii", "FR": "Mycobacterium pinnipedii", "SW": "Mycobacterium pinnipedii", "RW": "Mycobacterium pinnipedii"},
+    "Mycobacterium orygis": {"EN": "Mycobacterium orygis", "FR": "Mycobacterium orygis", "SW": "Mycobacterium orygis", "RW": "Mycobacterium orygis"},
+    "ALERT:": {"EN": "TB alert:", "FR": "Alerte TB :", "SW": "Tahadhari ya TB:", "RW": "Itangazo rya TB:"},
+    "Clinician selected a specific TB bacteria species.": {
+        "EN": "Clinician selected a specific TB bacteria species.",
+        "FR": "Le clinicien a choisi une espèce précise de bactérie TB.",
+        "SW": "Mhudumu wa afya amechagua aina maalum ya bakteria wa TB.",
+        "RW": "Umuganga yahisemo ubwoko bwihariye bwa bagiteri itera TB.",
+    },
+    "Defaulted to the most common human TB species because the patient record did not contain enough species-specific evidence.": {
+        "EN": "Defaulted to the most common human TB species because the patient record did not contain enough species-specific evidence.",
+        "FR": "Le système a retenu l'espèce de TB humaine la plus fréquente car le dossier du patient ne contenait pas assez d'indices spécifiques.",
+        "SW": "Mfumo umechagua aina ya TB inayopatikana sana kwa binadamu kwa sababu rekodi ya mgonjwa haikuwa na ushahidi wa kutosha wa aina maalum.",
+        "RW": "Sisitemu yahisemo ubwoko bwa TB busanzwe buboneka ku bantu kuko dosiye y'umurwayi itari ifite ibimenyetso bihagije by'ubwoko bwihariye.",
+    },
+    "The most common cause of human tuberculosis worldwide.": {
+        "EN": "The most common cause of human tuberculosis worldwide.",
+        "FR": "La cause la plus fréquente de tuberculose humaine dans le monde.",
+        "SW": "Ndiyo sababu ya kawaida zaidi ya TB kwa binadamu duniani.",
+        "RW": "Ni yo ntandaro ikunze gutera igituntu ku bantu ku isi yose.",
+    },
+    "Human-to-human airborne transmission.": {
+        "EN": "Human-to-human airborne transmission.",
+        "FR": "Transmission aérienne d'une personne à l'autre.",
+        "SW": "Maambukizi ya hewani kutoka mtu mmoja kwenda kwa mwingine.",
+        "RW": "Yandura mu mwuka iva ku muntu umwe ikagera ku wundi.",
+    },
+    "Routine TB molecular tests and culture commonly target this species within the MTBC.": {
+        "EN": "Routine TB molecular tests and culture commonly target this species within the MTBC.",
+        "FR": "Les tests moléculaires TB courants et la culture ciblent souvent cette espèce dans le MTBC.",
+        "SW": "Vipimo vya kawaida vya molekuli vya TB na culture hulenga aina hii mara nyingi ndani ya MTBC.",
+        "RW": "Ibizamini bya molekile bya TB bisanzwe na culture bikunze kwibanda kuri ubu bwoko muri MTBC.",
+    },
+    "Use standard first-line treatment unless drug resistance is detected.": {
+        "EN": "Use standard first-line treatment unless drug resistance is detected.",
+        "FR": "Utiliser le traitement standard de première ligne sauf si une résistance est détectée.",
+        "SW": "Tumia matibabu ya kawaida ya mstari wa kwanza isipokuwa usugu wa dawa ugundulike.",
+        "RW": "Koresha ubuvuzi busanzwe bw'umurongo wa mbere keretse hagaragaye ko imiti idafata.",
+    },
+    "A zoonotic MTBC species linked to cattle and contaminated dairy products.": {
+        "EN": "A zoonotic MTBC species linked to cattle and contaminated dairy products.",
+        "FR": "Une espèce de MTBC zoonotique liée au bétail et aux produits laitiers contaminés.",
+        "SW": "Aina ya MTBC inayotoka kwa wanyama, ikihusishwa na ng'ombe na maziwa yaliyosibikwa.",
+        "RW": "Ni ubwoko bwa MTBC buva ku nyamaswa, bujyanye n'inka n'ibikomoka ku mata byanduye.",
+    },
+    "Cattle exposure or unpasteurized milk products.": {
+        "EN": "Cattle exposure or unpasteurized milk products.",
+        "FR": "Contact avec le bétail ou produits laitiers non pasteurisés.",
+        "SW": "Mawasiliano na ng'ombe au bidhaa za maziwa zisizochemshwa/pasteurized.",
+        "RW": "Guhura n'inka cyangwa kunywa ibikomoka ku mata bitapasterijwe.",
+    },
+    "Culture speciation is important when zoonotic exposure is suspected.": {
+        "EN": "Culture speciation is important when zoonotic exposure is suspected.",
+        "FR": "L'identification de l'espèce par culture est importante si une origine animale est suspectée.",
+        "SW": "Kutambua aina kwa culture ni muhimu kama maambukizi kutoka kwa mnyama yanashukiwa.",
+        "RW": "Kumenya ubwoko hakoreshejwe culture ni ngombwa niba hakekwa inkomoko ku nyamaswa.",
+    },
+    "Confirm speciation because M. bovis is typically pyrazinamide resistant; tailor regimen accordingly.": {
+        "EN": "Confirm speciation because M. bovis is typically pyrazinamide resistant; tailor regimen accordingly.",
+        "FR": "Confirmer l'espèce car M. bovis est habituellement résistant au pyrazinamide ; adapter le traitement en conséquence.",
+        "SW": "Thibitisha aina kwa sababu M. bovis huwa na usugu kwa pyrazinamide; rekebisha mpango wa dawa ipasavyo.",
+        "RW": "Emeza ubwoko kuko M. bovis akenshi irwanya pyrazinamide; hindura gahunda y'ubuvuzi bikurikije ibisubizo.",
+    },
+    "An MTBC member that causes human TB, especially in parts of West Africa.": {
+        "EN": "An MTBC member that causes human TB, especially in parts of West Africa.",
+        "FR": "Un membre du MTBC qui cause la TB humaine, surtout en Afrique de l'Ouest.",
+        "SW": "Aina ya MTBC inayosababisha TB kwa binadamu, hasa maeneo ya Afrika Magharibi.",
+        "RW": "Ni umwe mu bagize MTBC batera TB ku bantu, cyane cyane mu bice by'Afurika y'Iburengerazuba.",
+    },
+    "Human transmission, often with West African epidemiologic linkage.": {
+        "EN": "Human transmission, often with West African epidemiologic linkage.",
+        "FR": "Transmission humaine, souvent avec un lien épidémiologique ouest-africain.",
+        "SW": "Huenea kati ya watu, mara nyingi ikiwa na uhusiano wa kieneo wa Afrika Magharibi.",
+        "RW": "Yandurira hagati y'abantu, kenshi ifite aho ihuriye n'ibice by'Afurika y'Iburengerazuba.",
+    },
+    "Reference-lab speciation is useful where M. africanum is endemic.": {
+        "EN": "Reference-lab speciation is useful where M. africanum is endemic.",
+        "FR": "L'identification par laboratoire de référence est utile là où M. africanum est endémique.",
+        "SW": "Kutambua aina kwenye maabara ya rufaa ni muhimu ambako M. africanum hupatikana sana.",
+        "RW": "Kumenya ubwoko muri laboratwari yoherezwamo ni ngombwa aho M. africanum ikunze kuboneka.",
+    },
+    "Treat similarly to drug-sensitive TB unless resistance testing indicates otherwise.": {
+        "EN": "Treat similarly to drug-sensitive TB unless resistance testing indicates otherwise.",
+        "FR": "Traiter comme une TB sensible aux médicaments sauf indication contraire des tests de résistance.",
+        "SW": "Tibu kama TB inayoitikia dawa isipokuwa vipimo vya usugu vionyeshe vinginevyo.",
+        "RW": "Yivure nk'igituntu cyumva imiti keretse ibizamini byerekanye ibindi.",
+    },
+    "A rare smooth-colony MTBC member reported mainly in the Horn of Africa.": {
+        "EN": "A rare smooth-colony MTBC member reported mainly in the Horn of Africa.",
+        "FR": "Un membre rare du MTBC à colonies lisses, surtout signalé dans la Corne de l'Afrique.",
+        "SW": "Aina adimu ya MTBC yenye koloni laini, iliyoripotiwa hasa kwenye Pembe ya Afrika.",
+        "RW": "Ni ubwoko budakunze kuboneka bwa MTBC, bwagaragaye cyane mu Ihembe rya Afurika.",
+    },
+    "Rare human infection with specific geographic clustering.": {
+        "EN": "Rare human infection with specific geographic clustering.",
+        "FR": "Infection humaine rare avec regroupement géographique précis.",
+        "SW": "Maambukizi adimu kwa binadamu yenye kujikusanya kwenye maeneo maalum.",
+        "RW": "Ni ubwandu budakunze kuboneka ku bantu kandi bukagaragara cyane mu duce twihariye.",
+    },
+    "Requires specialist or reference-laboratory speciation support.": {
+        "EN": "Requires specialist or reference-laboratory speciation support.",
+        "FR": "Nécessite l'appui d'un spécialiste ou d'un laboratoire de référence pour identifier l'espèce.",
+        "SW": "Inahitaji msaada wa mtaalamu au maabara ya rufaa ili kutambua aina.",
+        "RW": "Bisaba ubufasha bw'inzobere cyangwa laboratwari yoherezwamo kugira ngo hamenyekane ubwoko.",
+    },
+    "Seek infectious-disease or TB-specialist input because cases are rare.": {
+        "EN": "Seek infectious-disease or TB-specialist input because cases are rare.",
+        "FR": "Demander l'avis d'un spécialiste des maladies infectieuses ou de la TB car les cas sont rares.",
+        "SW": "Tafuta ushauri wa mtaalamu wa magonjwa ya kuambukiza au TB kwa sababu visa hivi ni adimu.",
+        "RW": "Saba inama y'inzobere mu ndwara z'ubwandu cyangwa TB kuko izi ndwara zidakunze kuboneka.",
+    },
+    "An uncommon MTBC species more often associated with rodents than humans.": {
+        "EN": "An uncommon MTBC species more often associated with rodents than humans.",
+        "FR": "Une espèce peu fréquente du MTBC plus souvent liée aux rongeurs qu'aux humains.",
+        "SW": "Aina isiyo ya kawaida ya MTBC inayohusishwa zaidi na panya kuliko binadamu.",
+        "RW": "Ni ubwoko budasanzwe bwa MTBC bujyanye cyane n'imbeba kurusha abantu.",
+    },
+    "Rodent or wildlife exposure.": {
+        "EN": "Rodent or wildlife exposure.",
+        "FR": "Exposition aux rongeurs ou à la faune sauvage.",
+        "SW": "Kugusana na panya au wanyamapori.",
+        "RW": "Guhura n'imbeba cyangwa inyamaswa zo mu ishyamba.",
+    },
+    "Species confirmation often needs specialized molecular testing.": {
+        "EN": "Species confirmation often needs specialized molecular testing.",
+        "FR": "La confirmation de l'espèce nécessite souvent des tests moléculaires spécialisés.",
+        "SW": "Kuthibitisha aina mara nyingi huhitaji vipimo maalum vya molekuli.",
+        "RW": "Kwemeza ubwoko kenshi bisaba ibizamini byihariye bya molekile.",
+    },
+    "Manage with specialist input and drug-susceptibility guidance.": {
+        "EN": "Manage with specialist input and drug-susceptibility guidance.",
+        "FR": "Prise en charge avec avis spécialisé et orientation selon la sensibilité aux médicaments.",
+        "SW": "Shughulikia kwa ushauri wa mtaalamu na mwongozo wa unyeti wa dawa.",
+        "RW": "Byitabweho hifashishijwe inama y'inzobere n'ubuyobozi bushingiye ku buryo imiti ifata.",
+    },
+    "An MTBC species usually associated with goats and other livestock.": {
+        "EN": "An MTBC species usually associated with goats and other livestock.",
+        "FR": "Une espèce du MTBC généralement associée aux chèvres et autres animaux d'élevage.",
+        "SW": "Aina ya MTBC inayohusishwa mara nyingi na mbuzi na mifugo mingine.",
+        "RW": "Ni ubwoko bwa MTBC bukunda gufatanywa n'ihene n'indi matungo.",
+    },
+    "Goat, sheep, or livestock exposure.": {
+        "EN": "Goat, sheep, or livestock exposure.",
+        "FR": "Exposition aux chèvres, moutons ou autres animaux d'élevage.",
+        "SW": "Kugusana na mbuzi, kondoo, au mifugo mingine.",
+        "RW": "Guhura n'ihene, intama cyangwa andi matungo.",
+    },
+    "Consider speciation when livestock exposure is prominent.": {
+        "EN": "Consider speciation when livestock exposure is prominent.",
+        "FR": "Envisager l'identification de l'espèce si l'exposition au bétail est importante.",
+        "SW": "Fikiria kutambua aina kama mgusano na mifugo ni mkubwa.",
+        "RW": "Tekereza ku kumenya ubwoko niba guhura n'amatungo biri hejuru.",
+    },
+    "Treat as TB but review susceptibilities and zoonotic implications.": {
+        "EN": "Treat as TB but review susceptibilities and zoonotic implications.",
+        "FR": "Traiter comme une TB mais revoir les sensibilités et les implications zoonotiques.",
+        "SW": "Tibu kama TB lakini kagua unyeti wa dawa na athari za maambukizi yatokayo kwa mnyama.",
+        "RW": "Byivure nka TB ariko urebe uko imiti ifata n'ingaruka zijyanye no kuva ku nyamaswa.",
+    },
+    "A rare MTBC species associated with seals and sea lions.": {
+        "EN": "A rare MTBC species associated with seals and sea lions.",
+        "FR": "Une espèce rare du MTBC associée aux phoques et lions de mer.",
+        "SW": "Aina adimu ya MTBC inayohusishwa na seals na sea lions.",
+        "RW": "Ni ubwoko budakunze kuboneka bwa MTBC bujyanye na seals na sea lions.",
+    },
+    "Marine mammal exposure.": {
+        "EN": "Marine mammal exposure.",
+        "FR": "Exposition à des mammifères marins.",
+        "SW": "Kugusana na mamalia wa baharini.",
+        "RW": "Guhura n'inyamaswa z'inyabere zo mu nyanja.",
+    },
+    "Reference-lab confirmation is recommended.": {
+        "EN": "Reference-lab confirmation is recommended.",
+        "FR": "Une confirmation par laboratoire de référence est recommandée.",
+        "SW": "Inashauriwa kuthibitisha kwenye maabara ya rufaa.",
+        "RW": "Birasabwa kubyemeza muri laboratwari yoherezwamo.",
+    },
+    "Use specialist review because human infection is rare and zoonotic.": {
+        "EN": "Use specialist review because human infection is rare and zoonotic.",
+        "FR": "Faire revoir par un spécialiste car l'infection humaine est rare et zoonotique.",
+        "SW": "Tumia uchunguzi wa mtaalamu kwa sababu maambukizi kwa binadamu ni adimu na hutoka kwa mnyama.",
+        "RW": "Bigenzurwe n'inzobere kuko ubwandu ku bantu budakunze kuboneka kandi bushobora kuva ku nyamaswa.",
+    },
+    "An MTBC species reported in both animals and humans, often with zoonotic linkage.": {
+        "EN": "An MTBC species reported in both animals and humans, often with zoonotic linkage.",
+        "FR": "Une espèce du MTBC signalée chez l'animal et l'humain, souvent liée à une transmission zoonotique.",
+        "SW": "Aina ya MTBC iliyoripotiwa kwa wanyama na binadamu, mara nyingi ikiwa na uhusiano wa zoonotic.",
+        "RW": "Ni ubwoko bwa MTBC bwagaragaye ku nyamaswa no ku bantu, kenshi bufite inkomoko ku nyamaswa.",
+    },
+    "Animal exposure or South Asian epidemiologic linkage.": {
+        "EN": "Animal exposure or South Asian epidemiologic linkage.",
+        "FR": "Exposition animale ou lien épidémiologique avec l'Asie du Sud.",
+        "SW": "Mgusano na mnyama au uhusiano wa kieneo wa Asia Kusini.",
+        "RW": "Guhura n'inyamaswa cyangwa inkomoko ijyanye n'Aziya y'Epfo.",
+    },
+    "Speciation generally requires molecular reference testing.": {
+        "EN": "Speciation generally requires molecular reference testing.",
+        "FR": "L'identification de l'espèce nécessite généralement des tests moléculaires de référence.",
+        "SW": "Kutambua aina kwa kawaida huhitaji vipimo vya molekuli vya maabara ya rufaa.",
+        "RW": "Kumenya ubwoko akenshi bisaba ibizamini bya molekile byo muri laboratwari yoherezwamo.",
+    },
+    "Treat as TB while confirming species and resistance profile.": {
+        "EN": "Treat as TB while confirming species and resistance profile.",
+        "FR": "Traiter comme une TB tout en confirmant l'espèce et le profil de résistance.",
+        "SW": "Tibu kama TB huku ukithibitisha aina na wasifu wa usugu wa dawa.",
+        "RW": "Byivure nka TB mu gihe urimo wemeza ubwoko n'uko imiti ifata cyangwa idafata.",
+    },
+    "Pulmonary TB (PTB)": {
+        "EN": "Pulmonary TB (PTB)",
+        "FR": "TB pulmonaire (PTB)",
+        "SW": "TB ya mapafu (PTB)",
+        "RW": "TB yo mu bihaha (PTB)",
+    },
+    "TB infection affecting the lungs - the most common and contagious form of TB": {
+        "EN": "TB infection affecting the lungs - the most common and contagious form of TB",
+        "FR": "Infection TB touchant les poumons - la forme la plus fréquente et la plus contagieuse de TB",
+        "SW": "Maambukizi ya TB yanayoathiri mapafu - ndiyo aina ya kawaida na ya kuambukiza zaidi ya TB",
+        "RW": "Ubwandu bwa TB bufata ibihaha - ni bwo bwoko bukunze kuboneka kandi bwanduza cyane",
+    },
+    "Cough lasting ≥2 weeks, hemoptysis, fever, night sweats, weight loss, chest pain": {
+        "EN": "Cough lasting >=2 weeks, hemoptysis, fever, night sweats, weight loss, chest pain",
+        "FR": "Toux durant >=2 semaines, hémoptysie, fièvre, sueurs nocturnes, perte de poids, douleur thoracique",
+        "SW": "Kikohozi cha zaidi ya wiki 2, kukohoa damu, homa, jasho la usiku, kupungua uzito, maumivu ya kifua",
+        "RW": "Inkorora imaze nibura ibyumweru 2, gukorora amaraso, umuriro, kubira ibyuya nijoro, kugabanuka ibiro, kubabara mu gituza",
+    },
+    "Initiate treatment promptly according to national guidelines; ensure airborne precautions": {
+        "EN": "Initiate treatment promptly according to national guidelines; ensure airborne precautions",
+        "FR": "Commencer rapidement le traitement selon les directives nationales; assurer les précautions aériennes",
+        "SW": "Anza matibabu haraka kulingana na miongozo ya taifa; hakikisha tahadhari za hewani",
+        "RW": "Tangira ubuvuzi vuba ukurikije amabwiriza y'igihugu; hubahirizwe kwirinda ubwandu bwo mu mwuka",
+    },
+    "Airborne precautions, patient isolation, respiratory hygiene": {
+        "EN": "Airborne precautions, patient isolation, respiratory hygiene",
+        "FR": "Précautions aériennes, isolement du patient, hygiène respiratoire",
+        "SW": "Tahadhari za hewani, kumtenga mgonjwa, na usafi wa njia ya hewa",
+        "RW": "Kwikingira ubwandu bwo mu mwuka, gutandukanya umurwayi, no kwita ku isuku y'ubuhumekero",
+    },
+    "Sputum smear, GeneXpert, chest X-ray, TB culture (if available)": {
+        "EN": "Sputum smear, GeneXpert, chest X-ray, TB culture (if available)",
+        "FR": "Frottis sputum, GeneXpert, radiographie thoracique, culture TB (si disponible)",
+        "SW": "Sputum smear, GeneXpert, X-ray ya kifua, culture ya TB (ikiwa ipo)",
+        "RW": "Sputum smear, GeneXpert, X-ray y'igituza, na culture ya TB (niba ihari)",
+    },
+    "Lymph Node TB (EPTB)": {
+        "EN": "Lymph Node TB (EPTB)",
+        "FR": "TB ganglionnaire (EPTB)",
+        "SW": "TB ya vifuko vya limfu (EPTB)",
+        "RW": "TB yo mu dusabo twa lympho (EPTB)",
+    },
+    "TB infection affecting the lymph nodes, most commonly in the neck": {
+        "EN": "TB infection affecting the lymph nodes, most commonly in the neck",
+        "FR": "Infection TB touchant les ganglions lymphatiques, le plus souvent au cou",
+        "SW": "Maambukizi ya TB kwenye vifuko vya limfu, mara nyingi shingoni",
+        "RW": "Ubwandu bwa TB bufata udusabo twa lympho, kenshi mu ijosi",
+    },
+    "Painless swollen lymph nodes (usually in neck), fever, weight loss": {
+        "EN": "Painless swollen lymph nodes (usually in neck), fever, weight loss",
+        "FR": "Ganglions gonflés non douloureux (souvent au cou), fièvre, perte de poids",
+        "SW": "Vifuko vya limfu vilivyovimba bila maumivu (mara nyingi shingoni), homa, kupungua uzito",
+        "RW": "Udusabo twa lympho twabyimbye tudatera ububabare (kenshi mu ijosi), umuriro, kugabanuka ibiro",
+    },
+    "Fine-needle aspiration or biopsy for confirmation; standard EPTB regimen": {
+        "EN": "Fine-needle aspiration or biopsy for confirmation; standard EPTB regimen",
+        "FR": "Ponction à l'aiguille fine ou biopsie pour confirmer; schéma EPTB standard",
+        "SW": "FNA au biopsy kuthibitisha; tumia mpango wa kawaida wa EPTB",
+        "RW": "Hakoreshejwe urushinge ruto cyangwa biopsy kugira ngo byemezwe; ukoreshe gahunda isanzwe ya EPTB",
+    },
+    "Standard precautions": {
+        "EN": "Standard precautions",
+        "FR": "Précautions standard",
+        "SW": "Tahadhari za kawaida",
+        "RW": "Ingamba zisanzwe zo kwirinda",
+    },
+    "Bone & Joint TB (EPTB, including Pott's disease)": {
+        "EN": "Bone & Joint TB (EPTB, including Pott's disease)",
+        "FR": "TB osseuse et articulaire (EPTB, y compris maladie de Pott)",
+        "SW": "TB ya mifupa na viungo (EPTB, ikijumuisha ugonjwa wa Pott)",
+        "RW": "TB yo mu magufa n'ingingo (EPTB, harimo indwara ya Pott)",
+    },
+    "TB infection affecting bones or joints, most commonly the spine": {
+        "EN": "TB infection affecting bones or joints, most commonly the spine",
+        "FR": "Infection TB touchant les os ou les articulations, le plus souvent la colonne",
+        "SW": "Maambukizi ya TB kwenye mifupa au viungo, hasa uti wa mgongo",
+        "RW": "Ubwandu bwa TB bufata amagufa cyangwa ingingo, cyane cyane urutirigongo",
+    },
+    "Back pain, joint swelling, difficulty walking, fever, weight loss": {
+        "EN": "Back pain, joint swelling, difficulty walking, fever, weight loss",
+        "FR": "Douleur du dos, gonflement articulaire, difficulté à marcher, fièvre, perte de poids",
+        "SW": "Maumivu ya mgongo, kuvimba kwa viungo, ugumu wa kutembea, homa, kupungua uzito",
+        "RW": "Kubabara umugongo, kubyimba kw'ingingo, kugorwa no kugenda, umuriro, kugabanuka ibiro",
+    },
+    "MRI/CT for diagnosis; consider orthopedic consultation; 9-12 month regimen": {
+        "EN": "MRI/CT for diagnosis; consider orthopedic consultation; 9-12 month regimen",
+        "FR": "IRM/CT pour le diagnostic; envisager une consultation orthopédique; schéma de 9-12 mois",
+        "SW": "MRI/CT kwa uchunguzi; fikiria ushauri wa daktari wa mifupa; mpango wa miezi 9-12",
+        "RW": "MRI/CT mu gusuzuma; tekereza ku nama y'umuganga w'amagufa; gahunda y'amezi 9-12",
+    },
+    "TB Meningitis (EPTB - LIFE THREATENING)": {
+        "EN": "TB Meningitis (EPTB - LIFE THREATENING)",
+        "FR": "Méningite tuberculeuse (EPTB - menace vitale)",
+        "SW": "Meningitis ya TB (EPTB - hatari kwa maisha)",
+        "RW": "Meningitis ya TB (EPTB - ishobora gushyira ubuzima mu kaga)",
+    },
+    "TB infection of the meninges covering the brain and spinal cord - high mortality": {
+        "EN": "TB infection of the meninges covering the brain and spinal cord - high mortality",
+        "FR": "Infection TB des méninges couvrant le cerveau et la moelle épinière - mortalité élevée",
+        "SW": "Maambukizi ya TB kwenye utando wa ubongo na uti wa mgongo - hatari kubwa ya kifo",
+        "RW": "Ubwandu bwa TB ku tunyangingo dutwikira ubwonko n'umugongo - bufite ibyago byinshi byo gupfa",
+    },
+    "Severe headache, neck stiffness, confusion, vomiting, fever": {
+        "EN": "Severe headache, neck stiffness, confusion, vomiting, fever",
+        "FR": "Maux de tête intenses, raideur de la nuque, confusion, vomissements, fièvre",
+        "SW": "Maumivu makali ya kichwa, shingo kukakamaa, kuchanganyikiwa, kutapika, homa",
+        "RW": "Kubabara umutwe cyane, ijosi rikomeye, urujijo, kuruka, umuriro",
+    },
+    "URGENT hospitalization; lumbar puncture; 12-month regimen; steroids": {
+        "EN": "URGENT hospitalization; lumbar puncture; 12-month regimen; steroids",
+        "FR": "Hospitalisation URGENTE; ponction lombaire; schéma de 12 mois; corticoïdes",
+        "SW": "Kulazwa HARAKA; lumbar puncture; mpango wa miezi 12; steroids",
+        "RW": "Kujyanwa kwa muganga byihutirwa; lumbar puncture; gahunda y'amezi 12; steroids",
+    },
+    "Genitourinary TB (EPTB)": {
+        "EN": "Genitourinary TB (EPTB)",
+        "FR": "TB génito-urinaire (EPTB)",
+        "SW": "TB ya mfumo wa mkojo na uzazi (EPTB)",
+        "RW": "TB yo mu myanya ndangagitsina n'inkari (EPTB)",
+    },
+    "TB infection affecting kidneys, bladder, or reproductive organs": {
+        "EN": "TB infection affecting kidneys, bladder, or reproductive organs",
+        "FR": "Infection TB touchant les reins, la vessie ou les organes reproducteurs",
+        "SW": "Maambukizi ya TB kwenye figo, kibofu, au viungo vya uzazi",
+        "RW": "Ubwandu bwa TB bufata impyiko, uruhago cyangwa imyanya myibarukiro",
+    },
+    "Painful urination, blood in urine, pelvic pain, infertility": {
+        "EN": "Painful urination, blood in urine, pelvic pain, infertility",
+        "FR": "Douleur à la miction, sang dans les urines, douleur pelvienne, infertilité",
+        "SW": "Maumivu wakati wa kukojoa, damu kwenye mkojo, maumivu ya nyonga, utasa",
+        "RW": "Kubabara mu gihe cyo kunyara, amaraso mu nkari, ububabare mu nda yo hasi, kutabyara",
+    },
+    "Urine analysis and culture; 6-9 month regimen": {
+        "EN": "Urine analysis and culture; 6-9 month regimen",
+        "FR": "Analyse d'urine et culture; schéma de 6-9 mois",
+        "SW": "Uchunguzi wa mkojo na culture; mpango wa miezi 6-9",
+        "RW": "Isuzuma ry'inkari na culture; gahunda y'amezi 6-9",
+    },
+    "Abdominal TB (EPTB)": {
+        "EN": "Abdominal TB (EPTB)",
+        "FR": "TB abdominale (EPTB)",
+        "SW": "TB ya tumbo (EPTB)",
+        "RW": "TB yo mu nda (EPTB)",
+    },
+    "TB infection affecting intestines, peritoneum, or abdominal organs": {
+        "EN": "TB infection affecting intestines, peritoneum, or abdominal organs",
+        "FR": "Infection TB touchant les intestins, le péritoine ou les organes abdominaux",
+        "SW": "Maambukizi ya TB kwenye utumbo, peritoneum au viungo vya tumboni",
+        "RW": "Ubwandu bwa TB bufata amara, peritoneum cyangwa ibice byo mu nda",
+    },
+    "Abdominal pain, diarrhea, weight loss, abdominal swelling": {
+        "EN": "Abdominal pain, diarrhea, weight loss, abdominal swelling",
+        "FR": "Douleur abdominale, diarrhée, perte de poids, ballonnement abdominal",
+        "SW": "Maumivu ya tumbo, kuhara, kupungua uzito, kuvimba kwa tumbo",
+        "RW": "Kubabara mu nda, impiswi, kugabanuka ibiro, kubyimba inda",
+    },
+    "Imaging and biopsy; 6-9 month regimen": {
+        "EN": "Imaging and biopsy; 6-9 month regimen",
+        "FR": "Imagerie et biopsie; schéma de 6-9 mois",
+        "SW": "Imaging na biopsy; mpango wa miezi 6-9",
+        "RW": "Imaging na biopsy; gahunda y'amezi 6-9",
+    },
+    "Pleural TB (EPTB)": {
+        "EN": "Pleural TB (EPTB)",
+        "FR": "TB pleurale (EPTB)",
+        "SW": "TB ya pleura (EPTB)",
+        "RW": "TB yo ku gihu cy'ibihaha (EPTB)",
+    },
+    "TB infection of the pleura (lining around the lungs)": {
+        "EN": "TB infection of the pleura (lining around the lungs)",
+        "FR": "Infection TB de la plèvre (membrane autour des poumons)",
+        "SW": "Maambukizi ya TB kwenye pleura (utando unaozunguka mapafu)",
+        "RW": "Ubwandu bwa TB ku gihu cy'ibihaha (udutambaro tuzengurutse ibihaha)",
+    },
+    "Chest pain, shortness of breath, pleural effusion": {
+        "EN": "Chest pain, shortness of breath, pleural effusion",
+        "FR": "Douleur thoracique, essoufflement, épanchement pleural",
+        "SW": "Maumivu ya kifua, upungufu wa pumzi, maji kwenye pleura",
+        "RW": "Kubabara mu gituza, kubura umwuka, amazi ku gihu cy'ibihaha",
+    },
+    "Pleural fluid analysis; 6-month regimen": {
+        "EN": "Pleural fluid analysis; 6-month regimen",
+        "FR": "Analyse du liquide pleural; schéma de 6 mois",
+        "SW": "Uchunguzi wa maji ya pleura; mpango wa miezi 6",
+        "RW": "Isuzuma ry'amazi yo ku gihu cy'ibihaha; gahunda y'amezi 6",
+    },
+    "Extrapulmonary TB (EPTB)": {
+        "EN": "Extrapulmonary TB (EPTB)",
+        "FR": "TB extrapulmonaire (EPTB)",
+        "SW": "TB iliyo nje ya mapafu (EPTB)",
+        "RW": "TB yo hanze y'ibihaha (EPTB)",
+    },
+    "TB infection affecting organs other than the lungs": {
+        "EN": "TB infection affecting organs other than the lungs",
+        "FR": "Infection TB touchant des organes autres que les poumons",
+        "SW": "Maambukizi ya TB kwenye viungo visivyo mapafu",
+        "RW": "Ubwandu bwa TB bufata ibindi bice bitari ibihaha",
+    },
+    "Depends on affected organ": {
+        "EN": "Depends on affected organ",
+        "FR": "Dépend de l'organe atteint",
+        "SW": "Hutegemea kiungo kilichoathirika",
+        "RW": "Biterwa n'igice cy'umubiri cyafashwe",
+    },
+    "Evaluate for specific site of infection, consider surgical consultation": {
+        "EN": "Evaluate for specific site of infection, consider surgical consultation",
+        "FR": "Évaluer le site exact de l'infection, envisager une consultation chirurgicale",
+        "SW": "Tathmini eneo maalum la maambukizi, fikiria ushauri wa upasuaji",
+        "RW": "Suzuma aho ubwandu buri, kandi utekereze ku nama y'abaganga b'ububaga",
+    },
+    "Standard precautions unless also has PTB": {
+        "EN": "Standard precautions unless also has PTB",
+        "FR": "Précautions standard sauf s'il existe aussi une PTB",
+        "SW": "Tahadhari za kawaida isipokuwa pia ana PTB",
+        "RW": "Ingamba zisanzwe zo kwirinda keretse niba anafite PTB",
+    },
+    "Miliary TB (DISSEMINATED - LIFE THREATENING)": {
+        "EN": "Miliary TB (DISSEMINATED - LIFE THREATENING)",
+        "FR": "TB miliaire (disséminée - menace vitale)",
+        "SW": "TB iliyosambaa mwilini (hatari kwa maisha)",
+        "RW": "TB yakwirakwiriye mu mubiri (ishyira ubuzima mu kaga)",
+    },
+    "Severe form where TB spreads through bloodstream to many organs": {
+        "EN": "Severe form where TB spreads through bloodstream to many organs",
+        "FR": "Forme grave où la TB se propage par le sang à de nombreux organes",
+        "SW": "Aina kali ambapo TB husambaa kupitia damu hadi viungo vingi",
+        "RW": "Ni uburyo bukomeye aho TB ikwira mu maraso ikagera mu bice byinshi by'umubiri",
+    },
+    "High fever, severe weakness, weight loss, breathing difficulties": {
+        "EN": "High fever, severe weakness, weight loss, breathing difficulties",
+        "FR": "Forte fièvre, grande faiblesse, perte de poids, difficultés respiratoires",
+        "SW": "Homa kali, udhaifu mkubwa, kupungua uzito, shida ya kupumua",
+        "RW": "Umuriro mwinshi, intege nke nyinshi, kugabanuka ibiro, ikibazo cyo guhumeka",
+    },
+    "URGENT hospitalization and treatment; 9-12 month regimen": {
+        "EN": "URGENT hospitalization and treatment; 9-12 month regimen",
+        "FR": "Hospitalisation et traitement URGENTS; schéma de 9-12 mois",
+        "SW": "Kulazwa na matibabu ya HARAKA; mpango wa miezi 9-12",
+        "RW": "Kujyanwa kwa muganga no kuvurwa byihutirwa; gahunda y'amezi 9-12",
+    },
+    "Airborne precautions": {
+        "EN": "Airborne precautions",
+        "FR": "Précautions aériennes",
+        "SW": "Tahadhari za hewani",
+        "RW": "Ingamba zo kwirinda ubwandu bwo mu mwuka",
+    },
+    "TB/HIV Co-infection": {
+        "EN": "TB/HIV Co-infection",
+        "FR": "Co-infection TB/VIH",
+        "SW": "Maambukizi ya TB na HIV kwa pamoja",
+        "RW": "Ubwandu bwa TB na VIH icyarimwe",
+    },
+    "Dual infection with both TB and HIV - high risk of progression and complications": {
+        "EN": "Dual infection with both TB and HIV - high risk of progression and complications",
+        "FR": "Double infection TB/VIH - risque élevé d'aggravation et de complications",
+        "SW": "Maambukizi ya TB na HIV pamoja - hatari kubwa ya kuongezeka na matatizo",
+        "RW": "Ubwandu bwa TB na VIH icyarimwe - bufite ibyago byinshi byo gukomera no guteza ibibazo",
+    },
+    "Any TB symptoms plus HIV-related symptoms": {
+        "EN": "Any TB symptoms plus HIV-related symptoms",
+        "FR": "Tout symptôme de TB avec symptômes liés au VIH",
+        "SW": "Dalili zo TB pamoja na dalili zinazohusiana na HIV",
+        "RW": "Ibimenyetso bya TB hamwe n'ibindi bifitanye isano na VIH",
+    },
+    "Initiate ART within 2-8 weeks of starting TB treatment": {
+        "EN": "Initiate ART within 2-8 weeks of starting TB treatment",
+        "FR": "Commencer les ARV dans les 2-8 semaines après le début du traitement TB",
+        "SW": "Anza ART ndani ya wiki 2-8 baada ya kuanza matibabu ya TB",
+        "RW": "Tangira ART mu byumweru 2-8 nyuma yo gutangira kuvura TB",
+    },
+    "Comprehensive care, monitoring for IRIS": {
+        "EN": "Comprehensive care, monitoring for IRIS",
+        "FR": "Prise en charge globale, surveillance de l'IRIS",
+        "SW": "Huduma ya kina, ufuatiliaji wa IRIS",
+        "RW": "Kwita ku murwayi mu buryo bwuzuye no gukurikirana IRIS",
+    },
+    "Extensively Drug-Resistant TB (XDR-TB)": {
+        "EN": "Extensively Drug-Resistant TB (XDR-TB)",
+        "FR": "TB ultra-résistante (XDR-TB)",
+        "SW": "TB yenye usugu mkubwa sana wa dawa (XDR-TB)",
+        "RW": "TB ifite usugire bukabije ku miti (XDR-TB)",
+    },
+    "TB resistant to first-line, second-line, and additional drugs": {
+        "EN": "TB resistant to first-line, second-line, and additional drugs",
+        "FR": "TB résistante aux médicaments de première ligne, de deuxième ligne et autres",
+        "SW": "TB yenye usugu kwa dawa za mstari wa kwanza, wa pili, na nyinginezo",
+        "RW": "TB irwanya imiti y'umurongo wa mbere, uwa kabiri n'indi y'inyongera",
+    },
+    "Same as other TB, but fails to respond to standard treatment": {
+        "EN": "Same as other TB, but fails to respond to standard treatment",
+        "FR": "Comme les autres TB, mais ne répond pas au traitement standard",
+        "SW": "Sawa na TB nyingine, lakini haiguswi na matibabu ya kawaida",
+        "RW": "Imeze nk'izindi TB, ariko ntisubiza neza ku buvuzi busanzwe",
+    },
+    "Specialized XDR-TB center; individualized all-oral regimen": {
+        "EN": "Specialized XDR-TB center; individualized all-oral regimen",
+        "FR": "Centre spécialisé XDR-TB; schéma oral individualisé",
+        "SW": "Kituo maalum cha XDR-TB; mpango wa dawa za kunywa uliobinafsishwa",
+        "RW": "Ikigo cyihariye cya XDR-TB; gahunda y'ibinini byanditswe ku murwayi ku giti cye",
+    },
+    "Enhanced airborne precautions": {
+        "EN": "Enhanced airborne precautions",
+        "FR": "Précautions aériennes renforcées",
+        "SW": "Tahadhari za hewani zilizoimarishwa",
+        "RW": "Ingamba zikomeye zo kwirinda ubwandu bwo mu mwuka",
+    },
+    "Multidrug-Resistant TB (MDR-TB)": {
+        "EN": "Multidrug-Resistant TB (MDR-TB)",
+        "FR": "TB multirésistante (MDR-TB)",
+        "SW": "TB yenye usugu kwa dawa nyingi (MDR-TB)",
+        "RW": "TB irwanya imiti myinshi (MDR-TB)",
+    },
+    "TB resistant to at least Isoniazid and Rifampicin": {
+        "EN": "TB resistant to at least Isoniazid and Rifampicin",
+        "FR": "TB résistante au moins à l'isoniazide et à la rifampicine",
+        "SW": "TB yenye usugu angalau kwa Isoniazid na Rifampicin",
+        "RW": "TB irwanya nibura Isoniazid na Rifampicin",
+    },
+    "Same as other TB, but fails to respond to first-line drugs": {
+        "EN": "Same as other TB, but fails to respond to first-line drugs",
+        "FR": "Comme les autres TB, mais ne répond pas aux médicaments de première ligne",
+        "SW": "Sawa na TB nyingine, lakini haitikii dawa za mstari wa kwanza",
+        "RW": "Imeze nk'izindi TB, ariko ntisubiza ku miti y'umurongo wa mbere",
+    },
+    "Specialized DR-TB center; second-line regimen": {
+        "EN": "Specialized DR-TB center; second-line regimen",
+        "FR": "Centre spécialisé DR-TB; schéma de deuxième ligne",
+        "SW": "Kituo maalum cha DR-TB; mpango wa mstari wa pili",
+        "RW": "Ikigo cyihariye cya DR-TB; gahunda y'umurongo wa kabiri",
+    },
+    "Rifampicin-Resistant TB (RR-TB)": {
+        "EN": "Rifampicin-Resistant TB (RR-TB)",
+        "FR": "TB résistante à la rifampicine (RR-TB)",
+        "SW": "TB yenye usugu wa rifampicin (RR-TB)",
+        "RW": "TB irwanya rifampicin (RR-TB)",
+    },
+    "TB resistant to Rifampicin - often MDR-TB": {
+        "EN": "TB resistant to Rifampicin - often MDR-TB",
+        "FR": "TB résistante à la rifampicine - souvent MDR-TB",
+        "SW": "TB yenye usugu kwa Rifampicin - mara nyingi huwa MDR-TB",
+        "RW": "TB irwanya Rifampicin - akenshi iba MDR-TB",
+    },
+    "Same as other TB": {
+        "EN": "Same as other TB",
+        "FR": "Comme les autres TB",
+        "SW": "Sawa na TB nyingine",
+        "RW": "Imeze nk'izindi TB",
+    },
+    "Further testing for MDR-TB; second-line regimen": {
+        "EN": "Further testing for MDR-TB; second-line regimen",
+        "FR": "Tests complémentaires pour MDR-TB; schéma de deuxième ligne",
+        "SW": "Vipimo zaidi kwa MDR-TB; mpango wa mstari wa pili",
+        "RW": "Hakenewe ibindi bizamini bya MDR-TB; gahunda y'umurongo wa kabiri",
+    },
+    "Drug-Resistant TB (DR-TB)": {
+        "EN": "Drug-Resistant TB (DR-TB)",
+        "FR": "TB résistante aux médicaments (DR-TB)",
+        "SW": "TB yenye usugu wa dawa (DR-TB)",
+        "RW": "TB irwanya imiti (DR-TB)",
+    },
+    "TB strain resistant to first-line anti-TB drugs": {
+        "EN": "TB strain resistant to first-line anti-TB drugs",
+        "FR": "Souche de TB résistante aux médicaments anti-TB de première ligne",
+        "SW": "Aina ya TB yenye usugu kwa dawa za kwanza za TB",
+        "RW": "Ubwoko bwa TB burwanya imiti ya mbere ikoreshwa kuri TB",
+    },
+    "Refer to specialized DR-TB center for second-line treatment": {
+        "EN": "Refer to specialized DR-TB center for second-line treatment",
+        "FR": "Référer vers un centre spécialisé DR-TB pour le traitement de deuxième ligne",
+        "SW": "Mpeleke kwenye kituo maalum cha DR-TB kwa matibabu ya mstari wa pili",
+        "RW": "Mwohereze ku kigo cyihariye cya DR-TB kugira ngo ahabwe ubuvuzi bw'umurongo wa kabiri",
+    },
+    "Drug-Sensitive TB (DS-TB)": {
+        "EN": "Drug-Sensitive TB (DS-TB)",
+        "FR": "TB sensible aux médicaments (DS-TB)",
+        "SW": "TB inayoitikia dawa (DS-TB)",
+        "RW": "TB yumva imiti (DS-TB)",
+    },
+    "TB strain treatable with standard first-line anti-TB drugs": {
+        "EN": "TB strain treatable with standard first-line anti-TB drugs",
+        "FR": "Souche de TB traitable avec les médicaments standards de première ligne",
+        "SW": "Aina ya TB inayoweza kutibiwa kwa dawa za kawaida za mstari wa kwanza",
+        "RW": "Ubwoko bwa TB bushobora kuvurwa n'imiti isanzwe y'umurongo wa mbere",
+    },
+    "Start standard first-line regimen (2HRZE/4HR) with DOT": {
+        "EN": "Start standard first-line regimen (2HRZE/4HR) with DOT",
+        "FR": "Commencer le schéma standard de première ligne (2HRZE/4HR) avec DOT",
+        "SW": "Anza mpango wa kawaida wa mstari wa kwanza (2HRZE/4HR) na DOT",
+        "RW": "Tangira gahunda isanzwe y'umurongo wa mbere (2HRZE/4HR) hamwe na DOT",
+    },
+    "Standard airborne precautions": {
+        "EN": "Standard airborne precautions",
+        "FR": "Précautions aériennes standard",
+        "SW": "Tahadhari za kawaida za hewani",
+        "RW": "Ingamba zisanzwe zo kwirinda ubwandu bwo mu mwuka",
+    },
+    "Latent TB Infection (LTBI)": {
+        "EN": "Latent TB Infection (LTBI)",
+        "FR": "Infection tuberculeuse latente (LTBI)",
+        "SW": "Maambukizi fiche ya TB (LTBI)",
+        "RW": "Ubwandu bwa TB butaragaragara (LTBI)",
+    },
+    "TB bacteria are present but inactive; no symptoms and not contagious": {
+        "EN": "TB bacteria are present but inactive; no symptoms and not contagious",
+        "FR": "Les bactéries TB sont présentes mais inactives; pas de symptômes et pas contagieuse",
+        "SW": "Bakteria wa TB wapo lakini hawafanyi kazi; hakuna dalili na haiambukizi",
+        "RW": "Bagiteri za TB zirahari ariko zituje; nta bimenyetso kandi ntibyanduza",
+    },
+    "No symptoms": {
+        "EN": "No symptoms",
+        "FR": "Aucun symptôme",
+        "SW": "Hakuna dalili",
+        "RW": "Nta bimenyetso",
+    },
+    "Preventive therapy to prevent progression to active TB": {
+        "EN": "Preventive therapy to prevent progression to active TB",
+        "FR": "Traitement préventif pour éviter l'évolution vers une TB active",
+        "SW": "Matibabu kinga ili kuzuia kugeuka kuwa TB hai",
+        "RW": "Umuti wo gukumira kugira ngo bidahinduka TB ikora",
+    },
+    "None - not contagious": {
+        "EN": "None - not contagious",
+        "FR": "Aucune - non contagieuse",
+        "SW": "Hakuna - haiambukizi",
+        "RW": "Nta na kimwe - ntibyanduza",
+    },
+    "Presumptive TB Case": {
+        "EN": "Presumptive TB Case",
+        "FR": "Cas présumé de TB",
+        "SW": "Kesi inayoshukiwa kuwa TB",
+        "RW": "Urubanza rukekwamo TB",
+    },
+    "Has TB symptoms but not yet confirmed by testing": {
+        "EN": "Has TB symptoms but not yet confirmed by testing",
+        "FR": "Présente des symptômes de TB mais pas encore confirmés par les tests",
+        "SW": "Ana dalili za TB lakini bado hajathibitishwa kwa vipimo",
+        "RW": "Agaragaza ibimenyetso bya TB ariko ntibiracyemezwa n'ibizamini",
+    },
+    "Any combination of: cough ≥2 weeks, fever, night sweats, weight loss, hemoptysis": {
+        "EN": "Any combination of: cough >=2 weeks, fever, night sweats, weight loss, hemoptysis",
+        "FR": "Toute combinaison de : toux >=2 semaines, fièvre, sueurs nocturnes, perte de poids, hémoptysie",
+        "SW": "Mchanganyiko wowote wa: kikohozi cha wiki 2 au zaidi, homa, jasho la usiku, kupungua uzito, kukohoa damu",
+        "RW": "Ihuriro iryo ari ryo ryose ry'ibi: inkorora y'ibyumweru 2 cyangwa birenga, umuriro, kubira ibyuya nijoro, kugabanuka ibiro, gukorora amaraso",
+    },
+    "Complete diagnostic workup (sputum smear, GeneXpert, chest X-ray)": {
+        "EN": "Complete diagnostic workup (sputum smear, GeneXpert, chest X-ray)",
+        "FR": "Compléter le bilan diagnostique (frottis sputum, GeneXpert, radiographie thoracique)",
+        "SW": "Kamilisha uchunguzi wote (sputum smear, GeneXpert, X-ray ya kifua)",
+        "RW": "Kora isuzuma ryose rikenewe (sputum smear, GeneXpert, X-ray y'igituza)",
+    },
+    "Precautions while pending diagnosis": {
+        "EN": "Precautions while pending diagnosis",
+        "FR": "Précautions en attendant le diagnostic",
+        "SW": "Tahadhari wakati uchunguzi bado unasubiriwa",
+        "RW": "Ingamba zo kwirinda mu gihe igisubizo kigitegerejwe",
+    },
+    "No Evidence of TB": {
+        "EN": "No Evidence of TB",
+        "FR": "Aucune preuve de TB",
+        "SW": "Hakuna ushahidi wa TB",
+        "RW": "Nta bimenyetso bya TB",
+    },
+    "Clinical picture not suggestive of TB": {
+        "EN": "Clinical picture not suggestive of TB",
+        "FR": "Le tableau clinique n'évoque pas une TB",
+        "SW": "Muonekano wa ugonjwa hauonyeshi TB",
+        "RW": "Isura y'uburwayi ntigaragaza ko ari TB",
+    },
+    "No TB-specific symptoms": {
+        "EN": "No TB-specific symptoms",
+        "FR": "Aucun symptôme spécifique de TB",
+        "SW": "Hakuna dalili maalum za TB",
+        "RW": "Nta bimenyetso byihariye bya TB",
+    },
+    "Monitor symptoms, consider other diagnoses": {
+        "EN": "Monitor symptoms, consider other diagnoses",
+        "FR": "Surveiller les symptômes, envisager d'autres diagnostics",
+        "SW": "Fuatilia dalili, fikiria magonjwa mengine",
+        "RW": "Kurikirana ibimenyetso kandi utekereze ku zindi ndwara",
+    },
+    "None": {"EN": "None", "FR": "Aucun", "SW": "Hakuna", "RW": "Nta na kimwe"},
+    "XDR-TB Regimen": {
+        "EN": "XDR-TB Regimen",
+        "FR": "Schéma XDR-TB",
+        "SW": "Mpango wa XDR-TB",
+        "RW": "Gahunda ya XDR-TB",
+    },
+    "18-24 months total": {
+        "EN": "18-24 months total",
+        "FR": "18-24 mois au total",
+        "SW": "Miezi 18-24 kwa jumla",
+        "RW": "Amezi 18-24 yose hamwe",
+    },
+    "6-8 months": {"EN": "6-8 months", "FR": "6-8 mois", "SW": "Miezi 6-8", "RW": "Amezi 6-8"},
+    "12-16 months": {"EN": "12-16 months", "FR": "12-16 mois", "SW": "Miezi 12-16", "RW": "Amezi 12-16"},
+    "Individualized based on DST: Bedaquiline, Linezolid, Clofazimine, Fluoroquinolone, Cycloserine, plus additional agents": {
+        "EN": "Individualized based on DST: Bedaquiline, Linezolid, Clofazimine, Fluoroquinolone, Cycloserine, plus additional agents",
+        "FR": "Personnalisé selon le DST : Bedaquiline, Linezolid, Clofazimine, Fluoroquinolone, Cycloserine, plus autres agents",
+        "SW": "Hubinafsishwa kulingana na DST: Bedaquiline, Linezolid, Clofazimine, Fluoroquinolone, Cycloserine, pamoja na dawa nyingine",
+        "RW": "Ihuzwa n'ibisubizo bya DST: Bedaquiline, Linezolid, Clofazimine, Fluoroquinolone, Cycloserine n'indi miti y'inyongera",
+    },
+    "WHO recommends all-oral XDR-TB regimens; close monitoring for adverse effects": {
+        "EN": "WHO recommends all-oral XDR-TB regimens; close monitoring for adverse effects",
+        "FR": "L'OMS recommande des schémas XDR-TB tout oraux; surveillance étroite des effets indésirables",
+        "SW": "WHO inapendekeza mipango ya XDR-TB ya dawa za kunywa pekee; fuatilia madhara kwa karibu",
+        "RW": "OMS isaba gahunda za XDR-TB zikoresha ibinini gusa; hakurikiranywe neza ingaruka mbi",
+    },
+    "MDR-TB Regimen (Second-line)": {
+        "EN": "MDR-TB Regimen (Second-line)",
+        "FR": "Schéma MDR-TB (deuxième ligne)",
+        "SW": "Mpango wa MDR-TB (mstari wa pili)",
+        "RW": "Gahunda ya MDR-TB (umurongo wa kabiri)",
+    },
+    "6-8 months with at least 5 drugs": {
+        "EN": "6-8 months with at least 5 drugs",
+        "FR": "6-8 mois avec au moins 5 médicaments",
+        "SW": "Miezi 6-8 na angalau dawa 5",
+        "RW": "Amezi 6-8 harimo nibura imiti 5",
+    },
+    "12-16 months with at least 4 drugs": {
+        "EN": "12-16 months with at least 4 drugs",
+        "FR": "12-16 mois avec au moins 4 médicaments",
+        "SW": "Miezi 12-16 na angalau dawa 4",
+        "RW": "Amezi 12-16 harimo nibura imiti 4",
+    },
+    "Based on DST: Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + Cycloserine + other agents": {
+        "EN": "Based on DST: Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + Cycloserine + other agents",
+        "FR": "Selon le DST : Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + Cycloserine + autres agents",
+        "SW": "Kulingana na DST: Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + Cycloserine + dawa nyingine",
+        "RW": "Bishingiye kuri DST: Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + Cycloserine + indi miti",
+    },
+    "WHO recommends all-oral MDR-TB regimens when possible; Directly Observed Therapy (DOT) mandatory": {
+        "EN": "WHO recommends all-oral MDR-TB regimens when possible; Directly Observed Therapy (DOT) mandatory",
+        "FR": "L'OMS recommande des schémas MDR-TB tout oraux si possible; DOT obligatoire",
+        "SW": "WHO inapendekeza mipango ya MDR-TB ya dawa za kunywa inapowezekana; DOT ni lazima",
+        "RW": "OMS isaba gahunda za MDR-TB zikoresha ibinini gusa igihe bishoboka; DOT ni ngombwa",
+    },
+    "RR-TB Regimen": {"EN": "RR-TB Regimen", "FR": "Schéma RR-TB", "SW": "Mpango wa RR-TB", "RW": "Gahunda ya RR-TB"},
+    "Based on DST, similar to MDR-TB": {
+        "EN": "Based on DST, similar to MDR-TB",
+        "FR": "Basé sur le DST, similaire au MDR-TB",
+        "SW": "Inategemea DST, sawa na MDR-TB",
+        "RW": "Bishingiye kuri DST, bisa na MDR-TB",
+    },
+    "Rule out MDR-TB with further testing; refer to DR-TB center": {
+        "EN": "Rule out MDR-TB with further testing; refer to DR-TB center",
+        "FR": "Éliminer un MDR-TB par des tests complémentaires; référer au centre DR-TB",
+        "SW": "Ondoa uwezekano wa MDR-TB kwa vipimo zaidi; mpeleke kituo cha DR-TB",
+        "RW": "Kuraho cyangwa kwemeza MDR-TB hifashishijwe ibindi bizamini; mwohereze ku kigo cya DR-TB",
+    },
+    "Second-line anti-TB drugs": {
+        "EN": "Second-line anti-TB drugs",
+        "FR": "Médicaments anti-TB de deuxième ligne",
+        "SW": "Dawa za TB za mstari wa pili",
+        "RW": "Imiti ya TB yo ku murongo wa kabiri",
+    },
+    "Based on DST: Fluoroquinolone + Injectable + Bedaquiline + Linezolid + Clofazimine + Cycloserine": {
+        "EN": "Based on DST: Fluoroquinolone + Injectable + Bedaquiline + Linezolid + Clofazimine + Cycloserine",
+        "FR": "Selon le DST : Fluoroquinolone + injectable + Bedaquiline + Linezolid + Clofazimine + Cycloserine",
+        "SW": "Kulingana na DST: Fluoroquinolone + sindano + Bedaquiline + Linezolid + Clofazimine + Cycloserine",
+        "RW": "Bishingiye kuri DST: Fluoroquinolone + umuti uterwa + Bedaquiline + Linezolid + Clofazimine + Cycloserine",
+    },
+    "WHO recommends individualized treatment based on DST; use all-oral regimens when possible": {
+        "EN": "WHO recommends individualized treatment based on DST; use all-oral regimens when possible",
+        "FR": "L'OMS recommande un traitement individualisé selon le DST; utiliser des schémas oraux si possible",
+        "SW": "WHO inapendekeza matibabu yaliyobinafsishwa kulingana na DST; tumia mipango ya dawa za kunywa inapowezekana",
+        "RW": "OMS isaba ubuvuzi bujyanye n'ibisubizo bya DST; ukoreshe gahunda z'ibinini gusa igihe bishoboka",
+    },
+    "First-line TB treatment + ART": {
+        "EN": "First-line TB treatment + ART",
+        "FR": "Traitement TB de première ligne + ARV",
+        "SW": "Matibabu ya TB ya mstari wa kwanza + ART",
+        "RW": "Umuti wa TB wo ku murongo wa mbere + ART",
+    },
+    "6 months": {"EN": "6 months", "FR": "6 mois", "SW": "Miezi 6", "RW": "Amezi 6"},
+    "2 months (HRZE)": {"EN": "2 months (HRZE)", "FR": "2 mois (HRZE)", "SW": "Miezi 2 (HRZE)", "RW": "Amezi 2 (HRZE)"},
+    "4 months (HR)": {"EN": "4 months (HR)", "FR": "4 mois (HR)", "SW": "Miezi 4 (HR)", "RW": "Amezi 4 (HR)"},
+    "Isoniazid (H) + Rifampicin (R) + Pyrazinamide (Z) + Ethambutol (E); ART within 2-8 weeks": {
+        "EN": "Isoniazid (H) + Rifampicin (R) + Pyrazinamide (Z) + Ethambutol (E); ART within 2-8 weeks",
+        "FR": "Isoniazide (H) + Rifampicine (R) + Pyrazinamide (Z) + Ethambutol (E); ARV dans les 2-8 semaines",
+        "SW": "Isoniazid (H) + Rifampicin (R) + Pyrazinamide (Z) + Ethambutol (E); ART ndani ya wiki 2-8",
+        "RW": "Isoniazid (H) + Rifampicin (R) + Pyrazinamide (Z) + Ethambutol (E); ART mu byumweru 2-8",
+    },
+    "EFV-based ART; Pyridoxine 25-50mg/day to prevent neuropathy; monitor for Immune Reconstitution Inflammatory Syndrome (IRIS)": {
+        "EN": "EFV-based ART; Pyridoxine 25-50mg/day to prevent neuropathy; monitor for Immune Reconstitution Inflammatory Syndrome (IRIS)",
+        "FR": "ARV à base d'EFV; Pyridoxine 25-50mg/jour pour prévenir la neuropathie; surveiller l'IRIS",
+        "SW": "ART ya msingi wa EFV; Pyridoxine 25-50mg/siku kuzuia neuropathy; fuatilia IRIS",
+        "RW": "ART ishingiye kuri EFV; Pyridoxine 25-50mg ku munsi mu gukumira neuropathy; kurikirana IRIS",
+    },
+    "Standard First-line + Steroids": {
+        "EN": "Standard First-line + Steroids",
+        "FR": "Première ligne standard + corticoïdes",
+        "SW": "Mstari wa kwanza wa kawaida + steroids",
+        "RW": "Umurongo wa mbere usanzwe + steroids",
+    },
+    "9-12 months total": {
+        "EN": "9-12 months total",
+        "FR": "9-12 mois au total",
+        "SW": "Miezi 9-12 kwa jumla",
+        "RW": "Amezi 9-12 yose hamwe",
+    },
+    "2-3 months (HRZE)": {"EN": "2-3 months (HRZE)", "FR": "2-3 mois (HRZE)", "SW": "Miezi 2-3 (HRZE)", "RW": "Amezi 2-3 (HRZE)"},
+    "7-9 months (HR)": {"EN": "7-9 months (HR)", "FR": "7-9 mois (HR)", "SW": "Miezi 7-9 (HR)", "RW": "Amezi 7-9 (HR)"},
+    "Isoniazid (H) + Rifampicin (R) + Pyrazinamide (Z) + Ethambutol (E); consider adjunctive steroids": {
+        "EN": "Isoniazid (H) + Rifampicin (R) + Pyrazinamide (Z) + Ethambutol (E); consider adjunctive steroids",
+        "FR": "Isoniazide (H) + Rifampicine (R) + Pyrazinamide (Z) + Ethambutol (E); envisager des corticoïdes adjuvants",
+        "SW": "Isoniazid (H) + Rifampicin (R) + Pyrazinamide (Z) + Ethambutol (E); fikiria steroids za ziada",
+        "RW": "Isoniazid (H) + Rifampicin (R) + Pyrazinamide (Z) + Ethambutol (E); tekereza kuri steroids zunganira",
+    },
+    "Hospitalization required; monitor closely for complications; Pyridoxine 25-50mg/day": {
+        "EN": "Hospitalization required; monitor closely for complications; Pyridoxine 25-50mg/day",
+        "FR": "Hospitalisation nécessaire; surveillance étroite des complications; Pyridoxine 25-50mg/jour",
+        "SW": "Kulazwa kunahitajika; fuatilia matatizo kwa karibu; Pyridoxine 25-50mg/siku",
+        "RW": "Gukenera kuryazwa; kurikirana ibibazo bya hafi; Pyridoxine 25-50mg ku munsi",
+    },
+    "First-line + Steroids": {
+        "EN": "First-line + Steroids",
+        "FR": "Première ligne + corticoïdes",
+        "SW": "Mstari wa kwanza + steroids",
+        "RW": "Umurongo wa mbere + steroids",
+    },
+    "12 months total": {"EN": "12 months total", "FR": "12 mois au total", "SW": "Miezi 12 kwa jumla", "RW": "Amezi 12 yose hamwe"},
+    "9-10 months (HR)": {"EN": "9-10 months (HR)", "FR": "9-10 mois (HR)", "SW": "Miezi 9-10 (HR)", "RW": "Amezi 9-10 (HR)"},
+    "Isoniazid (H) + Rifampicin (R) + Pyrazinamide (Z) + Ethambutol (E); Adjunctive corticosteroids": {
+        "EN": "Isoniazid (H) + Rifampicin (R) + Pyrazinamide (Z) + Ethambutol (E); Adjunctive corticosteroids",
+        "FR": "Isoniazide (H) + Rifampicine (R) + Pyrazinamide (Z) + Ethambutol (E); corticoïdes adjuvants",
+        "SW": "Isoniazid (H) + Rifampicin (R) + Pyrazinamide (Z) + Ethambutol (E); corticosteroids za ziada",
+        "RW": "Isoniazid (H) + Rifampicin (R) + Pyrazinamide (Z) + Ethambutol (E); corticosteroids zunganira",
+    },
+    "URGENT hospitalization; lumbar puncture; high-dose steroids early; Pyridoxine 50-100mg/day": {
+        "EN": "URGENT hospitalization; lumbar puncture; high-dose steroids early; Pyridoxine 50-100mg/day",
+        "FR": "Hospitalisation URGENTE; ponction lombaire; fortes doses de corticoïdes précoces; Pyridoxine 50-100mg/jour",
+        "SW": "Kulazwa HARAKA; lumbar puncture; steroids dozi kubwa mapema; Pyridoxine 50-100mg/siku",
+        "RW": "Kuryazwa byihutirwa; lumbar puncture; gutanga steroids nyinshi kare; Pyridoxine 50-100mg ku munsi",
+    },
+    "Standard First-line": {
+        "EN": "Standard First-line",
+        "FR": "Première ligne standard",
+        "SW": "Mstari wa kwanza wa kawaida",
+        "RW": "Umurongo wa mbere usanzwe",
+    },
+    "Isoniazid (H) + Rifampicin (R) + Pyrazinamide (Z) + Ethambutol (E)": {
+        "EN": "Isoniazid (H) + Rifampicin (R) + Pyrazinamide (Z) + Ethambutol (E)",
+        "FR": "Isoniazide (H) + Rifampicine (R) + Pyrazinamide (Z) + Ethambutol (E)",
+        "SW": "Isoniazid (H) + Rifampicin (R) + Pyrazinamide (Z) + Ethambutol (E)",
+        "RW": "Isoniazid (H) + Rifampicin (R) + Pyrazinamide (Z) + Ethambutol (E)",
+    },
+    "Consider orthopedic consultation; surgical intervention may be needed; Pyridoxine 25-50mg/day": {
+        "EN": "Consider orthopedic consultation; surgical intervention may be needed; Pyridoxine 25-50mg/day",
+        "FR": "Envisager une consultation orthopédique; une chirurgie peut être nécessaire; Pyridoxine 25-50mg/jour",
+        "SW": "Fikiria ushauri wa daktari wa mifupa; upasuaji unaweza kuhitajika; Pyridoxine 25-50mg/siku",
+        "RW": "Tekereza ku nama y'umuganga w'amagufa; kubagwa bishobora gukenerwa; Pyridoxine 25-50mg ku munsi",
+    },
+    "WHO Standard First-line Treatment (2HRZE/4HR)": {
+        "EN": "WHO Standard First-line Treatment (2HRZE/4HR)",
+        "FR": "Traitement standard OMS de première ligne (2HRZE/4HR)",
+        "SW": "Matibabu ya kawaida ya WHO ya mstari wa kwanza (2HRZE/4HR)",
+        "RW": "Ubuvuzi busanzwe bwa OMS bwo ku murongo wa mbere (2HRZE/4HR)",
+    },
+    "2 months (Isoniazid + Rifampicin + Pyrazinamide + Ethambutol)": {
+        "EN": "2 months (Isoniazid + Rifampicin + Pyrazinamide + Ethambutol)",
+        "FR": "2 mois (Isoniazide + Rifampicine + Pyrazinamide + Ethambutol)",
+        "SW": "Miezi 2 (Isoniazid + Rifampicin + Pyrazinamide + Ethambutol)",
+        "RW": "Amezi 2 (Isoniazid + Rifampicin + Pyrazinamide + Ethambutol)",
+    },
+    "4 months (Isoniazid + Rifampicin)": {
+        "EN": "4 months (Isoniazid + Rifampicin)",
+        "FR": "4 mois (Isoniazide + Rifampicine)",
+        "SW": "Miezi 4 (Isoniazid + Rifampicin)",
+        "RW": "Amezi 4 (Isoniazid + Rifampicin)",
+    },
+    "Isoniazid (H) 5mg/kg/day, Rifampicin (R) 10mg/kg/day, Pyrazinamide (Z) 25mg/kg/day, Ethambutol (E) 15-20mg/kg/day": {
+        "EN": "Isoniazid (H) 5mg/kg/day, Rifampicin (R) 10mg/kg/day, Pyrazinamide (Z) 25mg/kg/day, Ethambutol (E) 15-20mg/kg/day",
+        "FR": "Isoniazide (H) 5mg/kg/jour, Rifampicine (R) 10mg/kg/jour, Pyrazinamide (Z) 25mg/kg/jour, Ethambutol (E) 15-20mg/kg/jour",
+        "SW": "Isoniazid (H) 5mg/kg/siku, Rifampicin (R) 10mg/kg/siku, Pyrazinamide (Z) 25mg/kg/siku, Ethambutol (E) 15-20mg/kg/siku",
+        "RW": "Isoniazid (H) 5mg/kg/umunsi, Rifampicin (R) 10mg/kg/umunsi, Pyrazinamide (Z) 25mg/kg/umunsi, Ethambutol (E) 15-20mg/kg/umunsi",
+    },
+    "WHO recommends Directly Observed Treatment (DOT) to ensure adherence; Pyridoxine 25-50mg/day to prevent peripheral neuropathy; monitor LFTs monthly": {
+        "EN": "WHO recommends Directly Observed Treatment (DOT) to ensure adherence; Pyridoxine 25-50mg/day to prevent peripheral neuropathy; monitor LFTs monthly",
+        "FR": "L'OMS recommande le traitement directement observé (DOT) pour assurer l'adhérence; Pyridoxine 25-50mg/jour pour prévenir la neuropathie périphérique; surveiller les tests hépatiques chaque mois",
+        "SW": "WHO inapendekeza DOT kuhakikisha ufuasi; Pyridoxine 25-50mg/siku kuzuia neuropathy ya pembeni; fuatilia vipimo vya ini kila mwezi",
+        "RW": "OMS isaba DOT kugira ngo umuti ufatwe neza; Pyridoxine 25-50mg ku munsi mu gukumira neuropathy yo ku mpera z'imyakura; ukurikirane ibizamini by'umwijima buri kwezi",
+    },
+    "6-12 months depending on site": {
+        "EN": "6-12 months depending on site",
+        "FR": "6-12 mois selon le site atteint",
+        "SW": "Miezi 6-12 kutegemea eneo lililoathirika",
+        "RW": "Amezi 6-12 bitewe n'aho indwara iri",
+    },
+    "4-10 months (HR)": {"EN": "4-10 months (HR)", "FR": "4-10 mois (HR)", "SW": "Miezi 4-10 (HR)", "RW": "Amezi 4-10 (HR)"},
+    "Duration depends on specific site of EPTB (6 months for most, 9-12 for bone/joint/meningitis); Pyridoxine 25-50mg/day": {
+        "EN": "Duration depends on specific site of EPTB (6 months for most, 9-12 for bone/joint/meningitis); Pyridoxine 25-50mg/day",
+        "FR": "La durée dépend du site précis de l'EPTB (6 mois pour la plupart, 9-12 pour os/articulations/méningite); Pyridoxine 25-50mg/jour",
+        "SW": "Muda hutegemea eneo la EPTB (miezi 6 kwa wengi, 9-12 kwa mifupa/viungo/meningitis); Pyridoxine 25-50mg/siku",
+        "RW": "Igihe cyo kuvura giterwa n'aho EPTB iri (amezi 6 kuri benshi, 9-12 ku magufa/ingingo/meningitis); Pyridoxine 25-50mg ku munsi",
+    },
+    "LTBI Preventive Therapy": {
+        "EN": "LTBI Preventive Therapy",
+        "FR": "Traitement préventif LTBI",
+        "SW": "Matibabu kinga ya LTBI",
+        "RW": "Ubuvuzi bwo gukumira LTBI",
+    },
+    "3-9 months depending on regimen": {
+        "EN": "3-9 months depending on regimen",
+        "FR": "3-9 mois selon le schéma",
+        "SW": "Miezi 3-9 kutegemea mpango",
+        "RW": "Amezi 3-9 bitewe na gahunda",
+    },
+    "Options: Isoniazid 300mg/day for 6-9 months; Isoniazid + Rifapentine weekly for 3 months; Rifampicin 600mg/day for 4 months": {
+        "EN": "Options: Isoniazid 300mg/day for 6-9 months; Isoniazid + Rifapentine weekly for 3 months; Rifampicin 600mg/day for 4 months",
+        "FR": "Options : Isoniazide 300mg/jour pendant 6-9 mois; Isoniazide + Rifapentine chaque semaine pendant 3 mois; Rifampicine 600mg/jour pendant 4 mois",
+        "SW": "Chaguo: Isoniazid 300mg/siku kwa miezi 6-9; Isoniazid + Rifapentine kila wiki kwa miezi 3; Rifampicin 600mg/siku kwa miezi 4",
+        "RW": "Amahitamo: Isoniazid 300mg ku munsi mu mezi 6-9; Isoniazid + Rifapentine buri cyumweru mu mezi 3; Rifampicin 600mg ku munsi mu mezi 4",
+    },
+    "WHO recommends LTBI treatment for people at high risk of progression to active TB; monitor LFTs": {
+        "EN": "WHO recommends LTBI treatment for people at high risk of progression to active TB; monitor LFTs",
+        "FR": "L'OMS recommande le traitement LTBI pour les personnes à haut risque d'évolution vers une TB active; surveiller les tests hépatiques",
+        "SW": "WHO inapendekeza matibabu ya LTBI kwa watu walio katika hatari kubwa ya kupata TB hai; fuatilia vipimo vya ini",
+        "RW": "OMS isaba kuvura LTBI ku bantu bafite ibyago byinshi byo kugira TB ikora; ukurikirane ibizamini by'umwijima",
+    },
+    "MODERATE (high-risk individuals only)": {
+        "EN": "MODERATE (high-risk individuals only)",
+        "FR": "MODÉRÉ (personnes à haut risque uniquement)",
+        "SW": "KATI (kwa walio hatarini sana tu)",
+        "RW": "IKIGERO CYO HAGATI (ku bafite ibyago byinshi gusa)",
+    },
+    "OBSERVATION AND FURTHER TESTING": {
+        "EN": "OBSERVATION AND FURTHER TESTING",
+        "FR": "OBSERVATION ET TESTS SUPPLÉMENTAIRES",
+        "SW": "UFUATILIAJI NA VIPIMO ZAIDI",
+        "RW": "GUKURIKIRANA N'IBINDI BIZAMINI",
+    },
+    "N/A": {"EN": "N/A", "FR": "N/A", "SW": "N/A", "RW": "N/A"},
+    "No anti-TB treatment unless clinical suspicion remains high": {
+        "EN": "No anti-TB treatment unless clinical suspicion remains high",
+        "FR": "Pas de traitement anti-TB sauf si la suspicion clinique reste forte",
+        "SW": "Hakuna matibabu ya TB isipokuwa shaka ya kitabibu ibaki kubwa",
+        "RW": "Nta muti wa TB utangwa keretse ugukeka kwa muganga kugumye kuba hejuru",
+    },
+    "Monitor closely, repeat tests as indicated, evaluate for alternative diagnoses": {
+        "EN": "Monitor closely, repeat tests as indicated, evaluate for alternative diagnoses",
+        "FR": "Surveiller de près, répéter les tests si nécessaire, évaluer d'autres diagnostics",
+        "SW": "Fuatilia kwa karibu, rudia vipimo inapohitajika, tathmini magonjwa mengine",
+        "RW": "Kurikirana hafi, subiramo ibizamini igihe bikenewe, usuzume izindi ndwara zishoboka",
+    },
+    "WHO-aligned XDR-TB individualized regimen": {
+        "EN": "WHO-aligned XDR-TB individualized regimen",
+        "FR": "Schéma individualisé XDR-TB aligné sur l'OMS",
+        "SW": "Mpango wa XDR-TB uliobinafsishwa unaolingana na WHO",
+        "RW": "Gahunda ya XDR-TB ihuye na OMS kandi ikorwa hakurikijwe umurwayi",
+    },
+    "18-24 months": {"EN": "18-24 months", "FR": "18-24 mois", "SW": "Miezi 18-24", "RW": "Amezi 18-24"},
+    "Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + additional active agents guided by DST": {
+        "EN": "Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + additional active agents guided by DST",
+        "FR": "Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + autres agents actifs guidés par le DST",
+        "SW": "Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + dawa nyingine zinazofaa kulingana na DST",
+        "RW": "Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + indi miti ihitwamo hashingiwe kuri DST",
+    },
+    "Daily supervised treatment under specialist DR-TB care; all-oral regimen preferred.": {
+        "EN": "Daily supervised treatment under specialist DR-TB care; all-oral regimen preferred.",
+        "FR": "Traitement quotidien supervisé sous soins spécialisés DR-TB; schéma oral préféré.",
+        "SW": "Matibabu ya kila siku chini ya uangalizi wa mtaalamu wa DR-TB; dawa za kunywa hupendelewa.",
+        "RW": "Ubuvuzi bwa buri munsi bukurikiranwa n'inzobere ya DR-TB; hakundwa gahunda y'ibinini gusa.",
+    },
+    "Monthly clinical review, ECG where indicated, liver tests, neuropathy and hematology monitoring.": {
+        "EN": "Monthly clinical review, ECG where indicated, liver tests, neuropathy and hematology monitoring.",
+        "FR": "Revue clinique mensuelle, ECG si indiqué, tests hépatiques, suivi neuropathique et hématologique.",
+        "SW": "Mapitio ya kliniki kila mwezi, ECG inapohitajika, vipimo vya ini, ufuatiliaji wa neuropathy na damu.",
+        "RW": "Isuzuma rya kwa muganga buri kwezi, ECG aho bikenewe, ibizamini by'umwijima, gukurikirana neuropathy n'amaraso.",
+    },
+    "Must be individualized from DST/antibiogram and WHO DR-TB guidance.": {
+        "EN": "Must be individualized from DST/antibiogram and WHO DR-TB guidance.",
+        "FR": "Doit être individualisé selon le DST/antibiogramme et les directives OMS DR-TB.",
+        "SW": "Lazima ubinafsishwe kulingana na DST/antibiogram na miongozo ya WHO ya DR-TB.",
+        "RW": "Igomba kugenwa hashingiwe kuri DST/antibiogram n'amabwiriza ya OMS ya DR-TB.",
+    },
+    "WHO MDR-TB second-line regimen": {
+        "EN": "WHO MDR-TB second-line regimen",
+        "FR": "Schéma OMS MDR-TB de deuxième ligne",
+        "SW": "Mpango wa WHO wa MDR-TB wa mstari wa pili",
+        "RW": "Gahunda ya OMS ya MDR-TB yo ku murongo wa kabiri",
+    },
+    "Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + Cycloserine / other active drugs": {
+        "EN": "Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + Cycloserine / other active drugs",
+        "FR": "Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + Cycloserine / autres médicaments actifs",
+        "SW": "Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + Cycloserine / dawa nyingine zinazofaa",
+        "RW": "Bedaquiline + Linezolid + Clofazimine + Fluoroquinolone + Cycloserine / indi miti ikora",
+    },
+    "Daily supervised treatment, preferably all-oral, with DR-TB specialist oversight.": {
+        "EN": "Daily supervised treatment, preferably all-oral, with DR-TB specialist oversight.",
+        "FR": "Traitement quotidien supervisé, de préférence oral, sous contrôle d'un spécialiste DR-TB.",
+        "SW": "Matibabu ya kila siku chini ya uangalizi, ikiwezekana dawa za kunywa, kwa usimamizi wa mtaalamu wa DR-TB.",
+        "RW": "Ubuvuzi bwa buri munsi bukurikiranwa, byiza hakoreshejwe ibinini gusa, buyobowe n'inzobere ya DR-TB.",
+    },
+    "Frequent DST review, toxicity review, liver/kidney tests, ECG, adherence tracking.": {
+        "EN": "Frequent DST review, toxicity review, liver/kidney tests, ECG, adherence tracking.",
+        "FR": "Révision fréquente du DST, de la toxicité, tests foie/reins, ECG et suivi de l'adhérence.",
+        "SW": "Mapitio ya mara kwa mara ya DST, sumu ya dawa, vipimo vya ini/figo, ECG, na ufuatiliaji wa ufuasi.",
+        "RW": "Gusubiramo DST kenshi, kureba uburozi bw'imiti, ibizamini by'umwijima/impyiko, ECG no gukurikirana uko umuti ufatwa.",
+    },
+    "WHO RR/DR-TB regimen": {
+        "EN": "WHO RR/DR-TB regimen",
+        "FR": "Schéma OMS RR/DR-TB",
+        "SW": "Mpango wa WHO wa RR/DR-TB",
+        "RW": "Gahunda ya OMS ya RR/DR-TB",
+    },
+    "Second-line anti-TB regimen selected from DST-active medicines": {
+        "EN": "Second-line anti-TB regimen selected from DST-active medicines",
+        "FR": "Schéma anti-TB de deuxième ligne choisi selon les médicaments actifs au DST",
+        "SW": "Mpango wa TB wa mstari wa pili uliochaguliwa kutoka dawa zinazofaa kwenye DST",
+        "RW": "Gahunda ya TB yo ku murongo wa kabiri ihitwamo imiti igaragara ko ikora muri DST",
+    },
+    "Daily supervised treatment under a DR-TB protocol.": {
+        "EN": "Daily supervised treatment under a DR-TB protocol.",
+        "FR": "Traitement quotidien supervisé selon un protocole DR-TB.",
+        "SW": "Matibabu ya kila siku chini ya uangalizi kwa itifaki ya DR-TB.",
+        "RW": "Ubuvuzi bwa buri munsi bukurikiranwa hakurikijwe protocole ya DR-TB.",
+    },
+    "Repeat DST, adverse-effect monitoring, adherence checks, and specialist review.": {
+        "EN": "Repeat DST, adverse-effect monitoring, adherence checks, and specialist review.",
+        "FR": "Répéter le DST, surveiller les effets indésirables, vérifier l'adhérence et revoir par un spécialiste.",
+        "SW": "Rudia DST, fuatilia madhara, kagua ufuasi, na upitiwe na mtaalamu.",
+        "RW": "Subiramo DST, ukurikirane ingaruka mbi, ugenzure uko umuti ufatwa, kandi usubirwe n'inzobere.",
+    },
+    "Escalate to MDR/XDR protocol if additional resistance is confirmed.": {
+        "EN": "Escalate to MDR/XDR protocol if additional resistance is confirmed.",
+        "FR": "Passer au protocole MDR/XDR si une résistance supplémentaire est confirmée.",
+        "SW": "Hamia kwenye itifaki ya MDR/XDR ikiwa usugu mwingine utathibitishwa.",
+        "RW": "Jya kuri protocole ya MDR/XDR niba hamejwe indi resistance y'inyongera.",
+    },
+    "M. bovis pyrazinamide-sparing regimen": {
+        "EN": "M. bovis pyrazinamide-sparing regimen",
+        "FR": "Schéma M. bovis sans pyrazinamide",
+        "SW": "Mpango wa M. bovis usiotegemea pyrazinamide",
+        "RW": "Gahunda ya M. bovis idakoresha pyrazinamide",
+    },
+    "modified first-line": {
+        "EN": "modified first-line",
+        "FR": "première ligne modifiée",
+        "SW": "mstari wa kwanza uliorekebishwa",
+        "RW": "umurongo wa mbere wahinduwe",
+    },
+    "Isoniazid (H) + Rifampicin (R) + Ethambutol (E)": {
+        "EN": "Isoniazid (H) + Rifampicin (R) + Ethambutol (E)",
+        "FR": "Isoniazide (H) + Rifampicine (R) + Ethambutol (E)",
+        "SW": "Isoniazid (H) + Rifampicin (R) + Ethambutol (E)",
+        "RW": "Isoniazid (H) + Rifampicin (R) + Ethambutol (E)",
+    },
+    "6-9 months": {"EN": "6-9 months", "FR": "6-9 mois", "SW": "Miezi 6-9", "RW": "Amezi 6-9"},
+    "Daily oral therapy with DOTS strongly recommended.": {
+        "EN": "Daily oral therapy with DOTS strongly recommended.",
+        "FR": "Traitement oral quotidien avec DOTS fortement recommandé.",
+        "SW": "Matibabu ya kila siku kwa dawa za kunywa huku DOTS ikipendekezwa sana.",
+        "RW": "Ubuvuzi bwa buri munsi bw'ibinini, kandi DOTS irasabwa cyane.",
+    },
+    "Review species confirmation, liver tests, response to therapy, and zoonotic exposure control.": {
+        "EN": "Review species confirmation, liver tests, response to therapy, and zoonotic exposure control.",
+        "FR": "Revoir la confirmation de l'espèce, les tests hépatiques, la réponse au traitement et le contrôle de l'exposition zoonotique.",
+        "SW": "Kagua uthibitisho wa aina, vipimo vya ini, mwitikio wa matibabu, na udhibiti wa mgusano wa zoonotic.",
+        "RW": "Suzuma ukwemezwa kw'ubwoko, ibizamini by'umwijima, uko ubuvuzi bugenda, no kugenzura guhura n'inyamaswa.",
+    },
+    "Avoid relying on pyrazinamide because M. bovis is usually resistant.": {
+        "EN": "Avoid relying on pyrazinamide because M. bovis is usually resistant.",
+        "FR": "Éviter de compter sur le pyrazinamide car M. bovis y est habituellement résistant.",
+        "SW": "Epuka kutegemea pyrazinamide kwa sababu M. bovis huwa na usugu nayo.",
+        "RW": "Irinde gushingira kuri pyrazinamide kuko M. bovis akenshi iyirwanya.",
+    },
+    "M. microti HR-based regimen": {
+        "EN": "M. microti HR-based regimen",
+        "FR": "Schéma M. microti basé sur HR",
+        "SW": "Mpango wa M. microti unaotegemea HR",
+        "RW": "Gahunda ya M. microti ishingiye kuri HR",
+    },
+    "Isoniazid (H) + Rifampicin (R)-based regimen with or without Ethambutol depending on severity": {
+        "EN": "Isoniazid (H) + Rifampicin (R)-based regimen with or without Ethambutol depending on severity",
+        "FR": "Schéma à base d'Isoniazide (H) + Rifampicine (R), avec ou sans Ethambutol selon la gravité",
+        "SW": "Mpango wa Isoniazid (H) + Rifampicin (R) ukiwa na au bila Ethambutol kulingana na ukali",
+        "RW": "Gahunda ishingiye kuri Isoniazid (H) + Rifampicin (R) ishobora kujyana cyangwa kutajyana na Ethambutol bitewe n'ubukana",
+    },
+    "Daily oral therapy, ideally under supervised adherence support.": {
+        "EN": "Daily oral therapy, ideally under supervised adherence support.",
+        "FR": "Traitement oral quotidien, idéalement avec soutien supervisé à l'adhérence.",
+        "SW": "Matibabu ya kila siku kwa dawa za kunywa, ikiwezekana kwa uangalizi wa ufuasi.",
+        "RW": "Ubuvuzi bwa buri munsi bw'ibinini, byiza bukaba bukurikiranwa kugira ngo umuti ufatwe neza.",
+    },
+    "Confirm species and review response because human disease is uncommon.": {
+        "EN": "Confirm species and review response because human disease is uncommon.",
+        "FR": "Confirmer l'espèce et revoir la réponse au traitement car la maladie humaine est rare.",
+        "SW": "Thibitisha aina na kagua mwitikio wa matibabu kwa sababu ugonjwa huu kwa binadamu si wa kawaida.",
+        "RW": "Emeza ubwoko kandi urebe uko ubuvuzi bugenda kuko iyi ndwara ku bantu idakunze kuboneka.",
+    },
+    "Specialist review is advised for rare-species disease.": {
+        "EN": "Specialist review is advised for rare-species disease.",
+        "FR": "Un avis spécialisé est conseillé pour une maladie due à une espèce rare.",
+        "SW": "Ushauri wa mtaalamu unashauriwa kwa ugonjwa wa aina adimu.",
+        "RW": "Isuzuma ry'inzobere rirakenewe ku ndwara itewe n'ubwoko budakunze kuboneka.",
+    },
+    "first-line": {"EN": "first-line", "FR": "première ligne", "SW": "mstari wa kwanza", "RW": "umurongo wa mbere"},
+    "preventive therapy": {"EN": "preventive therapy", "FR": "thérapie préventive", "SW": "tiba kinga", "RW": "ubuvuzi bwo gukumira"},
+    "LTBI 6-9H option": {"EN": "LTBI 6-9H option", "FR": "Option LTBI 6-9H", "SW": "Chaguo la LTBI 6-9H", "RW": "Ihitamo rya LTBI 6-9H"},
+    "Isoniazid daily": {"EN": "Isoniazid daily", "FR": "Isoniazide quotidien", "SW": "Isoniazid kila siku", "RW": "Isoniazid buri munsi"},
+    "Daily oral therapy with adherence follow-up.": {
+        "EN": "Daily oral therapy with adherence follow-up.",
+        "FR": "Traitement oral quotidien avec suivi de l'adhérence.",
+        "SW": "Matibabu ya kila siku kwa dawa za kunywa na ufuatiliaji wa ufuasi.",
+        "RW": "Ubuvuzi bwa buri munsi bw'ibinini hamwe no gukurikirana ifatwa ry'umuti.",
+    },
+    "Baseline and interval liver monitoring where indicated.": {
+        "EN": "Baseline and interval liver monitoring where indicated.",
+        "FR": "Surveillance hépatique initiale et périodique si indiqué.",
+        "SW": "Fuatilia ini mwanzoni na mara kwa mara inapohitajika.",
+        "RW": "Kurikirana umwijima mbere yo gutangira no hagati aho igihe bikenewe.",
+    },
+    "Standard WHO preventive option for LTBI.": {
+        "EN": "Standard WHO preventive option for LTBI.",
+        "FR": "Option préventive standard OMS pour le LTBI.",
+        "SW": "Chaguo la kawaida la kinga la WHO kwa LTBI.",
+        "RW": "Ihitamo risanzwe rya OMS ryo gukumira LTBI.",
+    },
+    "LTBI 3HP option": {"EN": "LTBI 3HP option", "FR": "Option LTBI 3HP", "SW": "Chaguo la LTBI 3HP", "RW": "Ihitamo rya LTBI 3HP"},
+    "Isoniazid + Rifapentine weekly": {
+        "EN": "Isoniazid + Rifapentine weekly",
+        "FR": "Isoniazide + Rifapentine chaque semaine",
+        "SW": "Isoniazid + Rifapentine kila wiki",
+        "RW": "Isoniazid + Rifapentine buri cyumweru",
+    },
+    "3 months": {"EN": "3 months", "FR": "3 mois", "SW": "Miezi 3", "RW": "Amezi 3"},
+    "Weekly directly observed or closely supported therapy.": {
+        "EN": "Weekly directly observed or closely supported therapy.",
+        "FR": "Traitement hebdomadaire directement observé ou étroitement soutenu.",
+        "SW": "Tiba ya kila wiki inayofuatiliwa moja kwa moja au kwa karibu.",
+        "RW": "Ubuvuzi bwa buri cyumweru bukurikiranwa neza cyangwa bugafashwa bya hafi.",
+    },
+    "Monitor adherence and drug interactions.": {
+        "EN": "Monitor adherence and drug interactions.",
+        "FR": "Surveiller l'adhérence et les interactions médicamenteuses.",
+        "SW": "Fuatilia ufuasi na mwingiliano wa dawa.",
+        "RW": "Kurikirana ifatwa ry'umuti n'uko imiti ishobora kugongana.",
+    },
+    "Short-course WHO preventive option.": {
+        "EN": "Short-course WHO preventive option.",
+        "FR": "Option préventive OMS de courte durée.",
+        "SW": "Chaguo la kinga la WHO la muda mfupi.",
+        "RW": "Ihitamo rya OMS ryo gukumira rimara igihe gito.",
+    },
+    "LTBI 4R option": {"EN": "LTBI 4R option", "FR": "Option LTBI 4R", "SW": "Chaguo la LTBI 4R", "RW": "Ihitamo rya LTBI 4R"},
+    "Rifampicin daily": {"EN": "Rifampicin daily", "FR": "Rifampicine quotidienne", "SW": "Rifampicin kila siku", "RW": "Rifampicin buri munsi"},
+    "4 months": {"EN": "4 months", "FR": "4 mois", "SW": "Miezi 4", "RW": "Amezi 4"},
+    "Daily oral therapy.": {"EN": "Daily oral therapy.", "FR": "Traitement oral quotidien.", "SW": "Matibabu ya kila siku kwa dawa za kunywa.", "RW": "Ubuvuzi bwa buri munsi bw'ibinini."},
+    "Monitor liver function and interactions.": {
+        "EN": "Monitor liver function and interactions.",
+        "FR": "Surveiller la fonction hépatique et les interactions.",
+        "SW": "Fuatilia kazi ya ini na mwingiliano wa dawa.",
+        "RW": "Kurikirana imikorere y'umwijima n'uko imiti ishobora kugongana.",
+    },
+    "Alternative preventive option when appropriate.": {
+        "EN": "Alternative preventive option when appropriate.",
+        "FR": "Option préventive alternative selon le contexte.",
+        "SW": "Chaguo jingine la kinga inapofaa.",
+        "RW": "Ubundi buryo bwo gukumira igihe bikwiye.",
+    },
+    "WHO-aligned TB rule engine with species notes, infection-site classification, and DST-aware regimen escalation.": {
+        "EN": "WHO-aligned TB rule engine with species notes, infection-site classification, and DST-aware regimen escalation.",
+        "FR": "Moteur de règles TB aligné sur l'OMS avec notes d'espèce, classification du site d'infection et adaptation du traitement selon le DST.",
+        "SW": "Mfumo wa sheria za TB unaolingana na WHO wenye maelezo ya aina, eneo la maambukizi, na kuongeza mpango wa dawa kulingana na DST.",
+        "RW": "Sisitemu y'amabwiriza ya TB ihuje na OMS, ifite ibisobanuro by'ubwoko, aho ubwandu buri n'ihindurwa rya gahunda y'imiti hashingiwe kuri DST.",
+    },
+    "CONFIRMED PULMONARY TB (PTB)": {
+        "EN": "CONFIRMED PULMONARY TB (PTB)",
+        "FR": "TB PULMONAIRE CONFIRMÉE (PTB)",
+        "SW": "TB YA MAPAFU ILIYOTHIBITISHWA (PTB)",
+        "RW": "TB Y'IBIHAHA YEMEJWE (PTB)",
+    },
+    "CLINICALLY DIAGNOSED PULMONARY TB (PTB)": {
+        "EN": "CLINICALLY DIAGNOSED PULMONARY TB (PTB)",
+        "FR": "TB PULMONAIRE DIAGNOSTIQUÉE CLINIQUEMENT (PTB)",
+        "SW": "TB YA MAPAFU ILIYOGUNDULIWA KIKLINIKI (PTB)",
+        "RW": "TB Y'IBIHAHA YASUZUMWE NA MUGANGA (PTB)",
+    },
+    "PRESUMPTIVE PULMONARY TB (PTB)": {
+        "EN": "PRESUMPTIVE PULMONARY TB (PTB)",
+        "FR": "TB PULMONAIRE PRÉSUMÉE (PTB)",
+        "SW": "TB YA MAPAFU INAYOSHUKIWA (PTB)",
+        "RW": "TB Y'IBIHAHA IKEKWA (PTB)",
+    },
+    "CONFIRMED LYMPH NODE TB (EPTB)": {
+        "EN": "CONFIRMED LYMPH NODE TB (EPTB)",
+        "FR": "TB GANGLIONNAIRE CONFIRMÉE (EPTB)",
+        "SW": "TB YA VIFUKO VYA LIMFU ILIYOTHIBITISHWA (EPTB)",
+        "RW": "TB YO MU DUSABO TWA LYMPHO YEMEJWE (EPTB)",
+    },
+    "SUSPECTED LYMPH NODE TB (EPTB)": {
+        "EN": "SUSPECTED LYMPH NODE TB (EPTB)",
+        "FR": "TB GANGLIONNAIRE SUSPECTÉE (EPTB)",
+        "SW": "TB YA VIFUKO VYA LIMFU INAYOSHUKIWA (EPTB)",
+        "RW": "TB YO MU DUSABO TWA LYMPHO IKEKWA (EPTB)",
+    },
+    "CONFIRMED BONE/JOINT TB (EPTB, including Pott's disease)": {
+        "EN": "CONFIRMED BONE/JOINT TB (EPTB, including Pott's disease)",
+        "FR": "TB OSSEUSE/ARTICULAIRE CONFIRMÉE (EPTB, y compris maladie de Pott)",
+        "SW": "TB YA MIFUPA/VIUNGO ILIYOTHIBITISHWA (EPTB, ikijumuisha ugonjwa wa Pott)",
+        "RW": "TB YO MU MAGUFA/INGINGO YEMEJWE (EPTB, harimo indwara ya Pott)",
+    },
+    "SUSPECTED BONE/JOINT TB (EPTB)": {
+        "EN": "SUSPECTED BONE/JOINT TB (EPTB)",
+        "FR": "TB OSSEUSE/ARTICULAIRE SUSPECTÉE (EPTB)",
+        "SW": "TB YA MIFUPA/VIUNGO INAYOSHUKIWA (EPTB)",
+        "RW": "TB YO MU MAGUFA/INGINGO IKEKWA (EPTB)",
+    },
+    "CONFIRMED TB MENINGITIS (EPTB - LIFE THREATENING)": {
+        "EN": "CONFIRMED TB MENINGITIS (EPTB - LIFE THREATENING)",
+        "FR": "MÉNINGITE TB CONFIRMÉE (EPTB - menace vitale)",
+        "SW": "MENINGITIS YA TB ILIYOTHIBITISHWA (EPTB - hatari kwa maisha)",
+        "RW": "MENINGITIS YA TB YEMEJWE (EPTB - ishobora gushyira ubuzima mu kaga)",
+    },
+    "SUSPECTED TB MENINGITIS (EPTB - URGENT)": {
+        "EN": "SUSPECTED TB MENINGITIS (EPTB - URGENT)",
+        "FR": "MÉNINGITE TB SUSPECTÉE (EPTB - urgent)",
+        "SW": "MENINGITIS YA TB INAYOSHUKIWA (EPTB - haraka)",
+        "RW": "MENINGITIS YA TB IKEKWA (EPTB - byihutirwa)",
+    },
+    "CONFIRMED GENITOURINARY TB (EPTB)": {
+        "EN": "CONFIRMED GENITOURINARY TB (EPTB)",
+        "FR": "TB GÉNITO-URINAIRE CONFIRMÉE (EPTB)",
+        "SW": "TB YA MFUMO WA MKOJO/UZAZI ILIYOTHIBITISHWA (EPTB)",
+        "RW": "TB YO MU MYANYA NDANGAGITSINA N'INKARI YEMEJWE (EPTB)",
+    },
+    "SUSPECTED GENITOURINARY TB (EPTB)": {
+        "EN": "SUSPECTED GENITOURINARY TB (EPTB)",
+        "FR": "TB GÉNITO-URINAIRE SUSPECTÉE (EPTB)",
+        "SW": "TB YA MFUMO WA MKOJO/UZAZI INAYOSHUKIWA (EPTB)",
+        "RW": "TB YO MU MYANYA NDANGAGITSINA N'INKARI IKEKWA (EPTB)",
+    },
+    "CONFIRMED ABDOMINAL TB (EPTB)": {
+        "EN": "CONFIRMED ABDOMINAL TB (EPTB)",
+        "FR": "TB ABDOMINALE CONFIRMÉE (EPTB)",
+        "SW": "TB YA TUMBO ILIYOTHIBITISHWA (EPTB)",
+        "RW": "TB YO MU NDA YEMEJWE (EPTB)",
+    },
+    "SUSPECTED ABDOMINAL TB (EPTB)": {
+        "EN": "SUSPECTED ABDOMINAL TB (EPTB)",
+        "FR": "TB ABDOMINALE SUSPECTÉE (EPTB)",
+        "SW": "TB YA TUMBO INAYOSHUKIWA (EPTB)",
+        "RW": "TB YO MU NDA IKEKWA (EPTB)",
+    },
+    "CONFIRMED PLEURAL TB (EPTB)": {
+        "EN": "CONFIRMED PLEURAL TB (EPTB)",
+        "FR": "TB PLEURALE CONFIRMÉE (EPTB)",
+        "SW": "TB YA PLEURA ILIYOTHIBITISHWA (EPTB)",
+        "RW": "TB YO KU GIHU CY'IBIHAHA YEMEJWE (EPTB)",
+    },
+    "SUSPECTED PLEURAL TB (EPTB)": {
+        "EN": "SUSPECTED PLEURAL TB (EPTB)",
+        "FR": "TB PLEURALE SUSPECTÉE (EPTB)",
+        "SW": "TB YA PLEURA INAYOSHUKIWA (EPTB)",
+        "RW": "TB YO KU GIHU CY'IBIHAHA IKEKWA (EPTB)",
+    },
+    "CONFIRMED/SUSPECTED MILIARY TB (DISSEMINATED - LIFE THREATENING)": {
+        "EN": "CONFIRMED/SUSPECTED MILIARY TB (DISSEMINATED - LIFE THREATENING)",
+        "FR": "TB MILIAIRE CONFIRMÉE/SUSPECTÉE (disséminée - menace vitale)",
+        "SW": "TB ILIYOSAMBAA MWILINI ILIYOTHIBITISHWA/INAYOSHUKIWA (hatari kwa maisha)",
+        "RW": "TB YAKWIRAKWIRIYE MU MUBIRI YEMEJWE/KEKWA (ishyira ubuzima mu kaga)",
+    },
+    "LATENT TB INFECTION (LTBI) - NO ACTIVE DISEASE": {
+        "EN": "LATENT TB INFECTION (LTBI) - NO ACTIVE DISEASE",
+        "FR": "INFECTION TUBERCULEUSE LATENTE (LTBI) - PAS DE MALADIE ACTIVE",
+        "SW": "MAAMBUKIZI FICHE YA TB (LTBI) - HAKUNA UGONJWA HAI",
+        "RW": "UBWANDU BWA TB BUTARAGARAGARA (LTBI) - NTA NDWARA IRI GUKORA",
+    },
+    "TB/HIV CO-INFECTION": {
+        "EN": "TB/HIV CO-INFECTION",
+        "FR": "CO-INFECTION TB/VIH",
+        "SW": "MAAMBUKIZI YA TB/HIV KWA PAMOJA",
+        "RW": "UBWANDU BWA TB/VIH ICYARIMWE",
+    },
+    "DRUG-SENSITIVE TB (DS-TB)": {
+        "EN": "DRUG-SENSITIVE TB (DS-TB)",
+        "FR": "TB SENSIBLE AUX MÉDICAMENTS (DS-TB)",
+        "SW": "TB INAYOITIKIA DAWA (DS-TB)",
+        "RW": "TB YUMVA IMITI (DS-TB)",
+    },
+    "LATENT TB INFECTION (LTBI)": {
+        "EN": "LATENT TB INFECTION (LTBI)",
+        "FR": "INFECTION TUBERCULEUSE LATENTE (LTBI)",
+        "SW": "MAAMBUKIZI FICHE YA TB (LTBI)",
+        "RW": "UBWANDU BWA TB BUTARAGARAGARA (LTBI)",
+    },
+    "PRESUMPTIVE TB CASE - FURTHER TESTING REQUIRED": {
+        "EN": "PRESUMPTIVE TB CASE - FURTHER TESTING REQUIRED",
+        "FR": "CAS PRÉSUMÉ DE TB - TESTS SUPPLÉMENTAIRES REQUIS",
+        "SW": "KESI INAYOSHUKIWA KUWA TB - VIPIMO ZAIDI VINAHITAJIKA",
+        "RW": "URUBANZA RUKEKWAHO TB - HAKENEWE IBINDI BIZAMINI",
+    },
+    "NO EVIDENCE OF TB": {
+        "EN": "NO EVIDENCE OF TB",
+        "FR": "AUCUNE PREUVE DE TB",
+        "SW": "HAKUNA USHAHIDI WA TB",
+        "RW": "NTA BIMENYETSO BYA TB",
+    },
+    "Primary TB classification:": {
+        "EN": "Primary TB classification:",
+        "FR": "Classification TB principale :",
+        "SW": "Ainisho kuu ya TB:",
+        "RW": "Icyiciro nyamukuru cya TB:",
+    },
+    "Bacteria estimate:": {
+        "EN": "Bacteria estimate:",
+        "FR": "Estimation de la bactérie :",
+        "SW": "Makadirio ya bakteria:",
+        "RW": "Igereranya rya bagiteri:",
+    },
+    "Resistance class:": {
+        "EN": "Resistance class:",
+        "FR": "Classe de résistance :",
+        "SW": "Daraja la usugu:",
+        "RW": "Icyiciro cya resistance:",
+    },
+    "Inferred from exposure or epidemiology clues: {clues}.": {
+        "EN": "Inferred from exposure or epidemiology clues: {clues}.",
+        "FR": "Déduit à partir d'indices d'exposition ou d'épidémiologie : {clues}.",
+        "SW": "Imekadiriwa kutokana na viashiria vya mgusano au epidemiolojia: {clues}.",
+        "RW": "Byagereranyijwe hashingiwe ku bimenyetso by'aho yahuye n'indwara cyangwa ku miterere yayo: {clues}.",
+    },
+    "Estimated from curated owner dataset matches using patient symptoms, exposure, geography, and tests. Matched {count} similar case(s); strongest evidence: {evidence}.": {
+        "EN": "Estimated from curated owner dataset matches using patient symptoms, exposure, geography, and tests. Matched {count} similar case(s); strongest evidence: {evidence}.",
+        "FR": "Estimé à partir de correspondances avec le jeu de données du propriétaire en utilisant symptômes, exposition, géographie et tests. {count} cas similaire(s) trouvés ; preuve la plus forte : {evidence}.",
+        "SW": "Imekadiriwa kutoka ulinganisho wa dataset ya mmiliki kwa kutumia dalili, mgusano, eneo na vipimo. Imefanana na kesi {count}; ushahidi mkuu: {evidence}.",
+        "RW": "Byagereranyijwe hakoreshejwe guhuza amakuru yo muri dataset ya nyirayo hifashishijwe ibimenyetso, aho yahuye n'indwara, aho atuye n'ibizamini. Habonetse dosiye {count} zisa; ibimenyetso bikomeye ni: {evidence}.",
+    },
+    "shared context: {context}": {
+        "EN": "shared context: {context}",
+        "FR": "contexte partagé : {context}",
+        "SW": "muktadha unaofanana: {context}",
+        "RW": "ibintu bihuriyeho: {context}",
+    },
+    "{field} match": {
+        "EN": "{field} match",
+        "FR": "correspondance pour {field}",
+        "SW": "{field} inafanana",
+        "RW": "{field} bihuye",
+    },
+    "{field} positive": {
+        "EN": "{field} positive",
+        "FR": "{field} positif",
+        "SW": "{field} chanya",
+        "RW": "{field} cyagaragaye",
+    },
+    "sputum smear test": {
+        "EN": "sputum smear test",
+        "FR": "test de frottis sputum",
+        "SW": "kipimo cha sputum smear",
+        "RW": "ikizamini cya sputum smear",
+    },
+    "genexpert test": {
+        "EN": "GeneXpert test",
+        "FR": "test GeneXpert",
+        "SW": "kipimo cha GeneXpert",
+        "RW": "ikizamini cya GeneXpert",
+    },
+    "chest xray": {
+        "EN": "chest X-ray",
+        "FR": "radio thoracique",
+        "SW": "X-ray ya kifua",
+        "RW": "X-ray y'igituza",
+    },
+    "tb culture": {
+        "EN": "TB culture",
+        "FR": "culture TB",
+        "SW": "TB culture",
+        "RW": "TB culture",
+    },
+    "tst": {"EN": "TST", "FR": "TST", "SW": "TST", "RW": "TST"},
+    "igra": {"EN": "IGRA", "FR": "IGRA", "SW": "IGRA", "RW": "IGRA"},
+    "Intensive phase: {intensive}; continuation phase: {continuation}; daily DOTS/supervised dosing where feasible.": {
+        "EN": "Intensive phase: {intensive}; continuation phase: {continuation}; daily DOTS/supervised dosing where feasible.",
+        "FR": "Phase intensive : {intensive} ; phase de continuation : {continuation} ; prise quotidienne supervisée/DOTS si possible.",
+        "SW": "Hatua ya mwanzo: {intensive}; hatua ya kuendelea: {continuation}; dawa kila siku chini ya uangalizi/DOTS inapowezekana.",
+        "RW": "Icyiciro cya mbere: {intensive}; icyiciro gikurikiraho: {continuation}; gufata imiti buri munsi hakurikiranwa/DOTS igihe bishoboka.",
+    },
+    "Intensive: {intensive}, Continuation: {continuation}": {
+        "EN": "Intensive: {intensive}, Continuation: {continuation}",
+        "FR": "Intensive : {intensive}, Continuation : {continuation}",
+        "SW": "Hatua ya mwanzo: {intensive}, Kuendelea: {continuation}",
+        "RW": "Icyiciro cya mbere: {intensive}, Gikurikiraho: {continuation}",
+    },
 }
 
 
@@ -347,6 +1767,120 @@ def tr(key, lang=None, **kwargs):
         return value.format(**kwargs)
     except Exception:
         return value
+
+
+def tr_lit(value, lang=None, **kwargs):
+    lang = lang or get_request_lang()
+    value = str(value)
+    translations = LITERAL_I18N.get(value, {})
+    template = translations.get(lang) or translations.get("EN")
+    if template is None:
+        return value
+    try:
+        return template.format(**kwargs)
+    except Exception:
+        return template
+
+
+def translate_backend_text_value(value, lang=None):
+    lang = lang or get_request_lang()
+    if not isinstance(value, str):
+        return value
+
+    raw = value.strip()
+    if not raw:
+        return value
+
+    translated = tr_lit(raw, lang=lang)
+    if raw in LITERAL_I18N:
+        return translated
+
+    if raw.startswith("Primary TB classification: "):
+        return f"{tr_lit('Primary TB classification:', lang=lang)[:-1]}: {translate_backend_text_value(raw[len('Primary TB classification: '):], lang=lang)}"
+    if raw.startswith("Bacteria estimate: "):
+        return f"{tr_lit('Bacteria estimate:', lang=lang)[:-1]}: {translate_backend_text_value(raw[len('Bacteria estimate: '):], lang=lang)}"
+    if raw.startswith("Resistance class: "):
+        return f"{tr_lit('Resistance class:', lang=lang)[:-1]}: {translate_backend_text_value(raw[len('Resistance class: '):], lang=lang)}"
+    if raw.startswith("ALERT: "):
+        return f"{tr_lit('ALERT:', lang=lang)} {translate_backend_text_value(raw[len('ALERT: '):], lang=lang)}"
+
+    match = re.match(r"^Inferred from exposure or epidemiology clues: (.+)\.$", raw)
+    if match:
+        clues = match.group(1)
+        return tr_lit(
+            "Inferred from exposure or epidemiology clues: {clues}.",
+            lang=lang,
+            clues=clues,
+        )
+
+    match = re.match(
+        r"^Estimated from curated owner dataset matches using patient symptoms, exposure, geography, and tests\. Matched (\d+) similar case\(s\); strongest evidence: (.+)\.$",
+        raw,
+    )
+    if match:
+        count = match.group(1)
+        evidence = ", ".join(
+            translate_backend_text_value(part.strip(), lang=lang)
+            for part in match.group(2).split(",")
+        )
+        return tr_lit(
+            "Estimated from curated owner dataset matches using patient symptoms, exposure, geography, and tests. Matched {count} similar case(s); strongest evidence: {evidence}.",
+            lang=lang,
+            count=count,
+            evidence=evidence,
+        )
+
+    match = re.match(r"^shared context: (.+)$", raw)
+    if match:
+        return tr_lit("shared context: {context}", lang=lang, context=match.group(1))
+
+    match = re.match(r"^(sputum smear test|genexpert test|chest xray) match$", raw)
+    if match:
+        field_name = match.group(1)
+        return tr_lit("{field} match", lang=lang, field=tr_lit(field_name, lang=lang))
+
+    match = re.match(r"^(tb culture|tst|igra) positive$", raw)
+    if match:
+        field_name = match.group(1)
+        return tr_lit("{field} positive", lang=lang, field=tr_lit(field_name, lang=lang))
+
+    match = re.match(
+        r"^Intensive phase: (.*); continuation phase: (.*); daily DOTS/supervised dosing where feasible\.$",
+        raw,
+    )
+    if match:
+        intensive = translate_backend_text_value(match.group(1), lang=lang)
+        continuation = translate_backend_text_value(match.group(2), lang=lang)
+        return tr_lit(
+            "Intensive phase: {intensive}; continuation phase: {continuation}; daily DOTS/supervised dosing where feasible.",
+            lang=lang,
+            intensive=intensive,
+            continuation=continuation,
+        )
+
+    match = re.match(r"^Intensive: (.*), Continuation: (.*)$", raw)
+    if match:
+        intensive = translate_backend_text_value(match.group(1), lang=lang)
+        continuation = translate_backend_text_value(match.group(2), lang=lang)
+        return tr_lit(
+            "Intensive: {intensive}, Continuation: {continuation}",
+            lang=lang,
+            intensive=intensive,
+            continuation=continuation,
+        )
+
+    return raw
+
+
+def localize_payload(value, lang=None):
+    lang = lang or get_request_lang()
+    if isinstance(value, dict):
+        return {key: localize_payload(item, lang=lang) for key, item in value.items()}
+    if isinstance(value, list):
+        return [localize_payload(item, lang=lang) for item in value]
+    if isinstance(value, str):
+        return translate_backend_text_value(value, lang=lang)
+    return value
 
 # Database configuration - supports multiple databases
 DATABASE_TYPE = os.getenv('DATABASE_TYPE', 'sqlite')
@@ -1915,11 +3449,13 @@ def diagnose():
         igra,
         species_result["species"],
     )
-    bacteria_assessment = build_bacteria_assessment(species_result, tb_analysis)
+    localized_who_category = translate_backend_text_value(tb_analysis["who_category"], lang=lang)
+    localized_tb_types = localize_payload(tb_analysis["tb_types"], lang=lang)
+    bacteria_assessment = localize_payload(build_bacteria_assessment(species_result, tb_analysis), lang=lang)
     infection_assessment = build_infection_assessment(tb_analysis, lang=lang)
 
     # Get WHO clinical info
-    clinical_info = get_who_clinical_info(
+    clinical_info = localize_payload(get_who_clinical_info(
         tb_analysis['who_category'],
         patient.symptoms or '',
         patient.sputum_smear_test or 'Unknown',
@@ -1927,14 +3463,14 @@ def diagnose():
         patient.chest_xray or 'Unknown',
         patient.hiv or 'No',
         patient.drug_resistance or 'No'
-    )
+    ), lang=lang)
 
     # Get WHO Treatment Regimen
-    treatment = get_who_treatment_regimen(
+    treatment = localize_payload(get_who_treatment_regimen(
         tb_analysis['who_category'],
         patient.hiv or 'No',
         patient.drug_resistance or 'No'
-    )
+    ), lang=lang)
     resistance_profile = determine_resistance_profile(
         patient.drug_resistance or 'No',
         patient.genexpert_test or 'Unknown',
@@ -1943,7 +3479,12 @@ def diagnose():
         patient_data.get('susceptible_to'),
     )
     treatment, clinical_info = apply_species_treatment_adjustments(treatment, clinical_info, bacteria_assessment)
-    treatment_plan = build_treatment_plan(tb_analysis, bacteria_assessment, resistance_profile, treatment, clinical_info)
+    treatment = localize_payload(treatment, lang=lang)
+    clinical_info = localize_payload(clinical_info, lang=lang)
+    treatment_plan = localize_payload(
+        build_treatment_plan(tb_analysis, bacteria_assessment, resistance_profile, treatment, clinical_info),
+        lang=lang,
+    )
 
     ml_prediction = predict_ml(patient)
 
@@ -2003,7 +3544,7 @@ def diagnose():
     urgency = treatment.get("priority", "MODERATE")
     treatment_recommendation = {
         "type": clinical_info.get("diagnosis", tb_analysis["who_category"]),
-        "category": tb_analysis["who_category"],
+        "category": localized_who_category,
         "bacteria_species": bacteria_assessment["species"],
         "infection_type": infection_assessment["primary_infection"],
         "resistance_class": resistance_profile["classification"],
@@ -2025,13 +3566,13 @@ def diagnose():
         alert_created = create_alert(
             patient_id=patient.id,
             user_id=user.id,
-            alert_type=f"ALERT: {tb_analysis['who_category']}",
+            alert_type=tr("ALERT_LABEL", lang=lang),
             message=tr(
                 "ALERT_MESSAGE_TEMPLATE",
                 lang=lang,
                 patient_name=patient_name,
                 patient_id=patient.patient_id,
-                category=tb_analysis['who_category'],
+                category=localized_who_category,
                 species=bacteria_assessment['species'],
                 who_recommendation=clinical_info.get('who_recommendation', ''),
             ),
@@ -2046,8 +3587,8 @@ def diagnose():
         "symptom_analysis": symptom_analysis,
         "test_evaluation": test_evaluation,
         "who_standards": {
-            "tb_types": tb_analysis["tb_types"],
-            "primary_diagnosis": tb_analysis["who_category"],
+            "tb_types": localized_tb_types,
+            "primary_diagnosis": localized_who_category,
             "presumptive": tb_analysis["presumptive_tb"],
             "bacteriological_confirmation": tb_analysis["bacteriological_confirmation"],
             "clinical_info": clinical_info,
@@ -2115,7 +3656,8 @@ def train_model_endpoint():
         load_models()
         return jsonify(result)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Model training failed: {e}")
+        return jsonify({'error': tr('TRAIN_MODEL_FAILED')}), 500
 
 @app.route('/api/import-data', methods=['POST'])
 @role_required('system_admin')
@@ -2125,7 +3667,8 @@ def import_data_endpoint():
         main()
         return jsonify({'message': tr('DATA_IMPORT_OK')})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Data import failed: {e}")
+        return jsonify({'error': tr('IMPORT_DATA_FAILED')}), 500
 
 if __name__ == '__main__':
     with app.app_context():
