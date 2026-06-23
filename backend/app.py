@@ -3249,16 +3249,23 @@ def patients():
             last_name=data.get('last_name'),
             age=data.get('age'),
             gender=data.get('gender'),
+            weight=data.get('weight'),
             city=data.get('city'),
             symptoms=data.get('symptoms'),
             exposure_history=data.get('exposure_history'),
+            persistent_cough_duration_weeks=data.get('persistent_cough_duration_weeks'),
+            contact_with_tb_patient=data.get('contact_with_tb_patient'),
+            previous_tb_treatment=data.get('previous_tb_treatment'),
             sputum_smear_test=data.get('sputum_smear_test'),
             genexpert_test=data.get('genexpert_test'),
             chest_xray=data.get('chest_xray'),
             bacteria_species=data.get('bacteria_species'),
             drug_resistance=data.get('drug_resistance'),
             hiv=data.get('hiv'),
-            diabetes=data.get('diabetes')
+            diabetes=data.get('diabetes'),
+            smoking_status=data.get('smoking_status'),
+            alcohol_use=data.get('alcohol_use'),
+            oxygen_saturation_spo2=data.get('oxygen_saturation_spo2')
         )
         db.session.add(patient)
         db.session.commit()
@@ -3326,9 +3333,13 @@ def diagnose():
             "last_name",
             "age",
             "gender",
+            "weight",
             "city",
             "symptoms",
             "exposure_history",
+            "persistent_cough_duration_weeks",
+            "contact_with_tb_patient",
+            "previous_tb_treatment",
             "sputum_smear_test",
             "genexpert_test",
             "chest_xray",
@@ -3336,6 +3347,9 @@ def diagnose():
             "drug_resistance",
             "hiv",
             "diabetes",
+            "smoking_status",
+            "alcohol_use",
+            "oxygen_saturation_spo2",
         ]:
             if field in payload:
                 setattr(patient, field, payload.get(field))
