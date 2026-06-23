@@ -21,21 +21,55 @@
             </div>
             <div>
               <h1 class="text-xl font-bold text-gray-900 dark:text-white">TB Diagnostic System</h1>
-              <p class="text-sm text-gray-500 dark:text-gray-400">Comprehensive Patient Analysis & Treatment</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">{{ t(TEXT.headerSubtitle) }}</p>
             </div>
           </div>
           <div class="flex items-center gap-4">
-            <div class="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
-              <span class="text-xs font-semibold uppercase tracking-wide">{{ t(TEXT.langShort) }}</span>
-              <select
-                v-model="uiLanguage"
-                class="bg-transparent text-sm font-medium outline-none"
+            <div class="relative">
+              <button
+                type="button"
+                class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-gray-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-emerald-700 dark:hover:bg-gray-700"
                 aria-label="Language"
+                :aria-expanded="languageMenuOpen ? 'true' : 'false'"
+                @click="languageMenuOpen = !languageMenuOpen"
               >
-                <option v-for="lang in languageOptions" :key="lang.code" :value="lang.code">
-                  {{ lang.code }} - {{ t(lang.label) }}
-                </option>
-              </select>
+                <img
+                  :src="selectedLanguageOption.flagSrc"
+                  :alt="t(selectedLanguageOption.label)"
+                  class="h-4 w-6 rounded-sm object-cover ring-1 ring-black/10"
+                />
+                <span class="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                  {{ selectedLanguageOption.code }}
+                </span>
+                <svg viewBox="0 0 20 20" class="h-4 w-4 text-gray-500 dark:text-gray-300" fill="none" aria-hidden="true">
+                  <path d="m5 7 5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <div
+                v-if="languageMenuOpen"
+                class="absolute right-0 z-20 mt-2 w-52 rounded-2xl border border-slate-200 bg-slate-900/95 p-2 text-white shadow-2xl ring-1 ring-black/10 backdrop-blur dark:border-slate-700"
+              >
+                <div class="mb-1 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  {{ t(TEXT.langShort) }}
+                </div>
+                <button
+                  v-for="lang in languageOptions"
+                  :key="lang.code"
+                  type="button"
+                  class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition"
+                  :class="uiLanguage === lang.code ? 'bg-emerald-500/15 text-emerald-300' : 'text-slate-100 hover:bg-white/5'"
+                  @click="setLanguage(lang.code)"
+                >
+                  <img
+                    :src="lang.flagSrc"
+                    :alt="t(lang.label)"
+                    class="h-4 w-6 rounded-sm object-cover ring-1 ring-black/10"
+                  />
+                  <span class="min-w-[2rem] text-xs font-semibold uppercase tracking-wide text-slate-400" :class="uiLanguage === lang.code ? 'text-emerald-300' : 'text-slate-400'">{{ lang.code }}</span>
+                  <span class="font-medium">{{ t(lang.label) }}</span>
+                  <span v-if="uiLanguage === lang.code" class="ml-auto text-emerald-300">•</span>
+                </button>
+              </div>
             </div>
             <button
               v-if="isLoggedIn"
@@ -268,147 +302,76 @@
       <div v-else class="grid grid-cols-1 items-stretch gap-5 xl:min-h-[calc(100vh-11rem)] xl:grid-cols-2">
         <section class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-lg h-full flex flex-col">
           <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">{{ t(TEXT.loginTitle) }}</p>
-          <h2 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white lg:text-[1.9rem]">From patient data to TB decision.</h2>
+          <h2 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white lg:text-[1.9rem]">{{ t(TEXT.loginHeroHeadline) }}</h2>
           <p class="mt-2 max-w-3xl text-sm leading-6 text-gray-600 dark:text-gray-300">
-            Open a case, review evidence, generate one guided report.
+            {{ t(TEXT.loginHeroSubtitle) }}
           </p>
           <div class="mt-4 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900/40">
             <div class="flex items-center justify-between">
-              <h3 class="text-base font-semibold text-gray-900 dark:text-white">System workflow</h3>
-              <p class="text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">Few words</p>
+              <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t(TEXT.systemWorkflowTitle) }}</h3>
+              <p class="text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">{{ t(TEXT.systemWorkflowHint) }}</p>
             </div>
-            <div class="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-slate-50 p-3 dark:border-gray-700 dark:bg-gray-800/80">
-              <svg viewBox="0 0 920 320" class="h-auto w-full" role="img" aria-label="TB system workflow">
-                <defs>
-                  <filter id="tbCardShadow" x="-20%" y="-20%" width="140%" height="180%">
-                    <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0f172a" flood-opacity="0.08"/>
-                  </filter>
-                </defs>
-
-                <rect x="18" y="18" width="884" height="284" rx="28" fill="#ffffff" />
-                <rect x="42" y="38" width="210" height="244" rx="24" fill="#eff6ff" stroke="#cbd5e1" />
-                <rect x="278" y="50" width="602" height="88" rx="22" fill="#ffffff" stroke="#dbeafe" filter="url(#tbCardShadow)" />
-                <rect x="278" y="154" width="602" height="112" rx="22" fill="#ffffff" stroke="#e5e7eb" filter="url(#tbCardShadow)" />
-                <rect x="292" y="62" width="132" height="64" rx="18" fill="#f0fdf4" stroke="#bbf7d0" />
-                <rect x="438" y="62" width="132" height="64" rx="18" fill="#eff6ff" stroke="#bfdbfe" />
-                <rect x="584" y="62" width="132" height="64" rx="18" fill="#f5f3ff" stroke="#ddd6fe" />
-                <rect x="730" y="62" width="132" height="64" rx="18" fill="#f0fdf4" stroke="#bbf7d0" />
-
-                <g transform="translate(72 64)">
-                  <circle cx="74" cy="58" r="48" fill="#0f172a"/>
-                  <path d="M74 26v26" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
-                  <path d="M73 39c-6 0-13 5-15 12-2 5-1 10 2 15 3 5 7 8 13 10l2-22V39z" fill="#ffffff"/>
-                  <path d="M75 39c6 0 13 5 15 12 2 5 1 10-2 15-3 5-7 8-13 10l-2-22V39z" fill="#d1fae5"/>
-                  <path d="M73 32c-3-4-7-6-11-6" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
-                  <path d="M75 32c3-4 7-6 11-6" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
-                  <path d="M60 47l-6 8m9-4-10 13m16-10-7 10" stroke="#60a5fa" stroke-width="2.6" stroke-linecap="round"/>
-                  <path d="M88 47l6 8m-9-4 10 13m-16-10 7 10" stroke="#34d399" stroke-width="2.6" stroke-linecap="round"/>
-                  <circle cx="95" cy="68" r="2.8" fill="#34d399"/>
-                  <circle cx="89" cy="76" r="2.3" fill="#34d399"/>
-                  <circle cx="102" cy="75" r="2.3" fill="#34d399"/>
-                </g>
-                <text x="147" y="205" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">TB System</text>
-                <text x="147" y="226" text-anchor="middle" font-size="12" fill="#475569">login</text>
-                <text x="147" y="243" text-anchor="middle" font-size="12" fill="#475569">evaluate</text>
-                <text x="147" y="260" text-anchor="middle" font-size="12" fill="#475569">guide care</text>
-
-                <path d="M424 94h14" stroke="#10b981" stroke-width="4" stroke-linecap="round"/>
-                <path d="M570 94h14" stroke="#2563eb" stroke-width="4" stroke-linecap="round"/>
-                <path d="M716 94h14" stroke="#7c3aed" stroke-width="4" stroke-linecap="round"/>
-                <path d="M430 88l8 6-8 6" fill="none" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M576 88l8 6-8 6" fill="none" stroke="#2563eb" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M722 88l8 6-8 6" fill="none" stroke="#7c3aed" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-
-                <g>
-                  <circle cx="322" cy="94" r="16" fill="#dcfce7"/>
-                  <circle cx="468" cy="94" r="16" fill="#dbeafe"/>
-                  <circle cx="614" cy="94" r="16" fill="#ede9fe"/>
-                  <circle cx="760" cy="94" r="16" fill="#dcfce7"/>
-                </g>
-
-                <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="322" cy="90" r="5.5" stroke="#059669" stroke-width="2.5"/>
-                  <path d="M312 106c4-6 9-9 15-9 6 0 11 3 15 9" stroke="#059669" stroke-width="2.5"/>
-                  <path d="M334 104h8" stroke="#059669" stroke-width="2.5"/>
-                  <path d="M338 100v8" stroke="#059669" stroke-width="2.5"/>
-
-                  <path d="M458 103l5-11 5 7 5-11" stroke="#2563eb" stroke-width="3"/>
-                  <path d="M454 108h27" stroke="#2563eb" stroke-width="2.6"/>
-                  <circle cx="477" cy="82" r="4" stroke="#2563eb" stroke-width="2.5"/>
-
-                  <ellipse cx="614" cy="91" rx="8" ry="10" stroke="#7c3aed" stroke-width="2.5"/>
-                  <circle cx="609" cy="87" r="1.6" fill="#7c3aed"/>
-                  <circle cx="617" cy="93" r="1.6" fill="#7c3aed"/>
-                  <path d="M622 103l6 6" stroke="#7c3aed" stroke-width="2.5"/>
-
-                  <path d="M750 95l6 6 13-14" stroke="#16a34a" stroke-width="4"/>
-                  <path d="M760 79v8" stroke="#16a34a" stroke-width="2.5"/>
-                </g>
-
-                <g font-family="Inter, Arial, sans-serif">
-                  <text x="350" y="84" font-size="9" font-weight="700" fill="#059669">STEP 1</text>
-                  <text x="350" y="103" font-size="15" font-weight="700" fill="#065f46">Collect</text>
-
-                  <text x="496" y="84" font-size="9" font-weight="700" fill="#2563eb">STEP 2</text>
-                  <text x="496" y="103" font-size="15" font-weight="700" fill="#1d4ed8">Analyze</text>
-
-                  <text x="642" y="84" font-size="9" font-weight="700" fill="#7c3aed">STEP 3</text>
-                  <text x="642" y="103" font-size="15" font-weight="700" fill="#6d28d9">Classify</text>
-
-                  <text x="788" y="84" font-size="9" font-weight="700" fill="#16a34a">STEP 4</text>
-                  <text x="788" y="103" font-size="15" font-weight="700" fill="#166534">Treat</text>
-                </g>
-
-                <g>
-                  <rect x="298" y="172" width="176" height="76" rx="18" fill="#f8fafc" stroke="#cbd5e1"/>
-                  <rect x="488" y="172" width="176" height="76" rx="18" fill="#f8fafc" stroke="#cbd5e1"/>
-                  <rect x="678" y="172" width="170" height="76" rx="18" fill="#f8fafc" stroke="#cbd5e1"/>
-
-                  <rect x="320" y="188" width="40" height="40" rx="12" fill="#ecfdf5"/>
-                  <path d="M340 195v26" stroke="#059669" stroke-width="2.6" stroke-linecap="round"/>
-                  <path d="M340 201c-5 0-8 4-9 8-1 4 0 8 2 10 2 3 4 5 7 6l1-12v-12z" fill="#ffffff"/>
-                  <path d="M340 201c5 0 8 4 9 8 1 4 0 8-2 10-2 3-4 5-7 6l-1-12v-12z" fill="#d1fae5"/>
-                  <text x="374" y="201" font-size="12" font-weight="700" fill="#0f172a">Patient</text>
-                  <text x="374" y="218" font-size="10" fill="#475569">symptoms</text>
-                  <text x="374" y="232" font-size="10" fill="#475569">tests</text>
-
-                  <rect x="508" y="188" width="40" height="40" rx="12" fill="#dbeafe"/>
-                  <path d="M519 219h20" stroke="#2563eb" stroke-width="2.8" stroke-linecap="round"/>
-                  <path d="M523 214l4-10 4 6 4-12" stroke="#2563eb" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
-                  <text x="560" y="201" font-size="12" font-weight="700" fill="#0f172a">TB type</text>
-                  <text x="560" y="218" font-size="10" fill="#475569">bacteria</text>
-                  <text x="560" y="232" font-size="10" fill="#475569">resistance</text>
-
-                  <rect x="696" y="188" width="40" height="40" rx="12" fill="#ede9fe"/>
-                  <path d="M708 196h16l4 4v18h-20z" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linejoin="round"/>
-                  <path d="M724 196v5h5" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round"/>
-                  <text x="748" y="201" font-size="12" font-weight="700" fill="#0f172a">Report</text>
-                  <text x="748" y="218" font-size="10" fill="#475569">treatment</text>
-                  <text x="748" y="232" font-size="10" fill="#475569">guidance</text>
-                </g>
-              </svg>
+            <div class="mt-3 rounded-xl border border-gray-200 bg-slate-50 p-4 dark:border-gray-700 dark:bg-gray-800/80">
+              <div class="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+                <div class="rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm dark:border-slate-700 dark:bg-gray-900/40">
+                  <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900">
+                    <span class="text-3xl">TB</span>
+                  </div>
+                  <p class="mt-4 text-lg font-bold text-slate-900 dark:text-white">{{ t(TEXT.workflowSystemTitle) }}</p>
+                  <div class="mt-2 space-y-1 text-sm text-slate-500 dark:text-slate-400">
+                    <p>{{ t(TEXT.workflowLogin) }}</p>
+                    <p>{{ t(TEXT.workflowEvaluate) }}</p>
+                    <p>{{ t(TEXT.workflowGuideCare) }}</p>
+                  </div>
+                </div>
+                <div class="space-y-4">
+                  <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div
+                      v-for="step in loginWorkflowSteps"
+                      :key="step.id"
+                      class="rounded-2xl border bg-white p-4 shadow-sm dark:bg-gray-900/30"
+                      :class="step.accent"
+                    >
+                      <p class="text-[11px] font-semibold uppercase tracking-[0.2em]" :class="step.kickerClass">{{ t(step.stepLabel) }}</p>
+                      <p class="mt-2 text-base font-semibold text-gray-900 dark:text-white break-words">{{ t(step.title) }}</p>
+                    </div>
+                  </div>
+                  <div class="grid gap-3 lg:grid-cols-3">
+                    <div
+                      v-for="card in loginWorkflowSummaryCards"
+                      :key="card.id"
+                      class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-gray-900/30"
+                    >
+                      <p class="text-sm font-semibold text-slate-900 dark:text-white break-words">{{ t(card.title) }}</p>
+                      <div class="mt-2 space-y-1 text-sm text-slate-500 dark:text-slate-400">
+                        <p v-for="line in card.lines" :key="line">{{ t(line) }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="mt-3 flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
-              <span>New patient</span>
-              <span>Existing patient</span>
-              <span>Clinical report</span>
+            <div class="mt-3 grid gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400 sm:grid-cols-3">
+              <span>{{ t(TEXT.newPatient) }}</span>
+              <span>{{ t(TEXT.existingPatient) }}</span>
+              <span>{{ t(TEXT.clinicalReport) }}</span>
             </div>
           </div>
           <div class="mt-4 grid flex-1 content-start gap-3 lg:grid-cols-2">
             <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/30">
-              <h3 class="text-base font-semibold text-gray-900 dark:text-white">What you can do</h3>
+              <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t(TEXT.whatYouCanDo) }}</h3>
               <ul class="mt-2 space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                <li><strong>New:</strong> start a TB case.</li>
-                <li><strong>Existing:</strong> reopen a saved record.</li>
-                <li><strong>Report:</strong> review guidance.</li>
+                <li>{{ t(TEXT.whatNew) }}</li>
+                <li>{{ t(TEXT.whatExisting) }}</li>
+                <li>{{ t(TEXT.whatReport) }}</li>
               </ul>
             </div>
             <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
-              <h3 class="text-base font-semibold text-blue-900 dark:text-blue-100">After sign-in</h3>
+              <h3 class="text-base font-semibold text-blue-900 dark:text-blue-100">{{ t(TEXT.afterSignIn) }}</h3>
               <ul class="mt-2 space-y-2 text-sm text-blue-800 dark:text-blue-200">
-                <li>`Diagnose` update evidence.</li>
-                <li>`Patients` open records.</li>
-                <li>`Alerts` review notices.</li>
+                <li>{{ t(TEXT.afterDiagnose) }}</li>
+                <li>{{ t(TEXT.afterPatients) }}</li>
+                <li>{{ t(TEXT.afterAlerts) }}</li>
               </ul>
             </div>
           </div>
@@ -416,81 +379,81 @@
 
         <section class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-lg h-full flex flex-col">
           <div class="rounded-2xl border border-emerald-200 bg-white p-4 dark:border-emerald-800 dark:bg-gray-900/30">
-            <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">Protected workspace</p>
-            <h2 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white lg:text-[1.8rem]">Welcome back</h2>
+            <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">{{ t(TEXT.protectedWorkspace) }}</p>
+            <h2 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white lg:text-[1.8rem]">{{ t(TEXT.welcomeBack) }}</h2>
             <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-              Continue to diagnosis, patients, and alerts.
+              {{ t(TEXT.continueToTabs) }}
             </p>
             <div class="mt-3 grid gap-2 sm:grid-cols-3">
               <div class="rounded-xl border border-emerald-100 bg-slate-50 px-3 py-2.5 dark:border-emerald-900/40 dark:bg-gray-900/40">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Diagnose</p>
-                <p class="mt-1 text-xs font-medium text-gray-900 dark:text-white">Review cases.</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">{{ t(TEXT.tabDiagnose) }}</p>
+                <p class="mt-1 text-xs font-medium text-gray-900 dark:text-white">{{ t(TEXT.reviewCases) }}</p>
               </div>
               <div class="rounded-xl border border-blue-100 bg-slate-50 px-3 py-2.5 dark:border-blue-900/40 dark:bg-gray-900/40">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Patients</p>
-                <p class="mt-1 text-xs font-medium text-gray-900 dark:text-white">Open records.</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">{{ t(TEXT.tabPatients) }}</p>
+                <p class="mt-1 text-xs font-medium text-gray-900 dark:text-white">{{ t(TEXT.openRecords) }}</p>
               </div>
               <div class="rounded-xl border border-violet-100 bg-slate-50 px-3 py-2.5 dark:border-violet-900/40 dark:bg-gray-900/40">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-violet-700 dark:text-violet-300">Alerts</p>
-                <p class="mt-1 text-xs font-medium text-gray-900 dark:text-white">See notices.</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-violet-700 dark:text-violet-300">{{ t(TEXT.tabAlerts) }}</p>
+                <p class="mt-1 text-xs font-medium text-gray-900 dark:text-white">{{ t(TEXT.seeNotices) }}</p>
               </div>
             </div>
           </div>
           <form @submit.prevent="login" class="space-y-3 flex-1 flex flex-col">
             <div>
-              <label class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+              <label class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.emailLabel) }}</label>
               <input
                 v-model="loginEmail"
                 type="email"
                 class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                placeholder="you@example.com"
+                :placeholder="t(TEXT.emailPlaceholder)"
                 required
               />
             </div>
             <div>
-              <label class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+              <label class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.passwordLabel) }}</label>
               <div class="relative">
                 <input
                   v-model="loginPassword"
                   :type="showLoginPassword ? 'text' : 'password'"
                   class="w-full rounded-lg border border-gray-300 px-4 py-2.5 pr-12 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  placeholder="Password"
+                  :placeholder="t(TEXT.passwordPlaceholder)"
                   required
                 />
                 <button
                   type="button"
                   class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                   @click="showLoginPassword = !showLoginPassword"
-                  :title="showLoginPassword ? 'Hide password' : 'Show password'"
+                  :title="showLoginPassword ? t(TEXT.hidePasswordTitle) : t(TEXT.showPasswordTitle)"
                 >
                   {{ showLoginPassword ? '🙈' : '👁️' }}
                 </button>
               </div>
             </div>
             <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200">
-              <p class="text-sm font-semibold">Useful sign-in notes</p>
+              <p class="text-sm font-semibold">{{ t(TEXT.signInNotesTitle) }}</p>
               <ul class="mt-2 space-y-1 text-xs leading-5">
-                <li>Use the eye icon to check the password.</li>
-                <li>Email stays after refresh.</li>
-                <li>Click your name or role to log out.</li>
+                <li>{{ t(TEXT.signInNote1) }}</li>
+                <li>{{ t(TEXT.signInNote2) }}</li>
+                <li>{{ t(TEXT.signInNote3) }}</li>
               </ul>
             </div>
             <div class="grid gap-2 sm:grid-cols-2">
               <div class="rounded-xl border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
-                <p class="text-sm font-semibold text-blue-900 dark:text-blue-100">Diagnose</p>
-                <p class="mt-1 text-xs leading-5 text-blue-800 dark:text-blue-200">Enter or continue evidence.</p>
+                <p class="text-sm font-semibold text-blue-900 dark:text-blue-100">{{ t(TEXT.tabDiagnose) }}</p>
+                <p class="mt-1 text-xs leading-5 text-blue-800 dark:text-blue-200">{{ t(TEXT.enterContinueEvidence) }}</p>
               </div>
               <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-3 dark:border-indigo-800 dark:bg-indigo-900/20">
-                <p class="text-sm font-semibold text-indigo-900 dark:text-indigo-100">Patients</p>
-                <p class="mt-1 text-xs leading-5 text-indigo-800 dark:text-indigo-200">Open saved records.</p>
+                <p class="text-sm font-semibold text-indigo-900 dark:text-indigo-100">{{ t(TEXT.tabPatients) }}</p>
+                <p class="mt-1 text-xs leading-5 text-indigo-800 dark:text-indigo-200">{{ t(TEXT.openSavedRecords) }}</p>
               </div>
               <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
-                <p class="text-sm font-semibold text-amber-900 dark:text-amber-100">Alerts</p>
-                <p class="mt-1 text-xs leading-5 text-amber-800 dark:text-amber-200">Review follow-up notices.</p>
+                <p class="text-sm font-semibold text-amber-900 dark:text-amber-100">{{ t(TEXT.tabAlerts) }}</p>
+                <p class="mt-1 text-xs leading-5 text-amber-800 dark:text-amber-200">{{ t(TEXT.reviewNotices) }}</p>
               </div>
               <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/30">
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">Protected</p>
-                <p class="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">Clinician and admin access only.</p>
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t(TEXT.protected) }}</p>
+                <p class="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">{{ t(TEXT.clinicianAdminOnly) }}</p>
               </div>
             </div>
             <p v-if="loginError" class="text-sm font-medium text-red-600 dark:text-red-400">{{ loginError }}</p>
@@ -500,7 +463,7 @@
                 :disabled="loading"
                 class="w-full rounded-lg bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
               >
-                {{ loading ? 'Signing in...' : 'Sign in' }}
+                {{ loading ? t(TEXT.signingIn) : t(TEXT.signIn) }}
               </button>
             </div>
           </form>
@@ -514,24 +477,24 @@
           <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">Guided diagnose flow</p>
-                <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Complete the case in small steps, not one long form.</h2>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">{{ t(TEXT.guidedFlowTitle) }}</p>
+                <h2 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ t(TEXT.guidedFlowHeadline) }}</h2>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                  Move step by step through identity, clinical clues, tests, and DST before generating the report.
+                  {{ t(TEXT.guidedFlowBody) }}
                 </p>
               </div>
               <div class="grid gap-2 sm:grid-cols-3 lg:min-w-[420px]">
                 <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-900/20">
-                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Entry</p>
-                  <p class="mt-1 text-xs leading-5 text-emerald-800 dark:text-emerald-200">Use guided TB suggestions or type your own evidence.</p>
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">{{ t(TEXT.flowEntryTitle) }}</p>
+                  <p class="mt-1 text-xs leading-5 text-emerald-800 dark:text-emerald-200">{{ t(TEXT.flowEntryBody) }}</p>
                 </div>
                 <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-800 dark:bg-blue-900/20">
-                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Order</p>
-                  <p class="mt-1 text-xs leading-5 text-blue-800 dark:text-blue-200">Keep the same clinician workflow for new and existing patients.</p>
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">{{ t(TEXT.flowOrderTitle) }}</p>
+                  <p class="mt-1 text-xs leading-5 text-blue-800 dark:text-blue-200">{{ t(TEXT.flowOrderBody) }}</p>
                 </div>
                 <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-900/20">
-                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">Output</p>
-                  <p class="mt-1 text-xs leading-5 text-amber-800 dark:text-amber-200">Generate TB type, DST review, and treatment guidance at the end.</p>
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">{{ t(TEXT.flowOutputTitle) }}</p>
+                  <p class="mt-1 text-xs leading-5 text-amber-800 dark:text-amber-200">{{ t(TEXT.flowOutputBody) }}</p>
                 </div>
               </div>
             </div>
@@ -542,22 +505,22 @@
           <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg min-w-0">
             <div class="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
-                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Patient Information</h2>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Structured evidence entry for TB screening, species estimation, DST review, and treatment planning.</p>
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{{ t(TEXT.patientInfoTitle) }}</h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ t(TEXT.patientInfoSubtitle) }}</p>
               </div>
               <div class="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-gray-700/60 dark:text-gray-300">
-                Suggested items are TB-focused. Custom typing is always allowed.
+                {{ t(TEXT.suggestedItemsHint) }}
               </div>
             </div>
             <div class="mb-6 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/30">
               <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">Step {{ currentDiagnosisStep }} of {{ diagnosisSteps.length }}</p>
+                  <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">{{ tf(TEXT.stepOf, { current: currentDiagnosisStep, total: diagnosisSteps.length }) }}</p>
                   <h3 class="mt-1 text-base font-semibold text-gray-900 dark:text-white">{{ currentDiagnosisMeta.title }}</h3>
                   <p class="text-sm text-gray-500 dark:text-gray-400">{{ currentDiagnosisMeta.description }}</p>
                 </div>
                 <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {{ Math.round((currentDiagnosisStep / diagnosisSteps.length) * 100) }}% complete
+                  {{ tf(TEXT.percentComplete, { percent: Math.round((currentDiagnosisStep / diagnosisSteps.length) * 100) }) }}
                 </div>
               </div>
               <div class="mt-4 grid gap-2 md:grid-cols-4">
@@ -591,68 +554,68 @@
             <form @submit.prevent="diagnosePatient" class="space-y-5">
               <section v-show="currentDiagnosisStep === 1" class="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
                 <div class="mb-4">
-                  <h3 class="font-semibold text-gray-900 dark:text-white">1. Patient Identity</h3>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">Basic patient details used for record linking and report display.</p>
+                  <h3 class="font-semibold text-gray-900 dark:text-white">{{ t(TEXT.step1Title) }}</h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">{{ t(TEXT.step1Intro) }}</p>
                 </div>
               <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">First Name</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.firstNameLabel) }}</label>
                   <input
                     v-model="patient.first_name"
                     type="text"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    placeholder="First name"
+                    :placeholder="t(TEXT.firstNamePlaceholder)"
                   />
                 </div>
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Last Name</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.lastNameLabel) }}</label>
                   <input
                     v-model="patient.last_name"
                     type="text"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    placeholder="Last name"
+                    :placeholder="t(TEXT.lastNamePlaceholder)"
                   />
                 </div>
               </div>
               <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Patient ID</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.patientIdLabel) }}</label>
                   <input
                     v-model="patient.patient_id"
                     type="text"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    placeholder="Unique ID"
+                    :placeholder="t(TEXT.uniqueIdPlaceholder)"
                   />
                 </div>
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Age</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.ageLabel) }}</label>
                   <input
                     v-model.number="patient.age"
                     type="number"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    placeholder="Age"
+                    :placeholder="t(TEXT.agePlaceholder)"
                   />
                 </div>
               </div>
               <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Gender</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.genderLabel) }}</label>
                   <select
                     v-model="patient.gender"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   >
-                    <option>Male</option>
-                    <option>Female</option>
-                    <option>Other</option>
+                    <option>{{ t(TEXT.genderMale) }}</option>
+                    <option>{{ t(TEXT.genderFemale) }}</option>
+                    <option>{{ t(TEXT.genderOther) }}</option>
                   </select>
                 </div>
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">City</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.cityLabel) }}</label>
                   <input
                     v-model="patient.city"
                     type="text"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    placeholder="City"
+                    :placeholder="t(TEXT.cityPlaceholder)"
                   />
                 </div>
               </div>
@@ -660,22 +623,22 @@
 
               <section v-show="currentDiagnosisStep === 2" class="rounded-xl border border-gray-200 p-4 dark:border-gray-700 space-y-4">
                 <div>
-                  <h3 class="font-semibold text-gray-900 dark:text-white">2. Clinical Clues</h3>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">Add symptoms and exposure history from the guided TB lists, or type your own item if not listed.</p>
+                  <h3 class="font-semibold text-gray-900 dark:text-white">{{ t(TEXT.step2Title) }}</h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">{{ t(TEXT.clinicalCluesIntro) }}</p>
                 </div>
                 <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/30">
                   <div class="flex items-center justify-between gap-3">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Symptoms</label>
-                      <p class="text-xs text-gray-500 dark:text-gray-400">Type directly in the field. Suggested TB symptoms below can be clicked to append.</p>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.symptomsLabel) }}</label>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">{{ t(TEXT.symptomsHint) }}</p>
                     </div>
-                    <span class="text-xs text-gray-500 dark:text-gray-400">Step 1</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ t(TEXT.miniStep1) }}</span>
                   </div>
                   <textarea
                     v-model="patient.symptoms"
                     class="mt-3 w-full rounded-lg border border-gray-300 px-4 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                     rows="3"
-                    placeholder="Describe symptoms or keep the stored patient text as it is"
+                    :placeholder="t(TEXT.symptomsPlaceholder)"
                   ></textarea>
                   <div class="mt-3">
                     <button
@@ -687,14 +650,14 @@
                       <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" aria-hidden="true">
                         <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                       </svg>
-                      Add symptom
+                      {{ t(TEXT.addSymptom) }}
                     </button>
                     <div v-else class="flex flex-col gap-2 sm:flex-row">
                       <input
                         v-model="customCommaInputs.symptoms"
                         type="text"
                         class="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                        placeholder="Add one symptom"
+                        :placeholder="t(TEXT.addOneSymptom)"
                         @keydown.enter.prevent="addCustomListValue('symptoms')"
                       />
                       <button
@@ -702,26 +665,26 @@
                         class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
                         @click="addCustomListValue('symptoms')"
                       >
-                        Add
+                        {{ t(TEXT.add) }}
                       </button>
                       <button
                         type="button"
                         class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
                         @click="closeCustomListInput('symptoms')"
                       >
-                        Cancel
+                        {{ t(TEXT.cancel) }}
                       </button>
                     </div>
                   </div>
                   <div class="mt-3 flex flex-wrap gap-2">
                     <button
                       v-for="option in symptomOptions"
-                      :key="option"
+                      :key="option.value"
                       type="button"
                       class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-gray-800 dark:text-emerald-300"
-                      @click="appendSuggestedValue('symptoms', option)"
+                      @click="appendSuggestedValue('symptoms', option.value)"
                     >
-                      + {{ option }}
+                      + {{ t(option.label) }}
                     </button>
                   </div>
                 </div>
@@ -729,16 +692,16 @@
                 <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/30">
                   <div class="flex items-center justify-between gap-3">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Exposure History</label>
-                      <p class="text-xs text-gray-500 dark:text-gray-400">Existing patient exposure notes stay unchanged unless the clinician edits them.</p>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.exposureHistoryLabel) }}</label>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">{{ t(TEXT.exposureHint) }}</p>
                     </div>
-                    <span class="text-xs text-gray-500 dark:text-gray-400">Step 2</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ t(TEXT.miniStep2) }}</span>
                   </div>
                   <textarea
                     v-model="patient.exposure_history"
                     class="mt-3 w-full rounded-lg border border-gray-300 px-4 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                     rows="3"
-                    placeholder="Enter or review household, travel, animal, dairy, wildlife, or occupational exposure"
+                    :placeholder="t(TEXT.exposurePlaceholder)"
                   ></textarea>
                   <div class="mt-3">
                     <button
@@ -750,14 +713,14 @@
                       <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" aria-hidden="true">
                         <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                       </svg>
-                      Add exposure
+                      {{ t(TEXT.addExposure) }}
                     </button>
                     <div v-else class="flex flex-col gap-2 sm:flex-row">
                       <input
                         v-model="customCommaInputs.exposure_history"
                         type="text"
                         class="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                        placeholder="Add one exposure item"
+                        :placeholder="t(TEXT.addOneExposure)"
                         @keydown.enter.prevent="addCustomListValue('exposure_history')"
                       />
                       <button
@@ -765,26 +728,26 @@
                         class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
                         @click="addCustomListValue('exposure_history')"
                       >
-                        Add
+                        {{ t(TEXT.add) }}
                       </button>
                       <button
                         type="button"
                         class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
                         @click="closeCustomListInput('exposure_history')"
                       >
-                        Cancel
+                        {{ t(TEXT.cancel) }}
                       </button>
                     </div>
                   </div>
                   <div class="mt-3 flex flex-wrap gap-2">
                     <button
                       v-for="option in exposureOptions"
-                      :key="option"
+                      :key="option.value"
                       type="button"
                       class="rounded-full border border-blue-200 bg-white px-3 py-1 text-xs text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-gray-800 dark:text-blue-300"
-                      @click="appendSuggestedValue('exposure_history', option)"
+                      @click="appendSuggestedValue('exposure_history', option.value)"
                     >
-                      + {{ option }}
+                      + {{ t(option.label) }}
                     </button>
                   </div>
                 </div>
@@ -792,8 +755,8 @@
 
               <section v-show="currentDiagnosisStep === 3" class="rounded-xl border border-gray-200 p-4 dark:border-gray-700 space-y-4">
                 <div>
-                  <h3 class="font-semibold text-gray-900 dark:text-white">3. Species And Test Results</h3>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">Choose known results or leave bacteria on `Auto-detect` so the system estimates from the patient record.</p>
+                  <h3 class="font-semibold text-gray-900 dark:text-white">{{ t(TEXT.step3Title) }}</h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">{{ t(TEXT.testsIntro) }}</p>
                 </div>
               <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -989,18 +952,18 @@
 
               <section v-show="currentDiagnosisStep === 4" class="rounded-xl border border-gray-200 p-4 dark:border-gray-700 space-y-4">
                 <div>
-                  <h3 class="font-semibold text-gray-900 dark:text-white">4. DST And Resistance Decision Support</h3>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">Keep these as normal input fields. Suggested TB DST phrases and medicines can be appended when useful.</p>
+                  <h3 class="font-semibold text-gray-900 dark:text-white">{{ t(TEXT.step4Title) }}</h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">{{ t(TEXT.dstIntro) }}</p>
                 </div>
               <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Antibiogram / DST Summary</label>
+                  <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.antibiogramSummaryLabel) }}</label>
                   <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/30">
                     <textarea
                       v-model="patient.antibiogram_result"
                       class="w-full rounded-lg border border-gray-300 px-4 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                       rows="3"
-                      placeholder="Enter DST summary or keep stored text for an existing patient"
+                      :placeholder="t(TEXT.dstSummaryPlaceholder)"
                     ></textarea>
                     <div class="mt-3">
                       <button
@@ -1012,14 +975,14 @@
                         <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" aria-hidden="true">
                           <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                         </svg>
-                        Add DST item
+                        {{ t(TEXT.addDstItem) }}
                       </button>
                       <div v-else class="flex flex-col gap-2 sm:flex-row">
                         <input
                           v-model="customCommaInputs.antibiogram_result"
                           type="text"
                           class="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                          placeholder="Add one DST item"
+                          :placeholder="t(TEXT.addOneDstItem)"
                           @keydown.enter.prevent="addCustomListValue('antibiogram_result')"
                         />
                         <button
@@ -1027,39 +990,39 @@
                           class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"
                           @click="addCustomListValue('antibiogram_result')"
                         >
-                          Add
+                          {{ t(TEXT.add) }}
                         </button>
                         <button
                           type="button"
                           class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
                           @click="closeCustomListInput('antibiogram_result')"
                         >
-                          Cancel
+                          {{ t(TEXT.cancel) }}
                         </button>
                       </div>
                     </div>
                     <div class="mt-3 flex flex-wrap gap-2">
                       <button
                         v-for="option in antibiogramOptions"
-                        :key="option"
+                        :key="option.value"
                         type="button"
                         class="rounded-full border border-rose-200 bg-white px-3 py-1 text-xs text-rose-700 hover:bg-rose-100 dark:border-rose-700 dark:bg-gray-800 dark:text-rose-300"
-                        @click="appendSuggestedValue('antibiogram_result', option)"
+                        @click="appendSuggestedValue('antibiogram_result', option.value)"
                       >
-                        + {{ option }}
+                        + {{ t(option.label) }}
                       </button>
                     </div>
                   </div>
                 </div>
                 <div class="space-y-4">
                   <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/30">
-                    <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Resistant To</label>
+                    <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.resistantToLabel) }}</label>
                     <input
                       v-model="patient.resistant_to"
                       list="tb-drug-options"
                       type="text"
                       class="w-full rounded-lg border border-gray-300 px-4 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                      placeholder="Type resistant medicines or reuse stored patient text"
+                      :placeholder="t(TEXT.resistantToPlaceholder)"
                     />
                     <div class="mt-3">
                       <button
@@ -1071,7 +1034,7 @@
                         <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" aria-hidden="true">
                           <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                         </svg>
-                        Add resistant medicine
+                        {{ t(TEXT.addResistantMedicine) }}
                       </button>
                       <div v-else class="flex flex-col gap-2 sm:flex-row">
                         <input
@@ -1079,7 +1042,7 @@
                           list="tb-drug-options"
                           type="text"
                           class="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                          placeholder="Add one resistant medicine"
+                          :placeholder="t(TEXT.addOneResistantMedicine)"
                           @keydown.enter.prevent="addCustomListValue('resistant_to')"
                         />
                         <button
@@ -1087,14 +1050,14 @@
                           class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"
                           @click="addCustomListValue('resistant_to')"
                         >
-                          Add
+                          {{ t(TEXT.add) }}
                         </button>
                         <button
                           type="button"
                           class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
                           @click="closeCustomListInput('resistant_to')"
                         >
-                          Cancel
+                          {{ t(TEXT.cancel) }}
                         </button>
                       </div>
                     </div>
@@ -1111,13 +1074,13 @@
                     </div>
                   </div>
                   <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/30">
-                    <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Susceptible To</label>
+                    <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.susceptibleToLabel) }}</label>
                     <input
                       v-model="patient.susceptible_to"
                       list="tb-drug-options"
                       type="text"
                       class="w-full rounded-lg border border-gray-300 px-4 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                      placeholder="Type susceptible medicines or reuse stored patient text"
+                      :placeholder="t(TEXT.susceptibleToPlaceholder)"
                     />
                     <div class="mt-3">
                       <button
@@ -1129,7 +1092,7 @@
                         <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" aria-hidden="true">
                           <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                         </svg>
-                        Add susceptible medicine
+                        {{ t(TEXT.addSusceptibleMedicine) }}
                       </button>
                       <div v-else class="flex flex-col gap-2 sm:flex-row">
                         <input
@@ -1137,7 +1100,7 @@
                           list="tb-drug-options"
                           type="text"
                           class="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                          placeholder="Add one susceptible medicine"
+                          :placeholder="t(TEXT.addOneSusceptibleMedicine)"
                           @keydown.enter.prevent="addCustomListValue('susceptible_to')"
                         />
                         <button
@@ -1145,14 +1108,14 @@
                           class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
                           @click="addCustomListValue('susceptible_to')"
                         >
-                          Add
+                          {{ t(TEXT.add) }}
                         </button>
                         <button
                           type="button"
                           class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
                           @click="closeCustomListInput('susceptible_to')"
                         >
-                          Cancel
+                          {{ t(TEXT.cancel) }}
                         </button>
                       </div>
                     </div>
@@ -1174,7 +1137,7 @@
               <div class="flex flex-col gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 dark:border-gray-700 dark:bg-gray-900/30 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ currentDiagnosisMeta.footer }}</p>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">You can move between steps without losing typed content.</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ t(TEXT.stepHint) }}</p>
                 </div>
                 <div class="flex flex-wrap gap-3">
                   <button
@@ -1183,7 +1146,7 @@
                     @click="previousDiagnosisStep"
                     class="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
                   >
-                    Previous step
+                    {{ t(TEXT.previousStep) }}
                   </button>
                   <button
                     v-if="currentDiagnosisStep < diagnosisSteps.length"
@@ -1191,7 +1154,7 @@
                     @click="nextDiagnosisStep"
                     class="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
                   >
-                    Next step
+                    {{ t(TEXT.nextStep) }}
                   </button>
                   <button
                     v-else
@@ -1199,7 +1162,7 @@
                     :disabled="loading"
                     class="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
                   >
-                    {{ loading ? 'Analyzing...' : 'Analyze & Diagnose' }}
+                    {{ loading ? t(TEXT.analyzing) : t(TEXT.analyzeDiagnose) }}
                   </button>
                 </div>
               </div>
@@ -1212,22 +1175,22 @@
 
           <!-- Results -->
           <div v-if="diagnosisResult" class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg space-y-6 min-w-0 xl:sticky xl:top-6 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Diagnostic Report</h2>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{{ t(TEXT.diagnosticReport) }}</h2>
             
             <!-- Patient Info -->
             <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <p class="font-medium text-gray-900 dark:text-white">{{ diagnosisResult.patient_name }}</p>
-              <p class="text-sm text-gray-500 dark:text-gray-400">ID: {{ diagnosisResult.patient_id }}</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">{{ t(TEXT.idLabel) }}: {{ diagnosisResult.patient_id }}</p>
             </div>
 
             <!-- Symptom Analysis -->
             <div class="space-y-3">
-              <h3 class="font-semibold text-gray-800 dark:text-gray-200">Symptom Analysis</h3>
+              <h3 class="font-semibold text-gray-800 dark:text-gray-200">{{ t(TEXT.symptomAnalysis) }}</h3>
               <div class="p-4 rounded-lg border" :class="riskColorClass">
                 <div class="flex items-center justify-between mb-2">
-                  <span class="font-semibold text-lg">{{ diagnosisResult.symptom_analysis.risk_level }}</span>
+                  <span class="font-semibold text-lg">{{ diagnosisResult.symptom_analysis.risk_level_display || diagnosisResult.symptom_analysis.risk_level }}</span>
                   <span class="text-sm px-2 py-1 bg-white/50 dark:bg-gray-800/50 rounded">
-                    Score: {{ diagnosisResult.symptom_analysis.risk_score }}
+                    {{ t(TEXT.scoreLabel) }}: {{ diagnosisResult.symptom_analysis.risk_score }}
                   </span>
                 </div>
                 <p class="text-sm">{{ diagnosisResult.symptom_analysis.clinical_advice }}</p>
@@ -1241,13 +1204,13 @@
 
             <!-- Test Evaluation -->
             <div class="space-y-3">
-              <h3 class="font-semibold text-gray-800 dark:text-gray-200">Test Evaluation</h3>
+              <h3 class="font-semibold text-gray-800 dark:text-gray-200">{{ t(TEXT.testEvaluation) }}</h3>
               <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p class="text-lg font-medium text-blue-800 dark:text-blue-300">
                   {{ diagnosisResult.test_evaluation.classification }}
                 </p>
                 <p class="text-sm text-blue-700 dark:text-blue-400 mt-1">
-                  Confidence: {{ diagnosisResult.test_evaluation.confidence_percent }}%
+                  {{ t(TEXT.confidenceLabel) }}: {{ diagnosisResult.test_evaluation.confidence_percent }}%
                 </p>
                 <ul class="mt-3 text-sm text-gray-700 dark:text-gray-300 space-y-1">
                   <li v-for="(finding, i) in diagnosisResult.test_evaluation.findings" :key="i">
@@ -1259,32 +1222,32 @@
 
             <!-- Bacteria Assessment -->
             <div v-if="diagnosisResult.bacteria_assessment" class="space-y-3">
-              <h3 class="font-semibold text-gray-800 dark:text-gray-200">TB Bacteria Assessment</h3>
+              <h3 class="font-semibold text-gray-800 dark:text-gray-200">{{ t(TEXT.tbBacteriaAssessment) }}</h3>
               <div class="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-800">
                 <p class="text-lg font-medium text-amber-800 dark:text-amber-300">
                   {{ diagnosisResult.bacteria_assessment.species }}
                 </p>
                 <p class="mt-1 text-sm text-amber-700 dark:text-amber-400">
-                  Method: {{ diagnosisResult.bacteria_assessment.mode }} | Supported species: {{ diagnosisResult.bacteria_assessment.supported_species_count }}
+                  {{ t(TEXT.methodLabel) }}: {{ diagnosisResult.bacteria_assessment.mode }} | {{ t(TEXT.supportedSpeciesLabel) }}: {{ diagnosisResult.bacteria_assessment.supported_species_count }}
                 </p>
                 <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
                   {{ diagnosisResult.bacteria_assessment.description }}
                 </p>
                 <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                  <strong>Reason:</strong> {{ diagnosisResult.bacteria_assessment.reason }}
+                  <strong>{{ t(TEXT.reasonLabel) }}:</strong> {{ diagnosisResult.bacteria_assessment.reason }}
                 </p>
                 <p class="text-sm text-gray-700 dark:text-gray-300">
-                  <strong>Typical source:</strong> {{ diagnosisResult.bacteria_assessment.typical_source }}
+                  <strong>{{ t(TEXT.typicalSourceLabel) }}:</strong> {{ diagnosisResult.bacteria_assessment.typical_source }}
                 </p>
                 <p class="text-sm text-gray-700 dark:text-gray-300">
-                  <strong>Lab note:</strong> {{ diagnosisResult.bacteria_assessment.lab_note }}
+                  <strong>{{ t(TEXT.labNoteLabel) }}:</strong> {{ diagnosisResult.bacteria_assessment.lab_note }}
                 </p>
               </div>
             </div>
 
             <!-- Infection Assessment -->
             <div v-if="diagnosisResult.infection_assessment" class="space-y-3">
-              <h3 class="font-semibold text-gray-800 dark:text-gray-200">Infection Assessment</h3>
+              <h3 class="font-semibold text-gray-800 dark:text-gray-200">{{ t(TEXT.infectionAssessment) }}</h3>
               <div class="p-4 bg-sky-50 dark:bg-sky-900/30 rounded-lg border border-sky-200 dark:border-sky-800">
                 <p class="text-lg font-medium text-sky-800 dark:text-sky-300">
                   {{ diagnosisResult.infection_assessment.primary_infection }}
@@ -1302,22 +1265,22 @@
 
             <!-- Resistance Profile -->
             <div v-if="diagnosisResult.resistance_profile" class="space-y-3">
-              <h3 class="font-semibold text-gray-800 dark:text-gray-200">Resistance / DST Profile</h3>
+              <h3 class="font-semibold text-gray-800 dark:text-gray-200">{{ t(TEXT.resistanceDstProfile) }}</h3>
               <div class="p-4 bg-rose-50 dark:bg-rose-900/30 rounded-lg border border-rose-200 dark:border-rose-800">
                 <p class="text-lg font-medium text-rose-800 dark:text-rose-300">
                   {{ diagnosisResult.resistance_profile.classification }}
                 </p>
                 <p class="mt-1 text-sm text-rose-700 dark:text-rose-400">
-                  Regimen level: {{ diagnosisResult.resistance_profile.regimen_level }}
+                  {{ t(TEXT.regimenLevelLabel) }}: {{ diagnosisResult.resistance_profile.regimen_level }}
                 </p>
                 <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                  <strong>Antibiogram:</strong> {{ diagnosisResult.resistance_profile.antibiogram_result }}
+                  <strong>{{ t(TEXT.antibiogramLabel) }}:</strong> {{ diagnosisResult.resistance_profile.antibiogram_result }}
                 </p>
                 <p class="text-sm text-gray-700 dark:text-gray-300">
-                  <strong>Resistant to:</strong> {{ diagnosisResult.resistance_profile.resistant_to.join(', ') || 'None provided' }}
+                  <strong>{{ t(TEXT.resistantToLabel) }}:</strong> {{ diagnosisResult.resistance_profile.resistant_to.join(', ') || t(TEXT.noneProvided) }}
                 </p>
                 <p class="text-sm text-gray-700 dark:text-gray-300">
-                  <strong>Susceptible to:</strong> {{ diagnosisResult.resistance_profile.susceptible_to.join(', ') || 'None provided' }}
+                  <strong>{{ t(TEXT.susceptibleToLabel) }}:</strong> {{ diagnosisResult.resistance_profile.susceptible_to.join(', ') || t(TEXT.noneProvided) }}
                 </p>
                 <ul class="mt-3 text-sm text-gray-700 dark:text-gray-300 space-y-1">
                   <li v-for="(item, i) in diagnosisResult.resistance_profile.decision_basis" :key="i">
@@ -1329,17 +1292,17 @@
 
             <!-- ML Prediction -->
             <div v-if="diagnosisResult.ml_prediction" class="space-y-3">
-              <h3 class="font-semibold text-gray-800 dark:text-gray-200">ML Prediction</h3>
+              <h3 class="font-semibold text-gray-800 dark:text-gray-200">{{ t(TEXT.mlPrediction) }}</h3>
               <div class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-800">
                 <p class="font-medium text-purple-800 dark:text-purple-300">
-                  TB Prediction: {{ formatPredictionLabel(diagnosisResult.ml_prediction.tb_status?.prediction, 'tb') }}
+                  {{ t(TEXT.tbPredictionLabel) }}: {{ formatPredictionLabel(diagnosisResult.ml_prediction.tb_status?.prediction, 'tb') }}
                 </p>
                 <p v-if="diagnosisResult.ml_prediction.tb_status" class="mt-1 text-sm text-purple-700 dark:text-purple-400">
                   {{ buildConfidenceSummary(diagnosisResult.ml_prediction.tb_status, 'tb') }}
                 </p>
                 <div class="mt-2 text-sm space-y-1">
                   <p v-if="diagnosisResult.ml_prediction.drug_resistance" class="text-purple-700 dark:text-purple-400">
-                    Drug Resistance Prediction: {{ formatPredictionLabel(diagnosisResult.ml_prediction.drug_resistance.prediction, 'resistance') }}
+                    {{ t(TEXT.drugResistancePredictionLabel) }}: {{ formatPredictionLabel(diagnosisResult.ml_prediction.drug_resistance.prediction, 'resistance') }}
                   </p>
                   <p v-if="diagnosisResult.ml_prediction.drug_resistance" class="text-purple-700 dark:text-purple-400">
                     {{ buildConfidenceSummary(diagnosisResult.ml_prediction.drug_resistance, 'resistance') }}
@@ -1357,48 +1320,48 @@
 
             <!-- Treatment Recommendation -->
             <div class="space-y-3">
-              <h3 class="font-semibold text-gray-800 dark:text-gray-200">Treatment Recommendation</h3>
+              <h3 class="font-semibold text-gray-800 dark:text-gray-200">{{ t(TEXT.treatmentRecommendation) }}</h3>
               <div class="p-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg border border-emerald-200 dark:border-emerald-800">
                 <div class="flex items-center justify-between mb-2">
                   <p class="font-semibold text-emerald-800 dark:text-emerald-300">
-                    {{ diagnosisResult.treatment_recommendation.regimen_name || diagnosisResult.treatment_recommendation.type || diagnosisResult.treatment_recommendation.category || 'Treatment plan' }}
+                    {{ diagnosisResult.treatment_recommendation.regimen_name || diagnosisResult.treatment_recommendation.type || diagnosisResult.treatment_recommendation.category || t(TEXT.treatmentPlanFallback) }}
                   </p>
                   <span class="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded font-medium">
                     {{ diagnosisResult.treatment_recommendation.urgency }}
                   </span>
                 </div>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>Category:</strong> {{ diagnosisResult.treatment_recommendation.category }}
+                  <strong>{{ t(TEXT.categoryLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.category }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>Bacteria:</strong> {{ diagnosisResult.treatment_recommendation.bacteria_species || diagnosisResult.bacteria_assessment?.species || 'Not available in this response' }}
+                  <strong>{{ t(TEXT.bacteriaLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.bacteria_species || diagnosisResult.bacteria_assessment?.species || t(TEXT.notAvailableInResponse) }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>Infection:</strong> {{ diagnosisResult.treatment_recommendation.infection_type || diagnosisResult.infection_assessment?.primary_infection || diagnosisResult.treatment_recommendation.category || 'Not available in this response' }}
+                  <strong>{{ t(TEXT.infectionLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.infection_type || diagnosisResult.infection_assessment?.primary_infection || diagnosisResult.treatment_recommendation.category || t(TEXT.notAvailableInResponse) }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>Resistance:</strong> {{ diagnosisResult.treatment_recommendation.resistance_class || diagnosisResult.resistance_profile?.classification || diagnosisResult.ml_prediction?.drug_resistance?.prediction || 'Not available in this response' }}
+                  <strong>{{ t(TEXT.resistanceLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.resistance_class || diagnosisResult.resistance_profile?.classification || diagnosisResult.ml_prediction?.drug_resistance?.prediction || t(TEXT.notAvailableInResponse) }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>Level:</strong> {{ diagnosisResult.treatment_recommendation.regimen_level || diagnosisResult.resistance_profile?.regimen_level || 'WHO rule-based treatment level' }}
+                  <strong>{{ t(TEXT.levelLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.regimen_level || diagnosisResult.resistance_profile?.regimen_level || t(TEXT.whoRuleBasedLevel) }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>Duration:</strong> {{ diagnosisResult.treatment_recommendation.duration }}
+                  <strong>{{ t(TEXT.durationLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.duration }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>Drugs:</strong> {{ diagnosisResult.treatment_recommendation.drugs }}
+                  <strong>{{ t(TEXT.drugsLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.drugs }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>Dosage:</strong> {{ diagnosisResult.treatment_recommendation.dosage }}
+                  <strong>{{ t(TEXT.dosageLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.dosage }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>Administration:</strong> {{ diagnosisResult.treatment_recommendation.administration }}
+                  <strong>{{ t(TEXT.administrationLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.administration }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>Monitoring:</strong> {{ diagnosisResult.treatment_recommendation.monitoring }}
+                  <strong>{{ t(TEXT.monitoringLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.monitoring }}
                 </p>
                 <p class="text-sm text-emerald-700 dark:text-emerald-400 mb-1">
-                  <strong>Guideline:</strong> {{ diagnosisResult.treatment_recommendation.guideline_source || 'WHO-aligned TB treatment guidance' }}
+                  <strong>{{ t(TEXT.guidelineLabel) }}:</strong> {{ diagnosisResult.treatment_recommendation.guideline_source || t(TEXT.whoTreatmentGuidance) }}
                 </p>
                 <ul v-if="diagnosisResult.treatment_recommendation.decision_basis?.length" class="mt-3 text-sm text-emerald-700 dark:text-emerald-400 space-y-1">
                   <li v-for="(item, i) in diagnosisResult.treatment_recommendation.decision_basis" :key="i">
@@ -1406,7 +1369,7 @@
                   </li>
                 </ul>
                 <div v-if="diagnosisResult.treatment_recommendation.treatment_options?.length > 1" class="mt-4">
-                  <p class="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Other treatment options</p>
+                  <p class="text-sm font-semibold text-emerald-800 dark:text-emerald-300">{{ t(TEXT.otherTreatmentOptions) }}</p>
                   <ul class="mt-2 text-sm text-emerald-700 dark:text-emerald-400 space-y-2">
                     <li
                       v-for="(option, i) in diagnosisResult.treatment_recommendation.treatment_options.slice(1)"
@@ -1423,23 +1386,23 @@
             </div>
 
             <p class="text-xs text-gray-500 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-              Disclaimer: This system is for educational purposes only. Always consult qualified medical professionals.
+              {{ t(TEXT.disclaimer) }}
             </p>
           </div>
 
           <div v-else class="rounded-xl border border-dashed border-gray-300 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800 xl:sticky xl:top-6">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Diagnostic Report</h2>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{{ t(TEXT.diagnosticReport) }}</h2>
             <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">
-              The report will appear here after you complete the guided form and click `Analyze & Diagnose`.
+              {{ t(TEXT.reportPlaceholder) }}
             </p>
             <div class="mt-4 grid gap-3">
               <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-700/40">
-                <p class="text-sm font-medium text-gray-800 dark:text-gray-200">What the report will show</p>
+                <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ t(TEXT.reportWillShow) }}</p>
                 <ul class="mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                  <li>TB risk and red flags</li>
-                  <li>Estimated bacteria and infection type</li>
-                  <li>DST / resistance interpretation</li>
-                  <li>Treatment plan and monitoring guidance</li>
+                  <li>{{ t(TEXT.reportItemRisk) }}</li>
+                  <li>{{ t(TEXT.reportItemBacteria) }}</li>
+                  <li>{{ t(TEXT.reportItemDst) }}</li>
+                  <li>{{ t(TEXT.reportItemTreatment) }}</li>
                 </ul>
               </div>
             </div>
@@ -1453,16 +1416,16 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
           <div class="flex items-center justify-between mb-6">
             <div>
-              <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Patients</h2>
+              <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{{ t(TEXT.tabPatients) }}</h2>
               <p class="text-sm text-gray-500 dark:text-gray-400">
-                Showing {{ patientRangeStart }}-{{ patientRangeEnd }} of {{ patientTotal }} records
+                {{ tf(TEXT.showingRecords, { start: patientRangeStart, end: patientRangeEnd, total: patientTotal }) }}
               </p>
             </div>
             <div class="flex gap-2">
               <input
                 v-model="searchQuery"
                 type="text"
-                placeholder="Search patients..."
+                :placeholder="t(TEXT.searchPatients)"
                 class="px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
               />
               <select
@@ -1470,34 +1433,34 @@
                 @change="refreshPatients"
                 class="px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white"
               >
-                <option value="id_asc">DB Order</option>
-                <option value="id_desc">Newest ID</option>
-                <option value="created_desc">Newest Created</option>
-                <option value="created_asc">Oldest Created</option>
+                <option value="id_asc">{{ t(TEXT.sortDbOrder) }}</option>
+                <option value="id_desc">{{ t(TEXT.sortNewestId) }}</option>
+                <option value="created_desc">{{ t(TEXT.sortNewestCreated) }}</option>
+                <option value="created_asc">{{ t(TEXT.sortOldestCreated) }}</option>
               </select>
-              <button
+            <button
                 @click="refreshPatients"
                 class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg"
               >
-                🔄 Refresh
+              🔄 {{ t(TEXT.refresh) }}
               </button>
             </div>
           </div>
           
           <div v-if="patients.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
-            No patients found. Add a patient through the diagnosis page.
+            {{ t(TEXT.noPatientsFound) }}
           </div>
 
           <div v-else class="overflow-x-auto">
             <table class="w-full">
               <thead>
                 <tr class="border-b border-gray-200 dark:border-gray-700">
-                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">ID</th>
-                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Name</th>
-                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Age</th>
-                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Gender</th>
-                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">City</th>
-                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Created</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.colId) }}</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.colName) }}</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.colAge) }}</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.colGender) }}</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.colCity) }}</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">{{ t(TEXT.colCreated) }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1519,7 +1482,7 @@
 
             <div class="mt-4 flex items-center justify-between gap-4">
               <p class="text-sm text-gray-500 dark:text-gray-400">
-                Page {{ patientsPage }} of {{ patientPages }}
+                {{ tf(TEXT.pageOf, { page: patientsPage, pages: patientPages }) }}
               </p>
               <div class="flex gap-2">
                 <button
@@ -1527,14 +1490,14 @@
                   @click="changePatientsPage(patientsPage - 1)"
                   class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 disabled:opacity-50"
                 >
-                  Previous
+                  {{ t(TEXT.previous) }}
                 </button>
                 <button
                   :disabled="patientsPage >= patientPages"
                   @click="changePatientsPage(patientsPage + 1)"
                   class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 disabled:opacity-50"
                 >
-                  Next
+                  {{ t(TEXT.next) }}
                 </button>
               </div>
             </div>
@@ -1546,17 +1509,17 @@
       <div v-else-if="currentView === 'alerts'">
         <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
           <div class="flex items-center justify-between mb-6">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Alerts</h2>
+              <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{{ t(TEXT.tabAlerts) }}</h2>
             <button
               @click="loadAlerts"
               class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg"
             >
-              🔄 Refresh
+              🔄 {{ t(TEXT.refresh) }}
             </button>
           </div>
           
           <div v-if="alerts.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
-            No alerts.
+            {{ t(TEXT.noAlerts) }}
           </div>
 
           <div v-else class="space-y-3">
@@ -1592,24 +1555,469 @@ import { ref, computed, onMounted, watch } from 'vue'
 
 const API_BASE = 'http://localhost:5000/api'
 
+function makeFlagDataUri(svg) {
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+}
+
 const languageOptions = [
-  { code: 'EN', label: { EN: 'English', FR: 'Anglais', SW: 'Kiingereza', RW: 'Icyongereza' } },
-  { code: 'FR', label: { EN: 'French', FR: 'Français', SW: 'Kifaransa', RW: 'Igifaransa' } },
-  { code: 'SW', label: { EN: 'Swahili', FR: 'Swahili', SW: 'Kiswahili', RW: 'Igiswahili' } },
-  { code: 'RW', label: { EN: 'Kinyarwanda', FR: 'Kinyarwanda', SW: 'Kinyarwanda', RW: 'Ikinyarwanda' } }
+  {
+    code: 'EN',
+    flagSrc: makeFlagDataUri('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40"><rect width="60" height="40" fill="#1f4aa8"/><path d="M0 0l60 40M60 0L0 40" stroke="#fff" stroke-width="8"/><path d="M0 0l60 40M60 0L0 40" stroke="#d62828" stroke-width="4"/><path d="M30 0v40M0 20h60" stroke="#fff" stroke-width="14"/><path d="M30 0v40M0 20h60" stroke="#d62828" stroke-width="8"/></svg>'),
+    label: { EN: 'English', FR: 'Anglais', SW: 'Kiingereza', RW: 'Icyongereza' }
+  },
+  {
+    code: 'FR',
+    flagSrc: makeFlagDataUri('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40"><rect width="20" height="40" fill="#1f4aa8"/><rect x="20" width="20" height="40" fill="#ffffff"/><rect x="40" width="20" height="40" fill="#d62828"/></svg>'),
+    label: { EN: 'French', FR: 'Français', SW: 'Kifaransa', RW: 'Igifaransa' }
+  },
+  {
+    code: 'SW',
+    flagSrc: makeFlagDataUri('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40"><rect width="60" height="40" fill="#1eb53a"/><path d="M-8 34L16 -6h52L44 46z" fill="#00a3dd"/><path d="M-10 32L14 -8h8L-2 32zm40 16L70 8h-8L22 48z" fill="#fcd116"/><path d="M-6 36L18 -4h24L18 44z" fill="#000"/></svg>'),
+    label: { EN: 'Swahili', FR: 'Swahili', SW: 'Kiswahili', RW: 'Igiswahili' }
+  },
+  {
+    code: 'RW',
+    flagSrc: makeFlagDataUri('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40"><rect width="60" height="20" fill="#00a1de"/><rect y="20" width="60" height="10" fill="#fad201"/><rect y="30" width="60" height="10" fill="#20603d"/><circle cx="48" cy="10" r="4.5" fill="#fad201"/><g stroke="#fad201" stroke-width="1.4" stroke-linecap="round"><path d="M48 2v3"/><path d="M48 15v3"/><path d="M40 10h3"/><path d="M53 10h3"/><path d="m42.7 4.7 2.2 2.2"/><path d="m51.1 13.1 2.2 2.2"/><path d="m53.3 4.7-2.2 2.2"/><path d="m44.9 13.1-2.2 2.2"/></g></svg>'),
+    label: { EN: 'Kinyarwanda', FR: 'Kinyarwanda', SW: 'Kinyarwanda', RW: 'Ikinyarwanda' }
+  }
 ]
 
 const TEXT = {
   langShort: { EN: 'Lang', FR: 'Langue', SW: 'Lugha', RW: 'Ururimi' },
   publicAreaLabel: { EN: 'Public area', FR: 'Espace public', SW: 'Eneo la umma', RW: 'Aho bose babona' },
   publicAreaHint: {
-    EN: 'Read the index page explanation, then go to Login to access the protected workspace.',
-    FR: "Lisez l'explication (index), puis allez à Connexion pour accéder à l'espace protégé.",
-    SW: 'Soma maelezo ya index, kisha nenda Login ili kufungua sehemu iliyolindwa.',
-    RW: "Soma ibisobanuro byo kuri index, hanyuma ujye kuri Login ukuze winjire ahakingiwe."
+    EN: 'Read the home page explanation, then go to Login to access the protected workspace.',
+    FR: "Lisez l'explication de la page d'accueil, puis allez à Connexion pour accéder à l'espace protégé.",
+    SW: 'Soma maelezo ya ukurasa wa mwanzo, kisha nenda kwenye kuingia ili ufungue sehemu iliyolindwa.',
+    RW: "Soma ibisobanuro byo ku rupapuro rubanza, hanyuma ujye ku kwinjira kugirango winjire ahakingiwe."
   },
-  homeTitle: { EN: 'Index', FR: 'Accueil', SW: 'Mwanzo', RW: 'Ahabanza' },
+  homeTitle: { EN: 'Home', FR: 'Accueil', SW: 'Mwanzo', RW: 'Ahabanza' },
   loginTitle: { EN: 'Login', FR: 'Connexion', SW: 'Ingia', RW: 'Kwinjira' },
+  authenticatedUser: { EN: 'Authenticated user', FR: 'Utilisateur connecté', SW: 'Mtumiaji ameidhinishwa', RW: 'Umukoresha wemerewe' },
+  authorizedRole: { EN: 'authorized', FR: 'autorisé', SW: 'ameidhinishwa', RW: 'yemewe' },
+  tabDiagnose: { EN: 'Diagnose', FR: 'Diagnostic', SW: 'Uchunguzi', RW: 'Isuzuma' },
+  tabPatients: { EN: 'Patients', FR: 'Patients', SW: 'Wagonjwa', RW: 'Abarwayi' },
+  tabAlerts: { EN: 'Alerts', FR: 'Alertes', SW: 'Tahadhari', RW: 'Amatangazo' },
+  sessionExpired: {
+    EN: 'Your session expired. Please sign in again.',
+    FR: 'Votre session a expiré. Veuillez vous reconnecter.',
+    SW: 'Kipindi chako kimeisha. Tafadhali ingia tena.',
+    RW: 'Igihe cyo kwinjira cyarangiye. Ongera winjire.'
+  },
+  headerSubtitle: {
+    EN: 'Comprehensive Patient Analysis & Treatment',
+    FR: 'Analyse complète du patient et traitement',
+    SW: 'Uchambuzi kamili wa mgonjwa na matibabu',
+    RW: 'Isesengura ry’umurwayi n’ubuvuzi'
+  },
+  emailLabel: { EN: 'Email', FR: 'Email', SW: 'Barua pepe', RW: 'Email' },
+  emailPlaceholder: { EN: 'you@example.com', FR: 'vous@exemple.com', SW: 'wewe@mfano.com', RW: 'wowe@urugero.com' },
+  passwordLabel: { EN: 'Password', FR: 'Mot de passe', SW: 'Nenosiri', RW: 'Ijambo-banga' },
+  passwordPlaceholder: { EN: 'Password', FR: 'Mot de passe', SW: 'Nenosiri', RW: 'Ijambo-banga' },
+  showPasswordTitle: { EN: 'Show password', FR: 'Afficher le mot de passe', SW: 'Onyesha nenosiri', RW: 'Erekana ijambo-banga' },
+  hidePasswordTitle: { EN: 'Hide password', FR: 'Masquer le mot de passe', SW: 'Ficha nenosiri', RW: 'Hisha ijambo-banga' },
+  signInNotesTitle: { EN: 'Useful sign-in notes', FR: 'Notes utiles', SW: 'Vidokezo vya kuingia', RW: 'Inama zo kwinjira' },
+  signInNote1: {
+    EN: 'Use the eye icon to check the password.',
+    FR: "Utilisez l'icône œil pour voir le mot de passe.",
+    SW: 'Tumia alama ya jicho kuona nenosiri.',
+    RW: 'Koresha akamenyetso k’ijisho urebe ijambo-banga.'
+  },
+  signInNote2: {
+    EN: 'Email stays after refresh.',
+    FR: "L'email reste après actualisation.",
+    SW: 'Barua pepe inabaki baada ya kurefusha ukurasa.',
+    RW: 'Email iguma ihari na nyuma yo kongera gufungura.'
+  },
+  signInNote3: {
+    EN: 'Click your name or role to log out.',
+    FR: 'Cliquez votre nom ou rôle pour vous déconnecter.',
+    SW: 'Bofya jina au nafasi yako ili utoke.',
+    RW: 'Kanda izina cyangwa umwanya wawe kugira ngo usohoke.'
+  },
+  signIn: { EN: 'Sign in', FR: 'Se connecter', SW: 'Ingia', RW: 'Injira' },
+  signingIn: { EN: 'Signing in...', FR: 'Connexion...', SW: 'Inaingia...', RW: 'Birimo kwinjira...' },
+  add: { EN: 'Add', FR: 'Ajouter', SW: 'Ongeza', RW: 'Ongeraho' },
+  cancel: { EN: 'Cancel', FR: 'Annuler', SW: 'Ghairi', RW: 'Hagarika' },
+  addSymptom: { EN: 'Add symptom', FR: 'Ajouter symptôme', SW: 'Ongeza dalili', RW: 'Ongeraho ikimenyetso' },
+  addOneSymptom: { EN: 'Add one symptom', FR: 'Ajouter un symptôme', SW: 'Ongeza dalili moja', RW: 'Ongeraho ikimenyetso kimwe' },
+  addExposure: { EN: 'Add exposure', FR: 'Ajouter exposition', SW: 'Ongeza exposure', RW: 'Ongeraho aho yandurira' },
+  addOneExposure: {
+    EN: 'Add one exposure item',
+    FR: "Ajouter un élément d'exposition",
+    SW: 'Ongeza kipengele kimoja cha exposure',
+    RW: "Ongeraho ikintu kimwe cy'aho yandurira"
+  },
+  guidedFlowTitle: { EN: 'Guided diagnosis flow', FR: 'Flux de diagnostic guidé', SW: 'Mtiririko wa uchunguzi unaoongozwa', RW: 'Uko isuzuma rikurikirana' },
+  loginHeroHeadline: {
+    EN: 'From patient data to TB decision.',
+    FR: 'Des données du patient à la décision TB.',
+    SW: 'Kutoka taarifa za mgonjwa hadi uamuzi wa TB.',
+    RW: "Kuva ku makuru y’umurwayi kugera ku mwanzuro wa TB."
+  },
+  loginHeroSubtitle: {
+    EN: 'Open a case, review evidence, generate one guided report.',
+    FR: 'Ouvrez un dossier, revoyez les preuves, générez un rapport guidé.',
+    SW: 'Fungua kesi, kagua ushahidi, toa ripoti iliyoongozwa.',
+    RW: 'Fungura dosiye, suzuma ibimenyetso, ukore raporo iyobowe.'
+  },
+  systemWorkflowTitle: { EN: 'System workflow', FR: 'Flux du système', SW: 'Utaratibu wa mfumo', RW: 'Uko sisitemu ikora' },
+  systemWorkflowHint: { EN: 'Few words', FR: 'En bref', SW: 'Kwa kifupi', RW: 'Muri make' },
+  workflowSystemTitle: { EN: 'TB System', FR: 'Système TB', SW: 'Mfumo wa TB', RW: 'Sisitemu ya TB' },
+  workflowLogin: { EN: 'login', FR: 'connexion', SW: 'ingia', RW: 'kwinjira' },
+  workflowEvaluate: { EN: 'evaluate', FR: 'évaluer', SW: 'tathmini', RW: 'gusuzuma' },
+  workflowGuideCare: { EN: 'guide care', FR: 'guider soins', SW: 'ongoza matibabu', RW: 'kuyobora ubuvuzi' },
+  workflowStep1: { EN: 'STEP 1', FR: 'ÉTAPE 1', SW: 'HATUA 1', RW: 'INTAMBWE 1' },
+  workflowStep2: { EN: 'STEP 2', FR: 'ÉTAPE 2', SW: 'HATUA 2', RW: 'INTAMBWE 2' },
+  workflowStep3: { EN: 'STEP 3', FR: 'ÉTAPE 3', SW: 'HATUA 3', RW: 'INTAMBWE 3' },
+  workflowStep4: { EN: 'STEP 4', FR: 'ÉTAPE 4', SW: 'HATUA 4', RW: 'INTAMBWE 4' },
+  workflowCollect: { EN: 'Collect', FR: 'Collecter', SW: 'Kusanya', RW: 'Kwegeranya' },
+  workflowAnalyze: { EN: 'Analyze', FR: 'Analyser', SW: 'Chambua', RW: 'Sesengura' },
+  workflowClassify: { EN: 'Classify', FR: 'Classer', SW: 'Ainisha', RW: 'Shyira mu rwego' },
+  workflowTreat: { EN: 'Treat', FR: 'Traiter', SW: 'Tibu', RW: 'Vura' },
+  workflowPatient: { EN: 'Patient', FR: 'Patient', SW: 'Mgonjwa', RW: 'Umurwayi' },
+  workflowSymptoms: { EN: 'symptoms', FR: 'symptômes', SW: 'dalili', RW: 'ibimenyetso' },
+  workflowTests: { EN: 'tests', FR: 'tests', SW: 'vipimo', RW: 'ibizamini' },
+  workflowTbType: { EN: 'TB type', FR: 'Type TB', SW: 'Aina ya TB', RW: 'Ubwoko bwa TB' },
+  workflowBacteria: { EN: 'bacteria', FR: 'bactérie', SW: 'bakteria', RW: 'udukoko' },
+  workflowResistance: { EN: 'resistance', FR: 'résistance', SW: 'usugu', RW: 'resistance' },
+  workflowReport: { EN: 'Report', FR: 'Rapport', SW: 'Ripoti', RW: 'Raporo' },
+  workflowTreatment: { EN: 'treatment', FR: 'traitement', SW: 'matibabu', RW: 'ubuvuzi' },
+  workflowGuidance: { EN: 'guidance', FR: 'conseils', SW: 'mwongozo', RW: 'ubuyobozi' },
+  newPatient: { EN: 'New patient', FR: 'Nouveau patient', SW: 'Mgonjwa mpya', RW: 'Umurwayi mushya' },
+  existingPatient: { EN: 'Existing patient', FR: 'Patient existant', SW: 'Mgonjwa aliyepo', RW: 'Umurwayi usanzwe' },
+  clinicalReport: { EN: 'Clinical report', FR: 'Rapport clinique', SW: 'Ripoti ya kliniki', RW: 'Raporo ya kliniki' },
+  whatYouCanDo: { EN: 'What you can do', FR: 'Ce que vous pouvez faire', SW: 'Unachoweza kufanya', RW: 'Ibyo ushobora gukora' },
+  step1Title: { EN: '1. Patient identity', FR: '1. Identité du patient', SW: '1. Utambulisho wa mgonjwa', RW: "1. Amakuru y'umurwayi" },
+  step1Intro: {
+    EN: 'Basic patient details used for record linking and report display.',
+    FR: 'Détails de base pour relier le dossier et afficher le rapport.',
+    SW: 'Taarifa za msingi za mgonjwa kwa kuunganisha rekodi na kuonyesha ripoti.',
+    RW: "Amakuru y'ibanze afasha guhuza dosiye no kwerekana raporo."
+  },
+  step2Title: { EN: '2. Clinical clues', FR: '2. Indices cliniques', SW: '2. Dalili', RW: '2. Ibimenyetso' },
+  step3Title: { EN: '3. Species and test results', FR: '3. Espèce et résultats', SW: '3. Aina na majibu ya vipimo', RW: '3. Ubwoko n’ibisubizo' },
+  step4Title: { EN: '4. DST and resistance', FR: '4. DST et résistance', SW: '4. DST na usugu', RW: '4. DST na resistance' },
+  firstNameLabel: { EN: 'First name', FR: 'Prénom', SW: 'Jina la kwanza', RW: 'Izina rya mbere' },
+  firstNamePlaceholder: { EN: 'First name', FR: 'Prénom', SW: 'Jina la kwanza', RW: 'Izina rya mbere' },
+  lastNameLabel: { EN: 'Last name', FR: 'Nom', SW: 'Jina la mwisho', RW: 'Izina rya nyuma' },
+  lastNamePlaceholder: { EN: 'Last name', FR: 'Nom', SW: 'Jina la mwisho', RW: 'Izina rya nyuma' },
+  patientIdLabel: { EN: 'Patient ID', FR: 'ID patient', SW: 'ID ya mgonjwa', RW: "ID y'umurwayi" },
+  uniqueIdPlaceholder: { EN: 'Unique ID', FR: 'ID unique', SW: 'ID ya kipekee', RW: 'ID yihariye' },
+  ageLabel: { EN: 'Age', FR: 'Âge', SW: 'Umri', RW: 'Imyaka' },
+  agePlaceholder: { EN: 'Age', FR: 'Âge', SW: 'Umri', RW: 'Imyaka' },
+  genderLabel: { EN: 'Gender', FR: 'Sexe', SW: 'Jinsia', RW: 'Igitsina' },
+  genderMale: { EN: 'Male', FR: 'Masculin', SW: 'Mwanaume', RW: 'Gabo' },
+  genderFemale: { EN: 'Female', FR: 'Féminin', SW: 'Mwanamke', RW: 'Gore' },
+  genderOther: { EN: 'Other', FR: 'Autre', SW: 'Nyingine', RW: 'Ikindi' },
+  cityLabel: { EN: 'City', FR: 'Ville', SW: 'Mji', RW: 'Umujyi' },
+  cityPlaceholder: { EN: 'City', FR: 'Ville', SW: 'Mji', RW: 'Umujyi' },
+  antibiogramSummaryLabel: { EN: 'Antibiogram / DST summary', FR: 'Résumé antibiogramme / DST', SW: 'Muhtasari wa antibiogram / DST', RW: 'Incamake ya antibiogram / DST' },
+  addDstItem: { EN: 'Add DST item', FR: 'Ajouter élément DST', SW: 'Ongeza kipengele cha DST', RW: 'Ongeraho ikintu cya DST' },
+  addOneDstItem: { EN: 'Add one DST item', FR: 'Ajouter un élément DST', SW: 'Ongeza kipengele kimoja cha DST', RW: 'Ongeraho ikintu kimwe cya DST' },
+  resistantToLabel: { EN: 'Resistant to', FR: 'Résistant à', SW: 'Inakataa', RW: 'Irwanya' },
+  susceptibleToLabel: { EN: 'Susceptible to', FR: 'Sensible à', SW: 'Inaitikia', RW: 'Yumva' },
+  addResistantMedicine: { EN: 'Add resistant medicine', FR: 'Ajouter médicament résistant', SW: 'Ongeza dawa inayokataliwa', RW: 'Ongeraho umuti urwanywe' },
+  addOneResistantMedicine: { EN: 'Add one resistant medicine', FR: 'Ajouter un médicament résistant', SW: 'Ongeza dawa moja inayokataliwa', RW: 'Ongeraho umuti umwe urwanywe' },
+  addSusceptibleMedicine: { EN: 'Add susceptible medicine', FR: 'Ajouter médicament sensible', SW: 'Ongeza dawa inayoitikiwa', RW: 'Ongeraho umuti wumvwa' },
+  addOneSusceptibleMedicine: { EN: 'Add one susceptible medicine', FR: 'Ajouter un médicament sensible', SW: 'Ongeza dawa moja inayoitikiwa', RW: 'Ongeraho umuti umwe wumvwa' },
+  stepOf: {
+    EN: 'Step {current} of {total}',
+    FR: 'Étape {current} sur {total}',
+    SW: 'Hatua {current} kati ya {total}',
+    RW: 'Intambwe {current} kuri {total}'
+  },
+  percentComplete: {
+    EN: '{percent}% complete',
+    FR: '{percent}% terminé',
+    SW: '{percent}% imekamilika',
+    RW: '{percent}% birarangiye'
+  },
+  symptomsLabel: { EN: 'Symptoms', FR: 'Symptômes', SW: 'Dalili', RW: 'Ibimenyetso' },
+  exposureHistoryLabel: { EN: 'Exposure history', FR: "Historique d'exposition", SW: 'Historia ya kuambukizwa', RW: "Amateka y'aho yandurira" },
+  clinicalCluesIntro: {
+    EN: 'Add symptoms and exposure history from the guided TB lists, or type your own item if not listed.',
+    FR: "Ajoutez symptômes et exposition via les listes TB, ou saisissez un élément si non listé.",
+    SW: 'Ongeza dalili na historia ya kuambukizwa kutoka kwenye orodha, au andika ikiwa haipo.',
+    RW: "Ongeraho ibimenyetso n'aho yandurira ukoresheje urutonde, cyangwa wandike ibitanditse."
+  },
+  symptomsHint: {
+    EN: 'Type directly in the field. Suggested TB symptoms below can be clicked to append.',
+    FR: "Saisissez directement. Les symptômes suggérés ci‑dessous peuvent être ajoutés en un clic.",
+    SW: 'Andika moja kwa moja. Dalili zilizopendekezwa hapa chini zinaweza kubofwa ili kuongezwa.',
+    RW: "Andika muri field. Ibimenyetso byatanzwe hasi ushobora kubikanda bikiyongeramo."
+  },
+  exposureHint: {
+    EN: 'Existing patient exposure notes stay unchanged unless the clinician edits them.',
+    FR: "Les notes d'exposition restent inchangées sauf modification par le clinicien.",
+    SW: 'Maelezo ya exposure ya mgonjwa aliyepo hubaki hadi daktari ayabadilishe.',
+    RW: "Amakuru y'aho yandurira y'umurwayi usanzwe aguma uko ari keretse uyahinduye."
+  },
+  exposurePlaceholder: {
+    EN: 'Enter or review household, travel, animal, dairy, wildlife, or occupational exposure',
+    FR: "Saisir ou revoir exposition : domicile, voyage, animaux, lait, faune, profession",
+    SW: 'Ingiza/kagua exposure: nyumbani, safari, wanyama, maziwa, wanyamapori, kazi',
+    RW: "Andika/subiramo exposure: mu rugo, ingendo, amatungo, amata, inyamaswa, akazi"
+  },
+  testsIntro: {
+    EN: 'Choose known results or leave bacteria on `Auto-detect` so the system estimates from the patient record.',
+    FR: "Choisissez les résultats connus ou laissez `Auto-detect` pour estimer selon le dossier.",
+    SW: 'Chagua majibu unayojua au acha `Auto-detect` mfumo ukadirie kwa rekodi.',
+    RW: "Hitamo ibisubizo uziko cyangwa usige `Auto-detect` sisitemu igereranye kuri dosiye."
+  },
+  dstIntro: {
+    EN: 'Keep these as normal input fields. Suggested TB DST phrases and medicines can be appended when useful.',
+    FR: "Gardez ces champs comme saisie normale. Les suggestions DST/médicaments peuvent être ajoutées.",
+    SW: 'Hizi ni sehemu za kawaida. Mapendekezo ya DST/dawa yanaweza kuongezwa ukihitaji.',
+    RW: "Ibi ni ibyo wandika bisanzwe. Ushobora kongeramo DST/dawa byatanzwe iyo bikenewe."
+  },
+  dstSummaryPlaceholder: {
+    EN: 'Enter DST summary or keep stored text for an existing patient',
+    FR: 'Saisir le résumé DST ou garder le texte existant',
+    SW: 'Ingiza muhtasari wa DST au acha maandishi yaliyopo',
+    RW: 'Andika incamake ya DST cyangwa ugumane ibyari bihari'
+  },
+  resistantToPlaceholder: {
+    EN: 'Type resistant medicines or reuse stored patient text',
+    FR: 'Saisir médicaments résistants ou réutiliser le texte existant',
+    SW: 'Andika dawa zinazokataliwa (resistant) au tumia zilizohifadhiwa',
+    RW: 'Andika imiti irwanywe (resistant) cyangwa ukoreshe ibitswe'
+  },
+  susceptibleToPlaceholder: {
+    EN: 'Type susceptible medicines or reuse stored patient text',
+    FR: 'Saisir médicaments sensibles ou réutiliser le texte existant',
+    SW: 'Andika dawa zinazokubaliwa (susceptible) au tumia zilizohifadhiwa',
+    RW: 'Andika imiti yumvwa (susceptible) cyangwa ukoreshe ibitswe'
+  },
+  reportWillShow: { EN: 'What the report will show', FR: 'Ce que montre le rapport', SW: 'Ripoti itaonyesha nini', RW: 'Ibyo raporo izerekana' },
+  reportItemRisk: { EN: 'TB risk and red flags', FR: 'Risque TB et signaux rouges', SW: 'Hatari ya TB na dalili hatari', RW: 'Ibyago bya TB n’ibimenyetso bikomeye' },
+  reportItemBacteria: { EN: 'Estimated bacteria and infection type', FR: "Bactérie estimée et type d'infection", SW: 'Bakteria anayekadiriwa na aina ya maambukizi', RW: 'Udukoko twagereranijwe n’ubwoko bw’infection' },
+  confidenceLabel: { EN: 'Confidence', FR: 'Confiance', SW: 'Uhakika', RW: 'Icyizere' },
+  tbBacteriaAssessment: { EN: 'TB bacteria assessment', FR: 'Évaluation des bactéries TB', SW: 'Tathmini ya bakteria wa TB', RW: 'Isuzuma ry’udukoko twa TB' },
+  methodLabel: { EN: 'Method', FR: 'Méthode', SW: 'Njia', RW: 'Uburyo' },
+  supportedSpeciesLabel: { EN: 'Supported species', FR: 'Espèces prises en charge', SW: 'Aina zinazotambuliwa', RW: 'Ubwoko bushyigikiwe' },
+  reasonLabel: { EN: 'Reason', FR: 'Raison', SW: 'Sababu', RW: 'Impamvu' },
+  typicalSourceLabel: { EN: 'Typical source', FR: 'Source habituelle', SW: 'Chanzo cha kawaida', RW: 'Aho bikunze guturuka' },
+  labNoteLabel: { EN: 'Lab note', FR: 'Note labo', SW: 'Maelezo ya maabara', RW: 'Icyitonderwa cya labo' },
+  infectionAssessment: { EN: 'Infection assessment', FR: "Évaluation de l'infection", SW: 'Tathmini ya maambukizi', RW: 'Isuzuma rya infection' },
+  resistanceDstProfile: { EN: 'Resistance / DST profile', FR: 'Profil résistance / DST', SW: 'Profaili ya usugu / DST', RW: 'Profil ya resistance / DST' },
+  regimenLevelLabel: { EN: 'Regimen level', FR: 'Niveau du schéma', SW: 'Kiwango cha mpango wa dawa', RW: 'Urwego rwa regimen' },
+  antibiogramLabel: { EN: 'Antibiogram', FR: 'Antibiogramme', SW: 'Antibiogram', RW: 'Antibiogram' },
+  noneProvided: { EN: 'None provided', FR: 'Aucun fourni', SW: 'Hakuna kilichotolewa', RW: 'Nta byatanzwe' },
+  mlPrediction: { EN: 'ML prediction', FR: 'Prédiction ML', SW: 'Utabiri wa ML', RW: 'Ihanura rya ML' },
+  tbPredictionLabel: { EN: 'TB prediction', FR: 'Prédiction TB', SW: 'Utabiri wa TB', RW: 'Ihanura rya TB' },
+  drugResistancePredictionLabel: { EN: 'Drug resistance prediction', FR: 'Prédiction de résistance', SW: 'Utabiri wa usugu wa dawa', RW: 'Ihanura rya resistance y’imiti' },
+  treatmentRecommendation: { EN: 'Treatment recommendation', FR: 'Recommandation de traitement', SW: 'Pendekezo la matibabu', RW: 'Inama y’ubuvuzi' },
+  treatmentPlanFallback: { EN: 'Treatment plan', FR: 'Plan de traitement', SW: 'Mpango wa matibabu', RW: 'Gahunda y’ubuvuzi' },
+  categoryLabel: { EN: 'Category', FR: 'Catégorie', SW: 'Kategoria', RW: 'Icyiciro' },
+  bacteriaLabel: { EN: 'Bacteria', FR: 'Bactérie', SW: 'Bakteria', RW: 'Udukoko' },
+  infectionLabel: { EN: 'Infection', FR: 'Infection', SW: 'Maambukizi', RW: 'Infection' },
+  resistanceLabel: { EN: 'Resistance', FR: 'Résistance', SW: 'Usugu', RW: 'Resistance' },
+  levelLabel: { EN: 'Level', FR: 'Niveau', SW: 'Kiwango', RW: 'Urwego' },
+  durationLabel: { EN: 'Duration', FR: 'Durée', SW: 'Muda', RW: 'Igihe' },
+  drugsLabel: { EN: 'Drugs', FR: 'Médicaments', SW: 'Dawa', RW: 'Imiti' },
+  dosageLabel: { EN: 'Dosage', FR: 'Posologie', SW: 'Dozi', RW: 'Igipimo' },
+  administrationLabel: { EN: 'Administration', FR: 'Administration', SW: 'Utoaji', RW: 'Uko itangwa' },
+  monitoringLabel: { EN: 'Monitoring', FR: 'Surveillance', SW: 'Ufuatiliaji', RW: 'Gukurikirana' },
+  guidelineLabel: { EN: 'Guideline', FR: 'Directive', SW: 'Mwongozo', RW: 'Amabwiriza' },
+  otherTreatmentOptions: { EN: 'Other treatment options', FR: 'Autres options de traitement', SW: 'Chaguo nyingine za matibabu', RW: 'Ubundi buryo bw’ubuvuzi' },
+  notAvailableInResponse: { EN: 'Not available in this response', FR: 'Non disponible dans cette réponse', SW: 'Haipatikani kwenye jibu hili', RW: 'Ntiboneka muri iki gisubizo' },
+  whoRuleBasedLevel: { EN: 'WHO rule-based treatment level', FR: 'Niveau de traitement basé sur les règles OMS', SW: 'Kiwango cha matibabu kulingana na sheria za WHO', RW: 'Urwego rw’ubuvuzi rushingiye ku mabwiriza ya WHO' },
+  whoTreatmentGuidance: { EN: 'WHO-aligned TB treatment guidance', FR: "Guide de traitement TB aligné sur l'OMS", SW: 'Mwongozo wa matibabu ya TB unaolingana na WHO', RW: 'Ubuyobozi bw’ubuvuzi bwa TB bujyanye na WHO' },
+  reportItemDst: {
+    EN: 'DST / resistance interpretation',
+    FR: 'Interprétation DST / résistance',
+    SW: 'Tafsiri ya DST / usugu',
+    RW: 'Gusobanura DST / resistance'
+  },
+  reportItemTreatment: { EN: 'Treatment plan and monitoring guidance', FR: 'Plan de traitement et suivi', SW: 'Mpango wa matibabu na ufuatiliaji', RW: 'Gahunda y’ubuvuzi n’uko gukurikirana' },
+  miniStep1: { EN: 'Step 1', FR: 'Étape 1', SW: 'Hatua 1', RW: 'Intambwe 1' },
+  miniStep2: { EN: 'Step 2', FR: 'Étape 2', SW: 'Hatua 2', RW: 'Intambwe 2' },
+  symptomsPlaceholder: {
+    EN: 'Describe symptoms or keep the stored patient text as it is',
+    FR: 'Décrivez les symptômes ou gardez le texte existant',
+    SW: 'Eleza dalili au acha maandishi yaliyopo',
+    RW: 'Sobanura ibimenyetso cyangwa ugumane ibyari bihari'
+  },
+  reportPlaceholder: {
+    EN: 'The report will appear here after you complete the guided form and click `Analyze & Diagnose`.',
+    FR: "Le rapport apparaîtra ici après avoir complété le formulaire et cliqué sur `Analyser & Diagnostiquer`.",
+    SW: 'Ripoti itaonekana hapa baada ya kukamilisha fomu na kubofya `Chambua & Gundiua`.',
+    RW: 'Raporo izagaragara hano umaze kuzuza form hanyuma ugakanda `Sesengura & Sobanura`.'
+  },
+  disclaimer: {
+    EN: 'Disclaimer: This system is for educational purposes only. Always consult qualified medical professionals.',
+    FR: 'Avertissement : ce système est destiné à des fins éducatives uniquement. Consultez toujours des professionnels de santé qualifiés.',
+    SW: 'Kanusho: Mfumo huu ni kwa madhumuni ya elimu tu. Daima wasiliana na wataalamu wa afya wenye sifa.',
+    RW: 'Iburira: Iyi sisitemu igenewe kwigisha gusa. Buri gihe baza abajyanama b’ubuzima babifitiye ubumenyi.'
+  },
+  refresh: { EN: 'Refresh', FR: 'Actualiser', SW: 'Onyesha upya', RW: 'Ongera urekane' },
+  previous: { EN: 'Previous', FR: 'Précédent', SW: 'Iliyopita', RW: 'Ibanziriza' },
+  next: { EN: 'Next', FR: 'Suivant', SW: 'Inayofuata', RW: 'Ikurikira' },
+  showingRecords: {
+    EN: 'Showing {start}-{end} of {total} records',
+    FR: 'Affichage {start}-{end} sur {total} dossiers',
+    SW: 'Inaonyesha {start}-{end} kati ya rekodi {total}',
+    RW: 'Kwerekana {start}-{end} kuri {total} records'
+  },
+  pageOf: {
+    EN: 'Page {page} of {pages}',
+    FR: 'Page {page} sur {pages}',
+    SW: 'Ukurasa {page} kati ya {pages}',
+    RW: 'Urupapuro {page} kuri {pages}'
+  },
+  searchPatients: { EN: 'Search patients...', FR: 'Rechercher patients...', SW: 'Tafuta wagonjwa...', RW: 'Shakisha abarwayi...' },
+  sortDbOrder: { EN: 'DB order', FR: 'Ordre DB', SW: 'Mpangilio DB', RW: 'Uko DB itondetse' },
+  sortNewestId: { EN: 'Newest ID', FR: 'ID le plus récent', SW: 'ID mpya', RW: 'ID nshya' },
+  sortNewestCreated: { EN: 'Newest created', FR: 'Créés récemment', SW: 'Zilizoundwa karibuni', RW: 'Zashizweho vuba' },
+  sortOldestCreated: { EN: 'Oldest created', FR: 'Plus anciens', SW: 'Za zamani', RW: 'Zishaje' },
+  colId: { EN: 'ID', FR: 'ID', SW: 'ID', RW: 'ID' },
+  colName: { EN: 'Name', FR: 'Nom', SW: 'Jina', RW: 'Amazina' },
+  colAge: { EN: 'Age', FR: 'Âge', SW: 'Umri', RW: 'Imyaka' },
+  colGender: { EN: 'Gender', FR: 'Sexe', SW: 'Jinsia', RW: 'Igitsina' },
+  colCity: { EN: 'City', FR: 'Ville', SW: 'Mji', RW: 'Umujyi' },
+  colCreated: { EN: 'Created', FR: 'Créé', SW: 'Imeundwa', RW: 'Yakozwe' },
+  noPatientsFound: {
+    EN: 'No patients found. Add a patient through the diagnosis page.',
+    FR: "Aucun patient trouvé. Ajoutez un patient via la page de diagnostic.",
+    SW: 'Hakuna wagonjwa waliopatikana. Ongeza mgonjwa kupitia ukurasa wa uchunguzi.',
+    RW: "Nta barwayi babonetse. Ongeraho umurwayi unyuze ku rupapuro rw'isuzuma."
+  },
+  noAlerts: { EN: 'No alerts.', FR: 'Aucune alerte.', SW: 'Hakuna tahadhari.', RW: 'Nta matangazo.' },
+  whatNew: {
+    EN: 'New: start a TB case.',
+    FR: 'Nouveau : démarrer un dossier TB.',
+    SW: 'Mpya: anza kesi ya TB.',
+    RW: 'Mushya: tangira dosiye ya TB.'
+  },
+  whatExisting: {
+    EN: 'Existing: reopen a saved record.',
+    FR: 'Existant : rouvrir un dossier enregistré.',
+    SW: 'Aliyepo: fungua rekodi iliyohifadhiwa.',
+    RW: 'Usanzwe: fungura dosiye yabitswe.'
+  },
+  whatReport: {
+    EN: 'Report: review guidance.',
+    FR: 'Rapport : revoir les conseils.',
+    SW: 'Ripoti: kagua mwongozo.',
+    RW: 'Raporo: subiramo ubuyobozi.'
+  },
+  afterSignIn: { EN: 'After sign-in', FR: 'Après connexion', SW: 'Baada ya kuingia', RW: 'Nyuma yo kwinjira' },
+  afterDiagnose: {
+    EN: '`Diagnose` update evidence.',
+    FR: '`Diagnostic` mettre à jour les preuves.',
+    SW: '`Uchunguzi` sasisha ushahidi.',
+    RW: '`Isuzuma` vugurura ibimenyetso.'
+  },
+  afterPatients: {
+    EN: '`Patients` open records.',
+    FR: '`Patients` ouvrir les dossiers.',
+    SW: '`Wagonjwa` fungua rekodi.',
+    RW: '`Abarwayi` fungura dosiye.'
+  },
+  afterAlerts: {
+    EN: '`Alerts` review notices.',
+    FR: '`Alertes` consulter les notifications.',
+    SW: '`Tahadhari` kagua taarifa.',
+    RW: '`Amatangazo` reba amatangazo.'
+  },
+  protectedWorkspace: { EN: 'Protected workspace', FR: 'Espace protégé', SW: 'Sehemu iliyolindwa', RW: 'Ahakingiwe' },
+  welcomeBack: { EN: 'Welcome back', FR: 'Bon retour', SW: 'Karibu tena', RW: 'Murakaza neza' },
+  continueToTabs: {
+    EN: 'Continue to diagnosis, patients, and alerts.',
+    FR: 'Continuez vers diagnostic, patients et alertes.',
+    SW: 'Endelea kwenye uchunguzi, wagonjwa, na tahadhari.',
+    RW: 'Komeza ku isuzuma, abarwayi, n’amatangazo.'
+  },
+  reviewCases: { EN: 'Review cases.', FR: 'Revoir les dossiers.', SW: 'Kagua kesi.', RW: 'Subiramo dosiye.' },
+  openRecords: { EN: 'Open records.', FR: 'Ouvrir les dossiers.', SW: 'Fungua rekodi.', RW: 'Fungura dosiye.' },
+  seeNotices: { EN: 'See notices.', FR: 'Voir notifications.', SW: 'Angalia taarifa.', RW: 'Reba amatangazo.' },
+  enterContinueEvidence: {
+    EN: 'Enter or continue evidence.',
+    FR: 'Saisir ou continuer les éléments.',
+    SW: 'Ingiza au endelea na ushahidi.',
+    RW: 'Injiza cyangwa ukomeze ibimenyetso.'
+  },
+  openSavedRecords: {
+    EN: 'Open saved records.',
+    FR: 'Ouvrir les dossiers enregistrés.',
+    SW: 'Fungua rekodi zilizohifadhiwa.',
+    RW: 'Fungura dosiye zabitswe.'
+  },
+  reviewNotices: {
+    EN: 'Review follow-up notices.',
+    FR: 'Consulter les notifications de suivi.',
+    SW: 'Kagua tahadhari za ufuatiliaji.',
+    RW: 'Reba amatangazo yo gukurikirana.'
+  },
+  protected: { EN: 'Protected', FR: 'Protégé', SW: 'Imelindwa', RW: 'Birinzwe' },
+  clinicianAdminOnly: {
+    EN: 'Clinician and admin access only.',
+    FR: 'Accès réservé aux cliniciens et admins.',
+    SW: 'Ni kwa daktari na msimamizi tu.',
+    RW: 'Ni abaganga n’abayobozi gusa bemerewe.'
+  },
+  guidedFlowHeadline: {
+    EN: 'Complete the case in small steps, not one long form.',
+    FR: 'Complétez le dossier par petites étapes, pas un long formulaire.',
+    SW: 'Kamilisha kesi kwa hatua ndogo, si fomu ndefu.',
+    RW: 'Uzuza dosiye mu byiciro bito, si form ndende.'
+  },
+  guidedFlowBody: {
+    EN: 'Move step by step through identity, clinical clues, tests, and DST before generating the report.',
+    FR: "Avancez étape par étape : identité, indices cliniques, tests et DST avant le rapport.",
+    SW: 'Nenda hatua kwa hatua: utambulisho, dalili, vipimo, na DST kabla ya ripoti.',
+    RW: "Genda intambwe ku yindi: amakuru y’umurwayi, ibimenyetso, ibizamini, na DST mbere ya raporo."
+  },
+  flowEntryTitle: { EN: 'Entry', FR: 'Saisie', SW: 'Kuingiza', RW: 'Kwinjiza' },
+  flowEntryBody: {
+    EN: 'Use guided TB suggestions or type your own evidence.',
+    FR: 'Utilisez les suggestions TB ou saisissez vos propres éléments.',
+    SW: 'Tumia mapendekezo ya TB au andika ushahidi wako.',
+    RW: 'Koresha ibitekerezo bya TB cyangwa wandike ibimenyetso byawe.'
+  },
+  flowOrderTitle: { EN: 'Order', FR: 'Ordre', SW: 'Mpangilio', RW: 'Uko bikurikirana' },
+  flowOrderBody: {
+    EN: 'Keep the same clinician workflow for new and existing patients.',
+    FR: 'Gardez le même flux pour nouveaux et anciens patients.',
+    SW: 'Tumia mtiririko ule ule kwa wagonjwa wapya na waliopo.',
+    RW: 'Komeza uko abaganga bakora ku murwayi mushya cyangwa usanzwe.'
+  },
+  flowOutputTitle: { EN: 'Output', FR: 'Résultat', SW: 'Matokeo', RW: 'Ibisohoka' },
+  flowOutputBody: {
+    EN: 'Generate TB type, DST review, and treatment guidance at the end.',
+    FR: 'Générez type TB, revue DST et recommandations de traitement à la fin.',
+    SW: 'Toa aina ya TB, uchambuzi wa DST, na mwongozo wa matibabu mwishoni.',
+    RW: 'Sohora ubwoko bwa TB, isesengura rya DST, n’inama z’ubuvuzi ku musozo.'
+  },
+  patientInfoTitle: { EN: 'Patient information', FR: 'Informations patient', SW: 'Taarifa za mgonjwa', RW: "Amakuru y'umurwayi" },
+  patientInfoSubtitle: {
+    EN: 'Structured evidence entry for TB screening, species estimation, DST review, and treatment planning.',
+    FR: 'Saisie structurée pour dépistage TB, estimation espèce, DST et plan de traitement.',
+    SW: 'Uingizaji wa ushahidi kwa uchunguzi wa TB, kukadiria aina, DST na kupanga matibabu.',
+    RW: 'Kwinjiza ibimenyetso bifasha gusuzuma TB, kugereranya ubwoko, DST no gutegura ubuvuzi.'
+  },
+  suggestedItemsHint: {
+    EN: 'Suggested items are TB-focused. Custom typing is always allowed.',
+    FR: 'Les suggestions sont centrées TB. La saisie libre est toujours possible.',
+    SW: 'Mapendekezo yamelenga TB. Unaweza kuandika mwenyewe muda wote.',
+    RW: 'Ibitekerezo biba byibanda kuri TB. Ushobora no kwandika ibyawe igihe cyose.'
+  },
+  stepHint: {
+    EN: 'You can move between steps without losing typed content.',
+    FR: 'Vous pouvez changer d’étape sans perdre le contenu saisi.',
+    SW: 'Unaweza kubadilisha hatua bila kupoteza ulichoandika.',
+    RW: 'Ushobora guhindura ibyiciro utatakaje ibyo wanditse.'
+  },
+  previousStep: { EN: 'Previous step', FR: 'Étape précédente', SW: 'Hatua iliyopita', RW: 'Intambwe ibanza' },
+  nextStep: { EN: 'Next step', FR: 'Étape suivante', SW: 'Hatua inayofuata', RW: 'Intambwe ikurikira' },
+  analyzing: { EN: 'Analyzing...', FR: 'Analyse...', SW: 'Inachambua...', RW: 'Birimo gusesengura...' },
+  analyzeDiagnose: { EN: 'Analyze & Diagnose', FR: 'Analyser & Diagnostiquer', SW: 'Chambua & Gundiua', RW: 'Sesengura & Sobanura' },
+  diagnosticReport: { EN: 'Diagnostic report', FR: 'Rapport de diagnostic', SW: 'Ripoti ya uchunguzi', RW: 'Raporo y’isuzuma' },
+  idLabel: { EN: 'ID', FR: 'ID', SW: 'ID', RW: 'ID' },
+  symptomAnalysis: { EN: 'Symptom analysis', FR: 'Analyse des symptômes', SW: 'Uchambuzi wa dalili', RW: 'Isesengura ry’ibimenyetso' },
+  testEvaluation: { EN: 'Test evaluation', FR: 'Évaluation des tests', SW: 'Tathmini ya vipimo', RW: 'Isuzuma ry’ibizamini' },
+  scoreLabel: { EN: 'Score', FR: 'Score', SW: 'Alama', RW: 'Amanota' },
   showThisSection: { EN: 'Open section', FR: 'Ouvrir section', SW: 'Fungua sehemu', RW: 'Fungura igice' },
   filterTitle: { EN: 'Show by section', FR: 'Afficher par section', SW: 'Onyesha kwa sehemu', RW: 'Erekana ukoresheje ibice' },
   filterSubtitle: {
@@ -1626,18 +2034,18 @@ const TEXT = {
     RW: 'Sisitemu yo gusuzuma igituntu'
   },
   indexHeadline: {
-    EN: 'Index page: TB confirmation features explained',
-    FR: "Page index : explication des éléments pour confirmer la TB",
-    SW: 'Ukurasa wa index: maelezo ya vipengele vya kuthibitisha TB',
-    RW: "Index: ibisobanuro by'ibifasha kwemeza igituntu"
+    EN: 'Home page: TB confirmation features explained',
+    FR: "Page d'accueil : explication des éléments pour confirmer la TB",
+    SW: 'Ukurasa wa mwanzo: maelezo ya vipengele vya kuthibitisha TB',
+    RW: "Urupapuro rubanza: ibisobanuro by'ibifasha kwemeza igituntu"
   },
   indexSubhead: {
-    EN: 'This index explains every field you will see during diagnosis (identity, symptoms, exposure, tests, DST) in simple language (RW/SW/FR/EN).',
-    FR: "Cette page index explique tous les champs utilisés pendant le diagnostic (identité, symptômes, exposition, tests, DST) en langage simple (RW/SW/FR/EN).",
-    SW: 'Ukurasa huu wa index unaeleza kila sehemu utakayoona wakati wa uchunguzi (utambulisho, dalili, historia ya kuambukizwa, vipimo, DST) kwa maneno rahisi (RW/SW/FR/EN).',
-    RW: "Uru rupapuro rwa index rusobanura buri gice uzabona mu isuzuma (amakuru y’umurwayi, ibimenyetso, aho ashobora kwandurira, ibizamini, DST) mu magambo yoroshye (RW/SW/FR/EN)."
+    EN: 'This home page explains every field you will see during diagnosis (identity, symptoms, exposure, tests, DST) in simple language (RW/SW/FR/EN).',
+    FR: "Cette page d'accueil explique tous les champs utilisés pendant le diagnostic (identité, symptômes, exposition, tests, DST) en langage simple (RW/SW/FR/EN).",
+    SW: 'Ukurasa huu wa mwanzo unaeleza kila sehemu utakayoona wakati wa uchunguzi (utambulisho, dalili, historia ya kuambukizwa, vipimo, DST) kwa maneno rahisi (RW/SW/FR/EN).',
+    RW: "Uru rupapuro rubanza rusobanura buri gice uzabona mu isuzuma (amakuru y’umurwayi, ibimenyetso, aho ashobora kwandurira, ibizamini, DST) mu magambo yoroshye (RW/SW/FR/EN)."
   },
-  goToLogin: { EN: 'Go to Login', FR: 'Aller à Connexion', SW: 'Nenda Login', RW: 'Jya kuri Login' },
+  goToLogin: { EN: 'Go to Login', FR: 'Aller à la connexion', SW: 'Nenda kwenye kuingia', RW: 'Jya ku kwinjira' },
   fieldGuideTitle: {
     EN: 'Here is what each field means in your TB Diagnostic System',
     FR: 'Voici ce que signifie chaque champ dans votre système de diagnostic de la TB',
@@ -1739,14 +2147,29 @@ const TEXT = {
 }
 
 const uiLanguage = ref('EN')
+const languageMenuOpen = ref(false)
 const fieldGuideOpen = ref(true)
 const publicView = ref('index')
 const indexSelectedSection = ref('all')
+
+const selectedLanguageOption = computed(() => {
+  return languageOptions.find(option => option.code === uiLanguage.value) || languageOptions[0]
+})
 
 function t(valueByLanguage) {
   if (Array.isArray(valueByLanguage)) return valueByLanguage
   if (!valueByLanguage || typeof valueByLanguage !== 'object') return String(valueByLanguage || '')
   return valueByLanguage[uiLanguage.value] ?? valueByLanguage.EN ?? ''
+}
+
+function tf(valueByLanguage, vars = {}) {
+  const template = t(valueByLanguage)
+  return template.replace(/\{(\w+)\}/g, (_, key) => String(vars[key] ?? ''))
+}
+
+function setLanguage(code) {
+  uiLanguage.value = code
+  languageMenuOpen.value = false
 }
 
 const FIELD_LABELS = {
@@ -2543,96 +2966,178 @@ const loginError = ref('')
 
 const isLoggedIn = computed(() => !!token.value)
 const userDisplayName = computed(() => {
-  if (!currentUser.value) return 'Authenticated user'
-  return currentUser.value.username || currentUser.value.email || 'Authenticated user'
+  if (!currentUser.value) return t(TEXT.authenticatedUser)
+  return currentUser.value.username || currentUser.value.email || t(TEXT.authenticatedUser)
 })
 const userRoleLabel = computed(() => {
-  if (!currentUser.value?.role) return 'authorized'
+  if (!currentUser.value?.role) return t(TEXT.authorizedRole)
   return String(currentUser.value.role).replace(/_/g, ' ')
 })
 
-const tabs = [
-  { id: 'diagnose', label: 'Diagnose', icon: '🏥' },
-  { id: 'patients', label: 'Patients', icon: '👥' },
-  { id: 'alerts', label: 'Alerts', icon: '🔔' }
-]
+const tabs = computed(() => [
+  { id: 'diagnose', label: t(TEXT.tabDiagnose), icon: '🏥' },
+  { id: 'patients', label: t(TEXT.tabPatients), icon: '👥' },
+  { id: 'alerts', label: t(TEXT.tabAlerts), icon: '🔔' }
+])
 
-const diagnosisSteps = [
+const loginWorkflowSteps = [
   {
-    id: 1,
-    title: 'Patient Identity',
-    short: 'name and record',
-    description: 'Capture the core patient identity used to save, reopen, and display the clinical record.',
-    footer: 'Confirm the patient identity details before moving to symptoms.'
+    id: 'collect',
+    stepLabel: TEXT.workflowStep1,
+    title: TEXT.workflowCollect,
+    accent: 'border-emerald-200 dark:border-emerald-800/60',
+    kickerClass: 'text-emerald-700 dark:text-emerald-300'
   },
   {
-    id: 2,
-    title: 'Clinical Clues',
-    short: 'symptoms and exposure',
-    description: 'Document TB symptoms and exposure history using suggested clues or direct typing.',
-    footer: 'Review symptoms and exposure history, then continue to laboratory and imaging results.'
+    id: 'analyze',
+    stepLabel: TEXT.workflowStep2,
+    title: TEXT.workflowAnalyze,
+    accent: 'border-blue-200 dark:border-blue-800/60',
+    kickerClass: 'text-blue-700 dark:text-blue-300'
   },
   {
-    id: 3,
-    title: 'Species And Tests',
-    short: 'results and evidence',
-    description: 'Enter bacteria selection, smear, culture, GeneXpert, x-ray, TST, IGRA, and related evidence.',
-    footer: 'Check test results before advancing to DST and resistance evidence.'
+    id: 'classify',
+    stepLabel: TEXT.workflowStep3,
+    title: TEXT.workflowClassify,
+    accent: 'border-violet-200 dark:border-violet-800/60',
+    kickerClass: 'text-violet-700 dark:text-violet-300'
   },
   {
-    id: 4,
-    title: 'DST And Resistance',
-    short: 'drug decision support',
-    description: 'Complete antibiogram, resistance, and susceptibility details before generating the report.',
-    footer: 'Finish the last step and run the TB analysis when the record is ready.'
+    id: 'treat',
+    stepLabel: TEXT.workflowStep4,
+    title: TEXT.workflowTreat,
+    accent: 'border-green-200 dark:border-green-800/60',
+    kickerClass: 'text-green-700 dark:text-green-300'
   }
 ]
 
+const loginWorkflowSummaryCards = [
+  { id: 'patient', title: TEXT.workflowPatient, lines: [TEXT.workflowSymptoms, TEXT.workflowTests] },
+  { id: 'tb', title: TEXT.workflowTbType, lines: [TEXT.workflowBacteria, TEXT.workflowResistance] },
+  { id: 'report', title: TEXT.workflowReport, lines: [TEXT.workflowTreatment, TEXT.workflowGuidance] }
+]
+
+const diagnosisSteps = computed(() => [
+  {
+    id: 1,
+    title: t({
+      EN: 'Patient identity',
+      FR: 'Identité du patient',
+      SW: 'Utambulisho wa mgonjwa',
+      RW: "Amakuru y'umurwayi"
+    }),
+    short: t({ EN: 'name and record', FR: 'nom et dossier', SW: 'majina na rekodi', RW: 'izina na dosiye' }),
+    description: t({
+      EN: 'Capture the identity used to save, reopen, and display the clinical record.',
+      FR: "Saisir l'identité pour enregistrer, rouvrir et afficher le dossier clinique.",
+      SW: 'Weka utambulisho ili kuhifadhi, kufungua tena, na kuonyesha rekodi ya mgonjwa.',
+      RW: "Andika amakuru y'ibanze afasha kubika, kongera gufungura, no kwerekana dosiye."
+    }),
+    footer: t({
+      EN: 'Confirm identity details before moving to symptoms.',
+      FR: "Confirmez l'identité avant les symptômes.",
+      SW: 'Thibitisha utambulisho kabla ya dalili.',
+      RW: 'Emeza amakuru y’umurwayi mbere yo kujya ku bimenyetso.'
+    })
+  },
+  {
+    id: 2,
+    title: t({ EN: 'Clinical clues', FR: 'Indices cliniques', SW: 'Dalili za kliniki', RW: 'Ibimenyetso bya kliniki' }),
+    short: t({ EN: 'symptoms and exposure', FR: 'symptômes et exposition', SW: 'dalili na kuambukizwa', RW: "ibimenyetso n'aho yandurira" }),
+    description: t({
+      EN: 'Document symptoms and exposure history using suggestions or direct typing.',
+      FR: "Notez les symptômes et l'exposition via les suggestions ou en saisie libre.",
+      SW: 'Andika dalili na historia ya kuambukizwa kwa mapendekezo au kuandika mwenyewe.',
+      RW: "Andika ibimenyetso n'amateka y'aho yandurira ukoresheje ibitekerezo cyangwa ukabyandika."
+    }),
+    footer: t({
+      EN: 'Review symptoms/exposure, then continue to tests.',
+      FR: 'Revoyez symptômes/exposition puis passez aux tests.',
+      SW: 'Kagua dalili/kuambukizwa kisha endelea na vipimo.',
+      RW: "Subiramo ibimenyetso/aho yandurira hanyuma ujye ku bizamini."
+    })
+  },
+  {
+    id: 3,
+    title: t({ EN: 'Tests and results', FR: 'Tests et résultats', SW: 'Vipimo na majibu', RW: 'Ibizamini n’ibisubizo' }),
+    short: t({ EN: 'results and evidence', FR: 'résultats et preuves', SW: 'majibu na ushahidi', RW: 'ibisubizo n’ibimenyetso' }),
+    description: t({
+      EN: 'Enter smear, culture, GeneXpert, X‑ray, TST, IGRA, and related evidence.',
+      FR: 'Saisir frottis, culture, GeneXpert, radio, TST, IGRA et preuves associées.',
+      SW: 'Weka smear, culture, GeneXpert, X‑ray, TST, IGRA na ushahidi unaohusiana.',
+      RW: 'Andika smear, culture, GeneXpert, X‑ray, TST, IGRA n’ibindi bimenyetso.'
+    }),
+    footer: t({
+      EN: 'Check test results before moving to DST and resistance.',
+      FR: 'Vérifiez les tests avant le DST et la résistance.',
+      SW: 'Kagua majibu kabla ya DST na usugu wa dawa.',
+      RW: 'Reba ibisubizo by’ibizamini mbere yo kujya kuri DST na resistance.'
+    })
+  },
+  {
+    id: 4,
+    title: t({ EN: 'DST and resistance', FR: 'DST et résistance', SW: 'DST na usugu', RW: 'DST na resistance' }),
+    short: t({ EN: 'drug decision support', FR: 'aide médicaments', SW: 'msaada wa dawa', RW: "ubufasha ku miti" }),
+    description: t({
+      EN: 'Complete DST summary, resistance, and susceptibility details before generating the report.',
+      FR: "Complétez le résumé DST, la résistance et la sensibilité avant le rapport.",
+      SW: 'Kamilisha muhtasari wa DST, usugu na usikivu wa dawa kabla ya ripoti.',
+      RW: "Uzuza incamake ya DST, resistance na susceptibility mbere yo gukora raporo."
+    }),
+    footer: t({
+      EN: 'Finish the last step and run the analysis.',
+      FR: "Terminez l'étape et lancez l'analyse.",
+      SW: 'Maliza hatua ya mwisho kisha endesha uchambuzi.',
+      RW: 'Soza igice cya nyuma hanyuma ukore isesengura.'
+    })
+  }
+])
+
 const symptomOptions = [
-  'Persistent cough for 2+ weeks',
-  'Hemoptysis',
-  'Fever',
-  'Night sweats',
-  'Weight loss',
-  'Chest pain',
-  'Fatigue',
-  'Breathlessness',
-  'Loss of appetite',
-  'Lymph node swelling',
-  'Back pain',
-  'Abdominal pain',
-  'Neck stiffness',
-  'Pleural chest pain'
+  { value: 'Persistent cough for 2+ weeks', label: { EN: 'Persistent cough for 2+ weeks', FR: 'Toux persistante 2+ semaines', SW: 'Kikohozi kinachoendelea wiki 2+', RW: 'Inkorora imaze ibyumweru 2+' } },
+  { value: 'Hemoptysis', label: { EN: 'Hemoptysis', FR: 'Hémoptysie', SW: 'Kukohoa damu', RW: 'Gukorora amaraso' } },
+  { value: 'Fever', label: { EN: 'Fever', FR: 'Fièvre', SW: 'Homa', RW: 'Umuriro' } },
+  { value: 'Night sweats', label: { EN: 'Night sweats', FR: 'Sueurs nocturnes', SW: 'Kutokwa jasho usiku', RW: 'Kubira icyuya nijoro' } },
+  { value: 'Weight loss', label: { EN: 'Weight loss', FR: 'Perte de poids', SW: 'Kupungua uzito', RW: "Kugabanuka kw'ibiro" } },
+  { value: 'Chest pain', label: { EN: 'Chest pain', FR: 'Douleur thoracique', SW: 'Maumivu ya kifua', RW: 'Kubabara mu gatuza' } },
+  { value: 'Fatigue', label: { EN: 'Fatigue', FR: 'Fatigue', SW: 'Uchovu', RW: 'Umunaniro' } },
+  { value: 'Breathlessness', label: { EN: 'Breathlessness', FR: 'Essoufflement', SW: 'Upungufu wa pumzi', RW: 'Kubura umwuka' } },
+  { value: 'Loss of appetite', label: { EN: 'Loss of appetite', FR: "Perte d'appétit", SW: 'Kupoteza hamu ya kula', RW: 'Kudashaka kurya' } },
+  { value: 'Lymph node swelling', label: { EN: 'Lymph node swelling', FR: 'Adénopathie', SW: 'Kuvimba tezi', RW: 'Kubyimba imisate y’amaraso (lymph nodes)' } },
+  { value: 'Back pain', label: { EN: 'Back pain', FR: 'Douleur du dos', SW: 'Maumivu ya mgongo', RW: "Kubabara mu mugongo" } },
+  { value: 'Abdominal pain', label: { EN: 'Abdominal pain', FR: 'Douleur abdominale', SW: 'Maumivu ya tumbo', RW: "Kubabara mu nda" } },
+  { value: 'Neck stiffness', label: { EN: 'Neck stiffness', FR: 'Raideur de la nuque', SW: 'Shingo kukakamaa', RW: 'Kubyimba/kukakamaa mu ijosi' } },
+  { value: 'Pleural chest pain', label: { EN: 'Pleural chest pain', FR: 'Douleur pleurale', SW: 'Maumivu ya pleura', RW: 'Kubabara mu gatuza (pleura)' } }
 ]
 
 const exposureOptions = [
-  'Household TB contact',
-  'Close contact with MDR-TB patient',
-  'Cattle exposure',
-  'Goat or sheep exposure',
-  'Unpasteurized milk intake',
-  'Rodent exposure',
-  'Marine mammal exposure',
-  'South Asia travel history',
-  'West Africa residence history',
-  'Horn of Africa travel history',
-  'Prison or crowded living conditions',
-  'Healthcare worker exposure',
-  'Previous untreated TB episode',
-  'Livestock herd exposure'
+  { value: 'Household TB contact', label: { EN: 'Household TB contact', FR: 'Contact TB à domicile', SW: 'Kukaa na mwenye TB', RW: "Guhura n’ufite TB mu rugo" } },
+  { value: 'Close contact with MDR-TB patient', label: { EN: 'Close contact with MDR‑TB patient', FR: 'Contact proche MDR‑TB', SW: 'Kukaribiana na MDR‑TB', RW: 'Guhura n’ufite MDR‑TB' } },
+  { value: 'Cattle exposure', label: { EN: 'Cattle exposure', FR: 'Contact avec bovins', SW: 'Kugusana na ng’ombe', RW: "Kwegera inka" } },
+  { value: 'Goat or sheep exposure', label: { EN: 'Goat or sheep exposure', FR: 'Contact chèvre/mouton', SW: 'Kugusana na mbuzi/kondoo', RW: "Kwegera ihene/intonzi" } },
+  { value: 'Unpasteurized milk intake', label: { EN: 'Unpasteurized milk intake', FR: 'Lait non pasteurisé', SW: 'Maziwa yasiyopasteurizwa', RW: 'Kunywa amata atapasteurizwemo' } },
+  { value: 'Rodent exposure', label: { EN: 'Rodent exposure', FR: 'Exposition rongeurs', SW: 'Kukutana na panya', RW: 'Kwegera imbeba' } },
+  { value: 'Marine mammal exposure', label: { EN: 'Marine mammal exposure', FR: 'Mammifères marins', SW: 'Wanyama wa baharini', RW: 'Inyamaswa zo mu nyanja' } },
+  { value: 'South Asia travel history', label: { EN: 'South Asia travel history', FR: 'Voyage Asie du Sud', SW: 'Safari Asia Kusini', RW: 'Ingendo muri Asia y’Epfo' } },
+  { value: 'West Africa residence history', label: { EN: 'West Africa residence history', FR: 'Séjour Afrique de l’Ouest', SW: 'Kuishi Afrika Magharibi', RW: 'Kuba warabaye muri Afurika y’Uburengerazuba' } },
+  { value: 'Horn of Africa travel history', label: { EN: 'Horn of Africa travel history', FR: "Voyage Corne de l'Afrique", SW: 'Safari Pembe ya Afrika', RW: 'Ingendo mu ihembe rya Afurika' } },
+  { value: 'Prison or crowded living conditions', label: { EN: 'Prison or crowded living', FR: 'Prison ou promiscuité', SW: 'Gereza/mazingira yenye msongamano', RW: 'Gereza/aho abantu bacucitse' } },
+  { value: 'Healthcare worker exposure', label: { EN: 'Healthcare worker exposure', FR: 'Exposition travailleur santé', SW: 'Kazi ya afya (exposure)', RW: 'Gukora mu buvuzi (exposure)' } },
+  { value: 'Previous untreated TB episode', label: { EN: 'Previous untreated TB episode', FR: 'TB passé non traité', SW: 'TB ya zamani bila matibabu', RW: 'Kuba warigeze kugira TB itavuwe' } },
+  { value: 'Livestock herd exposure', label: { EN: 'Livestock herd exposure', FR: 'Troupeau (bétail)', SW: 'Mifugo (kundi)', RW: 'Kwegera umukumbi w’amatungo' } }
 ]
 
 const antibiogramOptions = [
-  'Fully susceptible first-line profile',
-  'Rifampicin resistance detected',
-  'Isoniazid resistance detected',
-  'Pyrazinamide resistance suspected',
-  'MDR profile confirmed by DST',
-  'XDR profile suspected',
-  'Fluoroquinolone susceptible',
-  'Linezolid active',
-  'Clofazimine active',
-  'Reference laboratory confirmation recommended'
+  { value: 'Fully susceptible first-line profile', label: { EN: 'Fully susceptible first‑line profile', FR: 'Sensibilité complète 1ère ligne', SW: 'Inakubali dawa za kwanza', RW: 'Yumva imiti y’ibanze (first‑line)' } },
+  { value: 'Rifampicin resistance detected', label: { EN: 'Rifampicin resistance detected', FR: 'Résistance rifampicine', SW: 'Usugu wa rifampicin', RW: 'Resistance ya rifampicin' } },
+  { value: 'Isoniazid resistance detected', label: { EN: 'Isoniazid resistance detected', FR: 'Résistance isoniazide', SW: 'Usugu wa isoniazid', RW: 'Resistance ya isoniazid' } },
+  { value: 'Pyrazinamide resistance suspected', label: { EN: 'Pyrazinamide resistance suspected', FR: 'Résistance pyrazinamide suspectée', SW: 'Usugu wa pyrazinamide (shaka)', RW: 'Pyrazinamide resistance (gukeka)' } },
+  { value: 'MDR profile confirmed by DST', label: { EN: 'MDR confirmed by DST', FR: 'MDR confirmé (DST)', SW: 'MDR imethibitishwa (DST)', RW: 'MDR yemejwe na DST' } },
+  { value: 'XDR profile suspected', label: { EN: 'XDR profile suspected', FR: 'XDR suspecté', SW: 'XDR inashukiwa', RW: 'XDR ikekwa' } },
+  { value: 'Fluoroquinolone susceptible', label: { EN: 'Fluoroquinolone susceptible', FR: 'Sensible fluoroquinolones', SW: 'Inakubali fluoroquinolone', RW: 'Yumva fluoroquinolone' } },
+  { value: 'Linezolid active', label: { EN: 'Linezolid active', FR: 'Linezolid actif', SW: 'Linezolid inafanya kazi', RW: 'Linezolid ikora' } },
+  { value: 'Clofazimine active', label: { EN: 'Clofazimine active', FR: 'Clofazimine actif', SW: 'Clofazimine inafanya kazi', RW: 'Clofazimine ikora' } },
+  { value: 'Reference laboratory confirmation recommended', label: { EN: 'Reference lab confirmation recommended', FR: 'Confirmation labo de référence', SW: 'Thibitisha kwenye maabara ya rufaa', RW: 'Kwemeza kuri labo y’icyitegererezo' } }
 ]
 
 const drugOptions = [
@@ -2699,7 +3204,7 @@ const patientRangeEnd = computed(() => {
   if (patientTotal.value === 0) return 0
   return Math.min(patientsPage.value * patientPageSize.value, patientTotal.value)
 })
-const currentDiagnosisMeta = computed(() => diagnosisSteps.find(step => step.id === currentDiagnosisStep.value) || diagnosisSteps[0])
+const currentDiagnosisMeta = computed(() => diagnosisSteps.value.find(step => step.id === currentDiagnosisStep.value) || diagnosisSteps.value[0])
 
 const riskColorClass = computed(() => {
   if (!diagnosisResult.value) return 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
@@ -2748,12 +3253,12 @@ function formatDate(dateStr) {
 function goToDiagnosisStep(stepId) {
   const nextStep = Number(stepId)
   if (!Number.isInteger(nextStep)) return
-  if (nextStep < 1 || nextStep > diagnosisSteps.length) return
+  if (nextStep < 1 || nextStep > diagnosisSteps.value.length) return
   currentDiagnosisStep.value = nextStep
 }
 
 function nextDiagnosisStep() {
-  if (currentDiagnosisStep.value >= diagnosisSteps.length) return
+  if (currentDiagnosisStep.value >= diagnosisSteps.value.length) return
   currentDiagnosisStep.value += 1
 }
 
@@ -2847,6 +3352,7 @@ async function apiFetch(path, options = {}) {
   const headers = { ...(options.headers || {}) }
   if (!headers['Content-Type'] && options.body) headers['Content-Type'] = 'application/json'
   if (token.value) headers.Authorization = `Bearer ${token.value}`
+  headers['X-UI-Language'] = uiLanguage.value
 
   // #region debug-point A:api-fetch
   fetch("http://127.0.0.1:7777/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:"patients-empty-api",runId:"pre-fix",hypothesisId:"A",location:"frontend/app.vue:615",msg:"[DEBUG] apiFetch request",data:{path,hasToken:!!token.value,authorizationHeader:!!headers.Authorization,currentView:currentView.value},ts:Date.now()})}).catch(()=>{})
@@ -2857,7 +3363,7 @@ async function apiFetch(path, options = {}) {
   // #endregion
   if (response.status === 401) {
     clearSession()
-    loginError.value = 'Your session expired. Please sign in again.'
+    loginError.value = t(TEXT.sessionExpired)
     throw new Error('Unauthorized')
   }
   if (!response.ok) {

@@ -57,6 +57,275 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
+SUPPORTED_UI_LANGS = {"EN", "FR", "SW", "RW"}
+
+
+def get_request_lang():
+    try:
+        raw = (request.headers.get("X-UI-Language") or "").strip().upper()
+    except Exception:
+        raw = ""
+    if raw in SUPPORTED_UI_LANGS:
+        return raw
+
+    accept = ""
+    try:
+        accept = (request.headers.get("Accept-Language") or "").strip().lower()
+    except Exception:
+        accept = ""
+    if accept.startswith("fr"):
+        return "FR"
+    if accept.startswith("sw"):
+        return "SW"
+    if accept.startswith("rw"):
+        return "RW"
+    return "EN"
+
+
+I18N = {
+    "INVALID_EMAIL_OR_PASSWORD": {
+        "EN": "Invalid email or password",
+        "FR": "Email ou mot de passe invalide",
+        "SW": "Barua pepe au nenosiri si sahihi",
+        "RW": "Email cyangwa ijambo-banga si byo",
+    },
+    "EMAIL_EXISTS": {
+        "EN": "User with this email already exists",
+        "FR": "Un utilisateur avec cet email existe déjà",
+        "SW": "Mtumiaji mwenye barua pepe hii tayari yupo",
+        "RW": "Hari umukoresha ufite iyi email usanzwe ahari",
+    },
+    "USER_NOT_FOUND": {
+        "EN": "User not found",
+        "FR": "Utilisateur introuvable",
+        "SW": "Mtumiaji hajapatikana",
+        "RW": "Umukoresha ntaboneka",
+    },
+    "ACCESS_DENIED": {
+        "EN": "Access denied",
+        "FR": "Accès refusé",
+        "SW": "Huruhusiwi",
+        "RW": "Ntiwemerewe",
+    },
+    "PATIENT_DELETED": {
+        "EN": "Patient deleted successfully",
+        "FR": "Patient supprimé avec succès",
+        "SW": "Mgonjwa amefutwa kikamilifu",
+        "RW": "Umurwayi yasibwe neza",
+    },
+    "API_HOME_MESSAGE": {
+        "EN": "TB Diagnostic System API",
+        "FR": "API du système de diagnostic TB",
+        "SW": "API ya mfumo wa uchunguzi wa TB",
+        "RW": "API ya sisitemu yo gusuzuma igituntu",
+    },
+    "JWT_REQUIRED": {
+        "EN": "JWT bearer token required for protected API routes",
+        "FR": "Jeton JWT requis pour les routes protégées",
+        "SW": "Token ya JWT inahitajika kwa njia zilizo na ulinzi",
+        "RW": "JWT token irakenewe ku nzira zikingiwe",
+    },
+    "DATA_IMPORT_OK": {
+        "EN": "Data import completed successfully",
+        "FR": "Importation des données terminée avec succès",
+        "SW": "Uingizaji wa data umekamilika",
+        "RW": "Kwinjiza data byarangiye neza",
+    },
+    "SYMPTOM_ADVICE_DEFAULT": {
+        "EN": "Complete TB diagnostic workup and follow national/WHO guidance.",
+        "FR": "Compléter le bilan TB et suivre les directives nationales/OMS.",
+        "SW": "Kamilisha uchunguzi wa TB na fuata miongozo ya kitaifa/WHO.",
+        "RW": "Kora isuzuma rya TB ryuzuye kandi ukurikize amabwiriza y’igihugu/WHO.",
+    },
+    "SYMPTOM_ADVICE_HIGH": {
+        "EN": "Urgent evaluation: isolate if infectious risk, order GeneXpert/sputum, and consider starting treatment per guidelines.",
+        "FR": "Évaluation urgente : isoler si risque infectieux, demander GeneXpert/sputum, et envisager le traitement selon les directives.",
+        "SW": "Tathmini ya haraka: mtenganishe kama kuna hatari ya maambukizi, agiza GeneXpert/sputum, na fikiria kuanza matibabu kulingana na mwongozo.",
+        "RW": "Kwihutirwa: tanga isolation niba hari ibyago byo kwanduza, tegeka GeneXpert/sputum, kandi utekereze gutangira ubuvuzi uko amabwiriza abiteganya.",
+    },
+    "SYMPTOM_ADVICE_MODERATE": {
+        "EN": "Prioritize TB testing (GeneXpert/sputum) and chest imaging; review comorbidities.",
+        "FR": "Prioriser les tests TB (GeneXpert/sputum) et l’imagerie; revoir les comorbidités.",
+        "SW": "Tanguliza vipimo vya TB (GeneXpert/sputum) na X-ray ya kifua; kagua magonjwa mengine.",
+        "RW": "Shyira imbere ibizamini bya TB (GeneXpert/sputum) na X-ray; reba indwara zindi zifatanye.",
+    },
+    "SYMPTOM_ADVICE_LOW": {
+        "EN": "TB less likely but possible; consider targeted testing if symptoms persist or risk factors present.",
+        "FR": "TB moins probable mais possible ; envisager des tests ciblés si symptômes persistent ou facteurs de risque présents.",
+        "SW": "TB inaonekana si ya juu lakini inawezekana; fanya vipimo maalum kama dalili zinaendelea au vihatarishi vipo.",
+        "RW": "TB ishobora kuba atari yo cyane ariko birashoboka; tekereza ku bizamini byihariye niba ibimenyetso bikomeje cyangwa hari ibyago.",
+    },
+    "RED_FLAG_HEMOPTYSIS": {
+        "EN": "Hemoptysis (coughing blood) - urgent assessment",
+        "FR": "Hémoptysie (toux avec sang) - évaluation urgente",
+        "SW": "Kukohoa damu - tathmini ya haraka",
+        "RW": "Gukorora amaraso - kwihutirwa kwisuzuma",
+    },
+    "RED_FLAG_CNS": {
+        "EN": "Possible CNS involvement (meningitis symptoms) - urgent referral",
+        "FR": "Atteinte SNC possible (signes de méningite) - référence urgente",
+        "SW": "Huenda mfumo wa neva umeathirika (dalili za meningitis) - rufaa ya haraka",
+        "RW": "Hashobora kuba hari ikibazo ku bwonko/ubwonko (meningitis) - ohereza byihuse",
+    },
+    "RED_FLAG_BREATHLESSNESS": {
+        "EN": "Breathlessness - assess severity and oxygenation",
+        "FR": "Essoufflement - évaluer la gravité et l’oxygénation",
+        "SW": "Upungufu wa pumzi - pima ukali na oksijeni",
+        "RW": "Kubura umwuka - gupima ubukana n’oksijeni",
+    },
+    "RISK_LEVEL_DISPLAY": {
+        "HIGH RISK": {"EN": "HIGH RISK", "FR": "RISQUE ÉLEVÉ", "SW": "HATARI KUBWA", "RW": "IBYAGO BIKOMEYE"},
+        "MODERATE RISK": {"EN": "MODERATE RISK", "FR": "RISQUE MODÉRÉ", "SW": "HATARI YA KATI", "RW": "IBYAGO BY’INKERAGIHE"},
+        "LOW RISK": {"EN": "LOW RISK", "FR": "FAIBLE RISQUE", "SW": "HATARI NDOGO", "RW": "IBYAGO BIKE"},
+        "MINIMAL RISK": {"EN": "MINIMAL RISK", "FR": "RISQUE MINIME", "SW": "HATARI NDOGO SANA", "RW": "IBYAGO BIKE CYANE"},
+    },
+    "TEST_CLASS_INSUFFICIENT": {
+        "EN": "Insufficient evidence",
+        "FR": "Preuves insuffisantes",
+        "SW": "Ushahidi hautoshi",
+        "RW": "Ibimenyetso ntibihagije",
+    },
+    "TEST_CLASS_CONFIRMED_LIKELY": {
+        "EN": "Bacteriologically confirmed TB likely",
+        "FR": "TB probablement confirmée bactériologiquement",
+        "SW": "TB inawezekana kuthibitishwa na maabara",
+        "RW": "Birashoboka ko TB yemejwe na labo",
+    },
+    "TEST_CLASS_LESS_LIKELY": {
+        "EN": "TB less likely (but not excluded)",
+        "FR": "TB moins probable (mais pas exclue)",
+        "SW": "TB inaonekana si ya juu (lakini haijaondolewa)",
+        "RW": "TB ishobora kuba atari yo (ariko ntikurwaho)",
+    },
+    "FINDING_GENEXPERT_POS": {
+        "EN": "GeneXpert MTB/RIF: Positive",
+        "FR": "GeneXpert MTB/RIF : Positif",
+        "SW": "GeneXpert MTB/RIF: Chanya",
+        "RW": "GeneXpert MTB/RIF: Positive",
+    },
+    "FINDING_SPUTUM_POS": {
+        "EN": "Sputum smear microscopy: Positive",
+        "FR": "Frottis sputum : Positif",
+        "SW": "Sputum smear: Chanya",
+        "RW": "Sputum smear: Positive",
+    },
+    "FINDING_CXR_ABNORMAL": {
+        "EN": "Chest X-ray: Abnormal",
+        "FR": "Radio thoracique : Anormale",
+        "SW": "X-ray ya kifua: Isiyo ya kawaida",
+        "RW": "X-ray y'igituza: Abnormal",
+    },
+    "FINDING_ALL_NEGATIVE": {
+        "EN": "GeneXpert/Sputum negative and X-ray normal",
+        "FR": "GeneXpert/Sputum négatifs et radio normale",
+        "SW": "GeneXpert/Sputum hasi na X-ray kawaida",
+        "RW": "GeneXpert/Sputum negative na X-ray normal",
+    },
+    "LABEL_TB_CULTURE": {"EN": "TB culture", "FR": "Culture TB", "SW": "TB culture", "RW": "TB culture"},
+    "LABEL_TST": {"EN": "TST", "FR": "TST", "SW": "TST", "RW": "TST"},
+    "LABEL_IGRA": {"EN": "IGRA", "FR": "IGRA", "SW": "IGRA", "RW": "IGRA"},
+    "LABEL_DST": {"EN": "Antibiogram/DST", "FR": "Antibiogramme/DST", "SW": "Antibiogram/DST", "RW": "Antibiogram/DST"},
+    "ALERT_EMAIL_SUBJECT": {
+        "EN": "TB Diagnostic Alert: {alert_type}",
+        "FR": "Alerte TB : {alert_type}",
+        "SW": "Tahadhari ya TB: {alert_type}",
+        "RW": "Itangazo rya TB: {alert_type}",
+    },
+    "ALERT_EMAIL_BODY": {
+        "EN": "Patient Alert:\n\n{message}\n\nPlease log in to the system for more details.",
+        "FR": "Alerte patient :\n\n{message}\n\nVeuillez vous connecter pour plus de détails.",
+        "SW": "Tahadhari ya mgonjwa:\n\n{message}\n\nTafadhali ingia kwenye mfumo kwa maelezo zaidi.",
+        "RW": "Itangazo ku murwayi:\n\n{message}\n\nNyamuneka winjire muri sisitemu kugira ngo ubone ibisobanuro birambuye.",
+    },
+    "ALERT_MESSAGE_TEMPLATE": {
+        "EN": "Patient {patient_name} (ID: {patient_id}) classified as {category} with estimated bacteria {species}. {who_recommendation}",
+        "FR": "Patient {patient_name} (ID : {patient_id}) classé {category} avec bactérie estimée {species}. {who_recommendation}",
+        "SW": "Mgonjwa {patient_name} (ID: {patient_id}) ameainishwa {category} na bakteria anayedhaniwa {species}. {who_recommendation}",
+        "RW": "Umurwayi {patient_name} (ID: {patient_id}) yashyizwe mu rwego {category} n'udukoko twagereranijwe {species}. {who_recommendation}",
+    },
+    "RES_DS": {
+        "EN": "Drug-sensitive TB (DS-TB)",
+        "FR": "TB sensible aux médicaments (DS-TB)",
+        "SW": "TB inayoitikia dawa (DS-TB)",
+        "RW": "TB yumva imiti (DS-TB)",
+    },
+    "RES_XDR": {
+        "EN": "Extensively Drug-Resistant TB (XDR-TB)",
+        "FR": "TB ultra-résistante (XDR-TB)",
+        "SW": "TB yenye usugu mkubwa sana wa dawa (XDR-TB)",
+        "RW": "TB ifite usugire bukabije ku miti (XDR-TB)",
+    },
+    "RES_MDR": {
+        "EN": "Multidrug-Resistant TB (MDR-TB)",
+        "FR": "TB multirésistante (MDR-TB)",
+        "SW": "TB yenye usugu kwa dawa nyingi (MDR-TB)",
+        "RW": "TB irwanya imiti myinshi (MDR-TB)",
+    },
+    "RES_PZA": {
+        "EN": "Pyrazinamide-resistant pattern",
+        "FR": "Profil résistant au pyrazinamide",
+        "SW": "Muundo wa usugu wa pyrazinamide",
+        "RW": "Uko pyrazinamide irwanywa",
+    },
+    "RES_RR": {
+        "EN": "Rifampicin-Resistant TB (RR-TB)",
+        "FR": "TB résistante à la rifampicine (RR-TB)",
+        "SW": "TB yenye usugu wa rifampicin (RR-TB)",
+        "RW": "TB irwanya rifampicin (RR-TB)",
+    },
+    "RES_DR": {
+        "EN": "Drug-Resistant TB (DR-TB)",
+        "FR": "TB résistante aux médicaments (DR-TB)",
+        "SW": "TB yenye usugu wa dawa (DR-TB)",
+        "RW": "TB irwanya imiti (DR-TB)",
+    },
+    "BASIS_XDR": {
+        "EN": "Detected XDR-level resistance markers from DST/GeneXpert metadata.",
+        "FR": "Marqueurs de résistance XDR détectés dans les données DST/GeneXpert.",
+        "SW": "Alama za usugu wa kiwango cha XDR zimeonekana kwenye DST/GeneXpert.",
+        "RW": "Ibimenyetso bya resistance yo ku rwego rwa XDR byabonetse muri DST/GeneXpert.",
+    },
+    "BASIS_MDR": {
+        "EN": "Detected rifampicin plus isoniazid resistance pattern.",
+        "FR": "Profil de résistance à la rifampicine et à l'isoniazide détecté.",
+        "SW": "Muundo wa usugu wa rifampicin na isoniazid umeonekana.",
+        "RW": "Pattern ya resistance ya rifampicin na isoniazid yagaragaye.",
+    },
+    "BASIS_PZA": {
+        "EN": "Only pyrazinamide resistance was provided; review for M. bovis or regimen modification.",
+        "FR": "Seule une résistance au pyrazinamide est fournie ; revoir M. bovis ou modifier le schéma.",
+        "SW": "Usugu wa pyrazinamide pekee umeonekana; kagua M. bovis au badili mpango wa dawa.",
+        "RW": "Hagaragajwe resistance ya pyrazinamide gusa; reba M. bovis cyangwa uhindure gahunda y’imiti.",
+    },
+    "BASIS_RR": {
+        "EN": "Detected rifampicin resistance signal.",
+        "FR": "Signal de résistance à la rifampicine détecté.",
+        "SW": "Ishara ya usugu wa rifampicin imeonekana.",
+        "RW": "Ikimenyetso cya resistance ya rifampicin cyagaragaye.",
+    },
+    "BASIS_DR": {
+        "EN": "Resistance data present but not enough to label RR/MDR/XDR confidently.",
+        "FR": "Données de résistance présentes mais insuffisantes pour conclure RR/MDR/XDR.",
+        "SW": "Data ya usugu ipo lakini haitoshi kuweka RR/MDR/XDR kwa uhakika.",
+        "RW": "Hari data ya resistance ariko ntihagije ngo twemeze RR/MDR/XDR.",
+    },
+    "BASIS_DS": {
+        "EN": "No resistance markers supplied; managed as drug-sensitive TB unless DST changes the plan.",
+        "FR": "Aucun marqueur de résistance fourni ; prise en charge comme TB sensible sauf changement DST.",
+        "SW": "Hakuna alama za usugu zilizotolewa; hushughulikiwa kama TB inayoitikia dawa hadi DST ibadilishe mpango.",
+        "RW": "Nta bimenyetso bya resistance byatanzwe; ifatwa nka TB yumva imiti keretse DST ihinduye gahunda.",
+    },
+}
+
+
+def tr(key, lang=None, **kwargs):
+    lang = lang or get_request_lang()
+    value = I18N.get(key, {}).get(lang) or I18N.get(key, {}).get("EN") or key
+    try:
+        return value.format(**kwargs)
+    except Exception:
+        return value
+
 # Database configuration - supports multiple databases
 DATABASE_TYPE = os.getenv('DATABASE_TYPE', 'sqlite')
 
@@ -434,12 +703,14 @@ def normalize_drug_list(value):
 
 
 def determine_resistance_profile(drug_resistant, genexpert, antibiogram_result=None, resistant_to=None, susceptible_to=None):
+    lang = get_request_lang()
     resistant_drugs = normalize_drug_list(resistant_to)
     susceptible_drugs = normalize_drug_list(susceptible_to)
     antibiogram_text = str(antibiogram_result or "").strip()
     decision_basis = []
     regimen_level = "first-line"
-    classification = "Drug-sensitive TB (DS-TB)"
+    classification_code = "DS"
+    classification = tr("RES_DS", lang=lang)
     resistant_drug_set = {drug.lower() for drug in resistant_drugs}
 
     combined_text = " ".join(
@@ -452,44 +723,50 @@ def determine_resistance_profile(drug_resistant, genexpert, antibiogram_result=N
     ).lower()
 
     if "extensively drug-resistant" in combined_text or "xdr" in combined_text:
-        classification = "Extensively Drug-Resistant TB (XDR-TB)"
+        classification_code = "XDR"
+        classification = tr("RES_XDR", lang=lang)
         regimen_level = "individualized second-line"
-        decision_basis.append("Detected XDR-level resistance markers from DST/GeneXpert metadata.")
+        decision_basis.append(tr("BASIS_XDR", lang=lang))
     elif (
         "multidrug-resistant" in combined_text
         or "mdr" in combined_text
         or {"isoniazid", "rifampicin"}.issubset({drug.lower() for drug in resistant_drugs})
         or str(drug_resistant or "").strip() == "Isoniazid and Rifampicin"
     ):
-        classification = "Multidrug-Resistant TB (MDR-TB)"
+        classification_code = "MDR"
+        classification = tr("RES_MDR", lang=lang)
         regimen_level = "second-line"
-        decision_basis.append("Detected rifampicin plus isoniazid resistance pattern.")
+        decision_basis.append(tr("BASIS_MDR", lang=lang))
     elif resistant_drug_set == {"pyrazinamide"}:
-        classification = "Pyrazinamide-resistant pattern"
+        classification_code = "PZA"
+        classification = tr("RES_PZA", lang=lang)
         regimen_level = "modified first-line"
-        decision_basis.append("Only pyrazinamide resistance was provided; review for M. bovis or regimen modification.")
+        decision_basis.append(tr("BASIS_PZA", lang=lang))
     elif "rifampicin-resistant" in combined_text or "rr-tb" in combined_text or "rifampicin" in {drug.lower() for drug in resistant_drugs}:
-        classification = "Rifampicin-Resistant TB (RR-TB)"
+        classification_code = "RR"
+        classification = tr("RES_RR", lang=lang)
         regimen_level = "second-line"
-        decision_basis.append("Detected rifampicin resistance signal.")
+        decision_basis.append(tr("BASIS_RR", lang=lang))
     elif str(drug_resistant or "").strip().lower() in {"yes", "drug-resistant"} or resistant_drugs:
-        classification = "Drug-Resistant TB (DR-TB)"
+        classification_code = "DR"
+        classification = tr("RES_DR", lang=lang)
         regimen_level = "second-line"
-        decision_basis.append("Resistance data present but not enough to label RR/MDR/XDR confidently.")
+        decision_basis.append(tr("BASIS_DR", lang=lang))
     else:
-        decision_basis.append("No resistance markers supplied; managed as drug-sensitive TB unless DST changes the plan.")
+        decision_basis.append(tr("BASIS_DS", lang=lang))
 
     if antibiogram_text:
         decision_basis.append(f"Antibiogram/DST summary: {antibiogram_text}")
 
     return {
+        "classification_code": classification_code,
         "classification": classification,
         "regimen_level": regimen_level,
         "antibiogram_result": antibiogram_text or "Not provided",
         "resistant_to": resistant_drugs,
         "susceptible_to": susceptible_drugs,
         "decision_basis": decision_basis,
-        "dst_required": classification != "Drug-sensitive TB (DS-TB)",
+        "dst_required": classification_code != "DS",
     }
 
 
@@ -542,6 +819,7 @@ def build_treatment_plan(tb_analysis, bacteria_assessment, resistance_profile, t
     tb_type = tb_analysis["who_category"]
     species = bacteria_assessment["species"]
     resistance_class = resistance_profile["classification"]
+    resistance_code = resistance_profile.get("classification_code")
     options = []
 
     def option(name, level, drugs, duration, administration, monitoring, notes):
@@ -555,7 +833,7 @@ def build_treatment_plan(tb_analysis, bacteria_assessment, resistance_profile, t
             "notes": notes,
         }
 
-    if "XDR-TB" in resistance_class:
+    if resistance_code == "XDR":
         options.append(
             option(
                 "WHO-aligned XDR-TB individualized regimen",
@@ -567,7 +845,7 @@ def build_treatment_plan(tb_analysis, bacteria_assessment, resistance_profile, t
                 "Must be individualized from DST/antibiogram and WHO DR-TB guidance.",
             )
         )
-    elif "MDR-TB" in resistance_class:
+    elif resistance_code == "MDR":
         options.append(
             option(
                 "WHO MDR-TB second-line regimen",
@@ -579,7 +857,7 @@ def build_treatment_plan(tb_analysis, bacteria_assessment, resistance_profile, t
                 "Chosen because rifampicin and isoniazid resistance is present or strongly suspected.",
             )
         )
-    elif "RR-TB" in resistance_class or "Drug-Resistant TB" in resistance_class:
+    elif resistance_code in {"RR", "DR"}:
         options.append(
             option(
                 "WHO RR/DR-TB regimen",
@@ -690,7 +968,7 @@ def role_required(*allowed_roles):
             user = get_current_user_from_jwt()
             
             if not user or user.role not in allowed_roles:
-                return jsonify({"msg": "Access denied"}), 403
+                return jsonify({"msg": tr("ACCESS_DENIED")}), 403
             return f(*args, **kwargs)
         decorated_function.__name__ = f.__name__
         return decorated_function
@@ -1203,6 +1481,7 @@ def send_email(recipient, subject, body):
         return False
 
 def create_alert(patient_id, user_id, alert_type, message, severity='medium'):
+    lang = get_request_lang()
     alert = Alert(
         patient_id=patient_id,
         user_id=user_id,
@@ -1218,8 +1497,8 @@ def create_alert(patient_id, user_id, alert_type, message, severity='medium'):
         if user and user.email:
             email_sent = send_email(
                 user.email,
-                f"TB Diagnostic Alert: {alert_type}",
-                f"Patient Alert:\n\n{message}\n\nPlease log in to the system for more details."
+                tr("ALERT_EMAIL_SUBJECT", lang=lang, alert_type=alert_type),
+                tr("ALERT_EMAIL_BODY", lang=lang, message=message),
             )
             alert.email_sent = email_sent
             db.session.commit()
@@ -1244,10 +1523,10 @@ def login():
             break
 
     if not user:
-        return jsonify({'msg': 'Invalid email or password'}), 401
+        return jsonify({'msg': tr('INVALID_EMAIL_OR_PASSWORD')}), 401
 
     if not user.check_password(password):
-        return jsonify({'msg': 'Invalid email or password'}), 401
+        return jsonify({'msg': tr('INVALID_EMAIL_OR_PASSWORD')}), 401
 
     # Create access token
     access_token = create_access_token(
@@ -1271,7 +1550,7 @@ def register_user():
     all_users = User.query.all()
     for u in all_users:
         if u.email == data.get('email'):
-            return jsonify({'msg': 'User with this email already exists'}), 409
+            return jsonify({'msg': tr('EMAIL_EXISTS')}), 409
 
     user = User(
         username=data.get('username'),
@@ -1290,7 +1569,7 @@ def register_user():
 def get_current_user():
     user = get_current_user_from_jwt()
     if not user:
-        return jsonify({'msg': 'User not found'}), 404
+        return jsonify({'msg': tr('USER_NOT_FOUND')}), 404
     return jsonify(user.to_dict())
 
 # ----------------------
@@ -1300,11 +1579,11 @@ def get_current_user():
 @app.route('/')
 def home():
     return jsonify({
-        'message': 'TB Diagnostic System API',
+        'message': tr('API_HOME_MESSAGE'),
         'version': '2.1.0',
         'database': DATABASE_TYPE,
         'standards': 'WHO International Clinical Guidelines for TB',
-        'authentication': 'JWT bearer token required for protected API routes',
+        'authentication': tr('JWT_REQUIRED'),
         'bootstrap_command': 'python bootstrap.py --runserver',
         'bootstrap_behavior': 'Drops the existing database if it exists, recreates it from scratch, imports datasets, seeds users, trains models, and can start the API server',
         'protected_endpoints': [
@@ -1415,11 +1694,11 @@ def patient_detail(patient_id):
     if request.method == 'DELETE':
         user = get_current_user_from_jwt()
         if user.role not in ['system_admin', 'hospital_admin']:
-            return jsonify({'msg': 'Access denied'}), 403
+            return jsonify({'msg': tr('ACCESS_DENIED')}), 403
 
         db.session.delete(patient)
         db.session.commit()
-        return jsonify({'message': 'Patient deleted successfully'})
+        return jsonify({'message': tr('PATIENT_DELETED')})
 
 # Comprehensive Diagnosis with WHO Standards
 @app.route('/api/diagnose', methods=['POST'])
@@ -1428,6 +1707,7 @@ def diagnose():
     data = request.get_json() or {}
     patient_data = data.get('patient', {}) or {}
     user = get_current_user_from_jwt()
+    lang = get_request_lang()
 
     def normalize_value(v):
         if v is None:
@@ -1500,22 +1780,23 @@ def diagnose():
 
         red_flags = []
         if symptoms_present.get("hemoptysis"):
-            red_flags.append("Hemoptysis (coughing blood) - urgent assessment")
+            red_flags.append(tr("RED_FLAG_HEMOPTYSIS", lang=lang))
         if symptoms_present.get("neck_stiffness") or symptoms_present.get("confusion") or symptoms_present.get("headache_severe"):
-            red_flags.append("Possible CNS involvement (meningitis symptoms) - urgent referral")
+            red_flags.append(tr("RED_FLAG_CNS", lang=lang))
         if symptoms_present.get("dyspnea"):
-            red_flags.append("Breathlessness - assess severity and oxygenation")
+            red_flags.append(tr("RED_FLAG_BREATHLESSNESS", lang=lang))
 
-        clinical_advice = "Complete TB diagnostic workup and follow national/WHO guidance."
+        clinical_advice = tr("SYMPTOM_ADVICE_DEFAULT", lang=lang)
         if risk_level == "HIGH RISK":
-            clinical_advice = "Urgent evaluation: isolate if infectious risk, order GeneXpert/sputum, and consider starting treatment per guidelines."
+            clinical_advice = tr("SYMPTOM_ADVICE_HIGH", lang=lang)
         elif risk_level == "MODERATE RISK":
-            clinical_advice = "Prioritize TB testing (GeneXpert/sputum) and chest imaging; review comorbidities."
+            clinical_advice = tr("SYMPTOM_ADVICE_MODERATE", lang=lang)
         elif risk_level == "LOW RISK":
-            clinical_advice = "TB less likely but possible; consider targeted testing if symptoms persist or risk factors present."
+            clinical_advice = tr("SYMPTOM_ADVICE_LOW", lang=lang)
 
         return {
             "risk_level": risk_level,
+            "risk_level_display": (I18N.get("RISK_LEVEL_DISPLAY", {}).get(risk_level, {}).get(lang) or risk_level),
             "risk_score": score,
             "red_flags": red_flags,
             "clinical_advice": clinical_advice,
@@ -1528,22 +1809,22 @@ def diagnose():
 
         findings = []
         confidence = 40
-        classification = "Insufficient evidence"
+        classification = tr("TEST_CLASS_INSUFFICIENT", lang=lang)
 
         if genexpert == "Positive":
-            findings.append("GeneXpert MTB/RIF: Positive")
-            classification = "Bacteriologically confirmed TB likely"
+            findings.append(tr("FINDING_GENEXPERT_POS", lang=lang))
+            classification = tr("TEST_CLASS_CONFIRMED_LIKELY", lang=lang)
             confidence = 95
         if sputum == "Positive":
-            findings.append("Sputum smear microscopy: Positive")
-            classification = "Bacteriologically confirmed TB likely"
+            findings.append(tr("FINDING_SPUTUM_POS", lang=lang))
+            classification = tr("TEST_CLASS_CONFIRMED_LIKELY", lang=lang)
             confidence = max(confidence, 85)
         if chest_xray == "Abnormal":
-            findings.append("Chest X-ray: Abnormal")
+            findings.append(tr("FINDING_CXR_ABNORMAL", lang=lang))
             confidence = max(confidence, 60)
         if genexpert == "Negative" and sputum == "Negative" and chest_xray == "Normal":
-            findings.append("GeneXpert/Sputum negative and X-ray normal")
-            classification = "TB less likely (but not excluded)"
+            findings.append(tr("FINDING_ALL_NEGATIVE", lang=lang))
+            classification = tr("TEST_CLASS_LESS_LIKELY", lang=lang)
             confidence = 70
 
         return {
@@ -1647,13 +1928,13 @@ def diagnose():
     symptom_analysis = compute_symptom_analysis(patient.symptoms or "")
     test_evaluation = evaluate_tests(patient.sputum_smear_test, patient.genexpert_test, patient.chest_xray)
     if tb_culture:
-        test_evaluation["findings"].append(f"TB culture: {tb_culture}")
+        test_evaluation["findings"].append(f"{tr('LABEL_TB_CULTURE', lang=lang)}: {tb_culture}")
     if tst:
-        test_evaluation["findings"].append(f"TST: {tst}")
+        test_evaluation["findings"].append(f"{tr('LABEL_TST', lang=lang)}: {tst}")
     if igra:
-        test_evaluation["findings"].append(f"IGRA: {igra}")
+        test_evaluation["findings"].append(f"{tr('LABEL_IGRA', lang=lang)}: {igra}")
     if resistance_profile["antibiogram_result"] != "Not provided":
-        test_evaluation["findings"].append(f"Antibiogram/DST: {resistance_profile['antibiogram_result']}")
+        test_evaluation["findings"].append(f"{tr('LABEL_DST', lang=lang)}: {resistance_profile['antibiogram_result']}")
 
     diagnosis_record = Diagnosis(
         patient_id=patient.id,
@@ -1721,7 +2002,15 @@ def diagnose():
             patient_id=patient.id,
             user_id=user.id,
             alert_type=f"ALERT: {tb_analysis['who_category']}",
-            message=f"Patient {patient_name} (ID: {patient.patient_id}) classified as {tb_analysis['who_category']} with estimated bacteria {bacteria_assessment['species']}. {clinical_info.get('who_recommendation','')}",
+            message=tr(
+                "ALERT_MESSAGE_TEMPLATE",
+                lang=lang,
+                patient_name=patient_name,
+                patient_id=patient.patient_id,
+                category=tb_analysis['who_category'],
+                species=bacteria_assessment['species'],
+                who_recommendation=clinical_info.get('who_recommendation', ''),
+            ),
             severity='high'
         )
 
@@ -1810,7 +2099,7 @@ def import_data_endpoint():
     try:
         from import_data import main
         main()
-        return jsonify({'message': 'Data import completed successfully'})       
+        return jsonify({'message': tr('DATA_IMPORT_OK')})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
