@@ -20,7 +20,7 @@
               </svg>
             </div>
             <div>
-              <h1 class="text-xl font-bold text-gray-900 dark:text-white">TB Diagnostic System</h1>
+              <h1 class="text-xl font-bold text-gray-900 dark:text-white">{{ t(TEXT.indexKicker) }}</h1>
               <p class="text-sm text-gray-500 dark:text-gray-400">{{ t(TEXT.headerSubtitle) }}</p>
             </div>
           </div>
@@ -29,7 +29,7 @@
               <button
                 type="button"
                 class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-gray-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-emerald-700 dark:hover:bg-gray-700"
-                aria-label="Language"
+                :aria-label="t(TEXT.languageLabel)"
                 :aria-expanded="languageMenuOpen ? 'true' : 'false'"
                 @click="languageMenuOpen = !languageMenuOpen"
               >
@@ -75,7 +75,7 @@
               v-if="isLoggedIn"
               @click="logout"
               class="hidden rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-right transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-emerald-700 dark:hover:bg-emerald-900/20 md:block"
-              title="Click your name or role to logout"
+              :title="t(TEXT.signInNote3)"
             >
               <p class="text-sm font-medium text-gray-900 dark:text-white">{{ userDisplayName }}</p>
               <p class="text-xs uppercase tracking-wide text-emerald-600 dark:text-emerald-400">{{ userRoleLabel }}</p>
@@ -1535,9 +1535,9 @@
               <div class="flex items-start justify-between">
                 <div>
                   <p class="font-medium" :class="alert.severity === 'high' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'">
-                    {{ alert.severity === 'high' ? '🚨' : '⚠️' }} {{ alert.alert_type }}
+                    {{ alert.severity === 'high' ? '🚨' : '⚠️' }} {{ translateBackendText(alert.alert_type) }}
                   </p>
-                  <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ alert.message }}</p>
+                  <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ translateBackendText(alert.message) }}</p>
                   <p class="text-xs text-gray-400 mt-1">{{ formatDate(alert.created_at) }}</p>
                 </div>
                 <span v-if="!alert.is_read" class="w-2 h-2 bg-emerald-500 rounded-full"></span>
@@ -1646,6 +1646,48 @@ const TEXT = {
     FR: 'Cliquez votre nom ou rôle pour vous déconnecter.',
     SW: 'Bofya jina au nafasi yako ili utoke.',
     RW: 'Kanda izina cyangwa umwanya wawe kugira ngo usohoke.'
+  },
+  languageLabel: {
+    EN: 'Language',
+    FR: 'Langue',
+    SW: 'Lugha',
+    RW: 'Ururimi'
+  },
+  diagnosisRequestFailed: {
+    EN: 'Unable to complete the diagnosis request.',
+    FR: "Impossible de terminer la demande de diagnostic.",
+    SW: 'Imeshindikana kukamilisha ombi la uchunguzi.',
+    RW: "Ntibishobotse kurangiza ubusabe bw'isuzuma."
+  },
+  patientsLoadFailed: {
+    EN: 'Unable to load patients.',
+    FR: 'Impossible de charger les patients.',
+    SW: 'Imeshindikana kupakia wagonjwa.',
+    RW: 'Ntibishobotse gupakira abarwayi.'
+  },
+  alertsLoadFailed: {
+    EN: 'Unable to load alerts.',
+    FR: 'Impossible de charger les alertes.',
+    SW: 'Imeshindikana kupakia tahadhari.',
+    RW: 'Ntibishobotse gupakira amatangazo.'
+  },
+  alertLabel: {
+    EN: 'TB alert',
+    FR: 'Alerte TB',
+    SW: 'Tahadhari ya TB',
+    RW: 'Itangazo rya TB'
+  },
+  alertMarkReadFailed: {
+    EN: 'Unable to mark alert as read.',
+    FR: "Impossible de marquer l'alerte comme lue.",
+    SW: 'Imeshindikana kuashiria tahadhari kuwa imesomwa.',
+    RW: 'Ntibishobotse gushyira itangazo ku rwego rw\'iryasomwe.'
+  },
+  backendAlertTemplate: {
+    EN: 'Patient {patientName} (ID: {patientId}) classified as {category} with estimated bacteria {species}. {recommendation}',
+    FR: 'Patient {patientName} (ID : {patientId}) classé {category} avec bactérie estimée {species}. {recommendation}',
+    SW: 'Mgonjwa {patientName} (ID: {patientId}) ameainishwa kama {category} na bakteria anayekadiriwa kuwa {species}. {recommendation}',
+    RW: "Umurwayi {patientName} (ID: {patientId}) yashyizwe mu rwego rwa {category} n'udukoko twagereranijwe ko ari {species}. {recommendation}"
   },
   signIn: { EN: 'Sign in', FR: 'Se connecter', SW: 'Ingia', RW: 'Injira' },
   signingIn: { EN: 'Signing in...', FR: 'Connexion...', SW: 'Inaingia...', RW: 'Birimo kwinjira...' },
@@ -1936,6 +1978,18 @@ const TEXT = {
   duration18to24Months: { EN: '18-24 months', FR: '18-24 mois', SW: 'miezi 18-24', RW: 'amezi 18-24' },
   duration18to24MonthsTotal: { EN: '18-24 months total', FR: '18-24 mois zose', SW: 'jumla ya miezi 18-24', RW: 'amezi 18-24 yose hamwe' },
   whoMdrRegimen: { EN: 'WHO MDR-TB second-line regimen', FR: 'Schéma OMS MDR-TB de deuxième ligne', SW: 'Gahunda ya WHO ya MDR-TB yo ku murongo wa pili', RW: 'Gahunda ya WHO ya MDR-TB yo ku murongo wa kabiri' },
+  confirmedPulmonaryTb: {
+    EN: 'CONFIRMED PULMONARY TB (PTB)',
+    FR: 'TB PULMONAIRE CONFIRMÉE (PTB)',
+    SW: 'TB YA MAPAFU ILIYOTHIBITISHWA (PTB)',
+    RW: 'TB Y’IBIHAHA YEMEJWE (PTB)'
+  },
+  clinicallyDiagnosedPulmonaryTb: {
+    EN: 'CLINICALLY DIAGNOSED PULMONARY TB (PTB)',
+    FR: 'TB PULMONAIRE DIAGNOSTIQUÉE CLINIQUEMENT (PTB)',
+    SW: 'TB YA MAPAFU ILIYOGUNDULIWA KIKLINIKI (PTB)',
+    RW: 'TB Y’IBIHAHA YASUZUMWE NA MUGANGA (PTB)'
+  },
   presumptivePulmonaryTb: { EN: 'PRESUMPTIVE PULMONARY TB (PTB)', FR: 'TB PULMONAIRE PRÉSUMÉE (PTB)', SW: 'TB YA MAPAFU INAYOSHUKIWA (PTB)', RW: 'TB Y’IBIHAHA IKEKWA (PTB)' },
   noSpecificTbPattern: {
     EN: 'No specific TB infection pattern confirmed',
@@ -1984,6 +2038,48 @@ const TEXT = {
     FR: 'Surveiller étroitement, répéter les tests si nécessaire et rechercher d’autres diagnostics',
     SW: 'Komeza gukurikiranwa neza, usubiremo ibizamini igihe bikenewe, kandi usuzume izindi ndwara',
     RW: 'Komeza gukurikiranwa neza, usubiremo ibizamini igihe bikenewe, kandi usuzume izindi ndwara'
+  },
+  whoRecommendationStartTreatment: {
+    EN: 'Initiate treatment promptly according to national guidelines; ensure airborne precautions',
+    FR: 'Commencer rapidement le traitement selon les directives nationales; assurer les précautions aériennes',
+    SW: 'Anza matibabu haraka kulingana na miongozo ya taifa; hakikisha tahadhari za hewani',
+    RW: "Tangira ubuvuzi vuba ukurikije amabwiriza y’igihugu; hubahirizwe kwirinda ubwandu bwo mu mwuka"
+  },
+  dstFullySusceptible: {
+    EN: 'Fully susceptible first-line profile',
+    FR: 'Profil complètement sensible de première ligne',
+    SW: 'Muundo wa mazingira yote ya kwanza yenye uwezo wa kukabiliwa na dawa',
+    RW: 'Incamake y’umurongo wa mbere yumva imiti yose'
+  },
+  dstRifampicinResistance: {
+    EN: 'Rifampicin resistance detected',
+    FR: 'Résistance à la rifampicine détectée',
+    SW: 'Usugu wa rifampicin umeonekana',
+    RW: 'Resistance ya rifampicin yagaragaye'
+  },
+  dstPyrazinamideSuspected: {
+    EN: 'Pyrazinamide resistance suspected',
+    FR: 'Résistance à la pyrazinamide suspectée',
+    SW: 'Usugu wa pyrazinamide unashukiwa',
+    RW: 'Resistance ya pyrazinamide inekewa'
+  },
+  dstIsoniazidResistance: {
+    EN: 'Isoniazid resistance detected',
+    FR: 'Résistance à l’isoniazide détectée',
+    SW: 'Usugu wa isoniazid umeonekana',
+    RW: 'Resistance ya isoniazid yagaragaye'
+  },
+  dstMdrConfirmed: {
+    EN: 'MDR profile confirmed by DST',
+    FR: 'Profil MDR confirmé par DST',
+    SW: 'Muundo wa MDR umethibitishwa na DST',
+    RW: 'Incamake ya MDR yemejwe na DST'
+  },
+  dstXdrSuspected: {
+    EN: 'XDR profile suspected',
+    FR: 'Profil XDR suspecté',
+    SW: 'Muundo wa XDR unashukiwa',
+    RW: 'Incamake ya XDR inekewa'
   },
   tbCultureLabel: { EN: 'TB culture', FR: 'Culture TB', SW: 'Culture ya TB', RW: 'Culture ya TB' },
   tstShortLabel: { EN: 'TST', FR: 'TST', SW: 'TST', RW: 'TST' },
@@ -2325,6 +2421,10 @@ function t(valueByLanguage) {
   if (!valueByLanguage || typeof valueByLanguage !== 'object') return String(valueByLanguage || '')
   return valueByLanguage[uiLanguage.value] ?? valueByLanguage.EN ?? ''
 }
+
+useHead(() => ({
+  title: t(TEXT.indexKicker)
+}))
 
 function tf(valueByLanguage, vars = {}) {
   const template = t(valueByLanguage)
@@ -3553,9 +3653,12 @@ function translateBackendText(value) {
     '18-24 months': t(TEXT.duration18to24Months),
     '18-24 months total': t(TEXT.duration18to24MonthsTotal),
     'WHO MDR-TB second-line regimen': t(TEXT.whoMdrRegimen),
+    'CONFIRMED PULMONARY TB (PTB)': t(TEXT.confirmedPulmonaryTb),
+    'CLINICALLY DIAGNOSED PULMONARY TB (PTB)': t(TEXT.clinicallyDiagnosedPulmonaryTb),
     'PRESUMPTIVE PULMONARY TB (PTB)': t(TEXT.presumptivePulmonaryTb),
     'No specific TB infection pattern confirmed': t(TEXT.noSpecificTbPattern),
     'Drug-sensitive TB (DS-TB)': t(TEXT.dsTbLabel),
+    'Initiate treatment promptly according to national guidelines; ensure airborne precautions': t(TEXT.whoRecommendationStartTreatment),
     'OBSERVATION AND FURTHER TESTING': t(TEXT.observationFurtherTesting),
     'MODERATE': t(TEXT.moderateLabel),
     'NO EVIDENCE OF TB': t(TEXT.noEvidenceOfTb),
@@ -3564,7 +3667,13 @@ function translateBackendText(value) {
     'Intensive: N/A, Continuation: N/A': t(TEXT.dosageNa),
     'Intensive phase: N/A; continuation phase: N/A; daily DOTS/supervised dosing where feasible.': t(TEXT.administrationNa),
     'Monitor symptoms, consider other diagnoses': t(TEXT.monitorSymptomsAlternativeDx),
-    'Monitor closely, repeat tests as indicated, evaluate for alternative diagnoses': t(TEXT.monitorCloselyRepeatTests)
+    'Monitor closely, repeat tests as indicated, evaluate for alternative diagnoses': t(TEXT.monitorCloselyRepeatTests),
+    'Fully susceptible first-line profile': t(TEXT.dstFullySusceptible),
+    'Rifampicin resistance detected': t(TEXT.dstRifampicinResistance),
+    'Pyrazinamide resistance suspected': t(TEXT.dstPyrazinamideSuspected),
+    'Isoniazid resistance detected': t(TEXT.dstIsoniazidResistance),
+    'MDR profile confirmed by DST': t(TEXT.dstMdrConfirmed),
+    'XDR profile suspected': t(TEXT.dstXdrSuspected)
   }
   if (exact[raw]) return exact[raw]
 
@@ -3592,8 +3701,41 @@ function translateBackendText(value) {
   if (raw.startsWith('No specific TB infection pattern confirmed - ')) {
     return `${t(TEXT.noSpecificTbPattern)} - ${translateBackendText(raw.slice('No specific TB infection pattern confirmed - '.length))}`
   }
+  if (raw.startsWith('ALERT: ')) {
+    return `${t(TEXT.alertLabel)}: ${translateBackendText(raw.slice('ALERT: '.length))}`
+  }
 
-  return raw
+  const alertMatch = raw.match(/^Patient (.+) \(ID: (.+)\) classified as (.+) with estimated bacteria (.+)\. (.+)$/)
+  if (alertMatch) {
+    return tf(TEXT.backendAlertTemplate, {
+      patientName: alertMatch[1],
+      patientId: alertMatch[2],
+      category: translateBackendText(alertMatch[3]),
+      species: translateBackendText(alertMatch[4]),
+      recommendation: translateBackendText(alertMatch[5])
+    })
+  }
+
+  const inlineReplacements = [
+    ['Initiate treatment promptly according to national guidelines; ensure airborne precautions', t(TEXT.whoRecommendationStartTreatment)],
+    ['CONFIRMED PULMONARY TB (PTB)', t(TEXT.confirmedPulmonaryTb)],
+    ['CLINICALLY DIAGNOSED PULMONARY TB (PTB)', t(TEXT.clinicallyDiagnosedPulmonaryTb)],
+    ['PRESUMPTIVE PULMONARY TB (PTB)', t(TEXT.presumptivePulmonaryTb)],
+    ['NO EVIDENCE OF TB', t(TEXT.noEvidenceOfTb)],
+    ['Fully susceptible first-line profile', t(TEXT.dstFullySusceptible)],
+    ['Rifampicin resistance detected', t(TEXT.dstRifampicinResistance)],
+    ['Pyrazinamide resistance suspected', t(TEXT.dstPyrazinamideSuspected)],
+    ['Isoniazid resistance detected', t(TEXT.dstIsoniazidResistance)],
+    ['MDR profile confirmed by DST', t(TEXT.dstMdrConfirmed)],
+    ['XDR profile suspected', t(TEXT.dstXdrSuspected)]
+  ]
+
+  let replaced = raw
+  for (const [from, to] of inlineReplacements) {
+    if (from && replaced.includes(from)) replaced = replaced.split(from).join(to)
+  }
+
+  return replaced
 }
 
 function clearSession(preserveEmail = true) {
@@ -3693,7 +3835,7 @@ async function diagnosePatient() {
     await loadPatients()
     await loadAlerts()
   } catch (error) {
-    loginError.value = error?.message === 'Unauthorized' ? 'Please sign in again.' : 'Unable to complete the diagnosis request.'
+    loginError.value = error?.message === 'Unauthorized' ? t(TEXT.sessionExpired) : t(TEXT.diagnosisRequestFailed)
   } finally {
     loading.value = false
   }
@@ -3713,7 +3855,7 @@ async function loadPatients() {
     fetch("http://127.0.0.1:7777/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:"patients-empty-api",runId:"pre-fix",hypothesisId:"D",location:"frontend/app.vue:695",msg:"[DEBUG] patients loaded",data:{count:patients.value.length,total:data.total||null,page:data.current_page||null,pages:data.pages||null,sort:data.sort||null,search:searchQuery.value},ts:Date.now()})}).catch(()=>{})
     // #endregion
   } catch (error) {
-    loginError.value = error?.message === 'Unauthorized' ? 'Please sign in again.' : 'Unable to load patients.'
+    loginError.value = error?.message === 'Unauthorized' ? t(TEXT.sessionExpired) : t(TEXT.patientsLoadFailed)
   }
 }
 
@@ -3724,7 +3866,7 @@ async function loadAlerts() {
     const data = await response.json()
     alerts.value = data.alerts || []
   } catch (error) {
-    loginError.value = error?.message === 'Unauthorized' ? 'Please sign in again.' : 'Unable to load alerts.'
+    loginError.value = error?.message === 'Unauthorized' ? t(TEXT.sessionExpired) : t(TEXT.alertsLoadFailed)
   }
 }
 
@@ -3734,7 +3876,7 @@ async function markAsRead(alert) {
     await apiFetch(`/alerts/${alert.id}/read`, { method: 'PUT' })
     alert.is_read = true
   } catch (error) {
-    loginError.value = error?.message === 'Unauthorized' ? 'Please sign in again.' : 'Unable to mark alert as read.'
+    loginError.value = error?.message === 'Unauthorized' ? t(TEXT.sessionExpired) : t(TEXT.alertMarkReadFailed)
   }
 }
 

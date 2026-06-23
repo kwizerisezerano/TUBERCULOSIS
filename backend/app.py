@@ -596,6 +596,42 @@ LITERAL_I18N = {
         "SW": "Anza matibabu haraka kulingana na miongozo ya taifa; hakikisha tahadhari za hewani",
         "RW": "Tangira ubuvuzi vuba ukurikije amabwiriza y'igihugu; hubahirizwe kwirinda ubwandu bwo mu mwuka",
     },
+    "Fully susceptible first-line profile": {
+        "EN": "Fully susceptible first-line profile",
+        "FR": "Profil complètement sensible de première ligne",
+        "SW": "Muundo wa mazingira yote ya kwanza yenye uwezo wa kukabiliwa na dawa",
+        "RW": "Incamake y’umurongo wa mbere yumva imiti yose",
+    },
+    "Rifampicin resistance detected": {
+        "EN": "Rifampicin resistance detected",
+        "FR": "Résistance à la rifampicine détectée",
+        "SW": "Usugu wa rifampicin umeonekana",
+        "RW": "Resistance ya rifampicin yagaragaye",
+    },
+    "Pyrazinamide resistance suspected": {
+        "EN": "Pyrazinamide resistance suspected",
+        "FR": "Résistance à la pyrazinamide suspectée",
+        "SW": "Usugu wa pyrazinamide unashukiwa",
+        "RW": "Resistance ya pyrazinamide inekewa",
+    },
+    "Isoniazid resistance detected": {
+        "EN": "Isoniazid resistance detected",
+        "FR": "Résistance à l’isoniazide détectée",
+        "SW": "Usugu wa isoniazid umeonekana",
+        "RW": "Resistance ya isoniazid yagaragaye",
+    },
+    "MDR profile confirmed by DST": {
+        "EN": "MDR profile confirmed by DST",
+        "FR": "Profil MDR confirmé par DST",
+        "SW": "Muundo wa MDR umethibitishwa na DST",
+        "RW": "Incamake ya MDR yemejwe na DST",
+    },
+    "XDR profile suspected": {
+        "EN": "XDR profile suspected",
+        "FR": "Profil XDR suspecté",
+        "SW": "Muundo wa XDR unashukiwa",
+        "RW": "Incamake ya XDR inekewa",
+    },
     "Airborne precautions, patient isolation, respiratory hygiene": {
         "EN": "Airborne precautions, patient isolation, respiratory hygiene",
         "FR": "Précautions aériennes, isolement du patient, hygiène respiratoire",
