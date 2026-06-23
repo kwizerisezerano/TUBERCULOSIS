@@ -95,52 +95,77 @@ def normalize_optional_result(value):
 
 
 def preprocess_and_fill_missing(df, patient_dict_list):
-    """Preprocess dataframe and fill missing values using mode"""
-    # Calculate mode values from normalized data
+    """Preprocess dataframe and fill missing values using mode for categorical, median for numerical"""
     from collections import Counter
-    mode_gender = None
-    mode_age = None
-    mode_hiv = "No"
-    mode_diabetes = "No"
+    import numpy as np
 
-    # Collect normalized values to compute mode
-    genders = []
-    ages = []
-    hivs = []
-    diabetes_list = []
+    # Initialize field collectors
+    numerical_fields = ['age', 'weight', 'persistent_cough_duration_weeks', 'oxygen_saturation_spo2']
+    categorical_fields = ['gender', 'hiv', 'diabetes', 'smoking_status', 'alcohol_use', 
+                          'contact_with_tb_patient', 'previous_tb_treatment', 
+                          'sputum_smear_test', 'genexpert_test', 'chest_xray', 
+                          'tb_culture', 'tst', 'igra', 'drug_resistance']
+
+    # Collect all values
+    values = {}
+    for field in numerical_fields + categorical_fields:
+        values[field] = []
+
     for p in patient_dict_list:
-        if p.get('gender'):
-            genders.append(p['gender'])
-        if p.get('age'):
-            ages.append(p['age'])
-        if p.get('hiv'):
-            hivs.append(p['hiv'])
-        if p.get('diabetes'):
-            diabetes_list.append(p['diabetes'])
+        for field in numerical_fields:
+            val = p.get(field)
+            if val is not None and (isinstance(val, (int, float)) and not np.isnan(val)):
+                values[field].append(val)
+        for field in categorical_fields:
+            val = p.get(field)
+            if val is not None and val not in ['', 'Unknown']:
+                values[field].append(val)
 
-    if genders:
-        mode_gender = Counter(genders).most_common(1)[0][0]
-    if ages:
-        mode_age = Counter(ages).most_common(1)[0][0]
-    if hivs:
-        mode_hiv = Counter(hivs).most_common(1)[0][0]
-    if diabetes_list:
-        mode_diabetes = Counter(diabetes_list).most_common(1)[0][0]
+    # Calculate stats
+    fill_values = {}
 
-    # Fill missing values
+    # Numerical fields: use median
+    for field in numerical_fields:
+        if len(values[field]) > 0:
+            fill_values[field] = np.median(values[field])
+        else:
+            # Default fallbacks
+            if field == 'age':
+                fill_values[field] = 35
+            elif field == 'weight':
+                fill_values[field] = 70
+            elif field == 'persistent_cough_duration_weeks':
+                fill_values[field] = 0
+            elif field == 'oxygen_saturation_spo2':
+                fill_values[field] = 98
+
+    # Categorical fields: use mode
+    for field in categorical_fields:
+        if len(values[field]) > 0:
+            fill_values[field] = Counter(values[field]).most_common(1)[0][0]
+        else:
+            # Default fallbacks
+            if field == 'gender':
+                fill_values[field] = 'Male'
+            elif field in ['hiv', 'diabetes', 'contact_with_tb_patient', 'previous_tb_treatment']:
+                fill_values[field] = 'No'
+            elif field == 'smoking_status':
+                fill_values[field] = 'Never'
+            elif field == 'alcohol_use':
+                fill_values[field] = 'Never'
+            else:
+                fill_values[field] = 'Unknown'
+
+    # Apply fill values
     for p in patient_dict_list:
-        if not p.get('gender') and mode_gender:
-            p['gender'] = mode_gender
-        elif not p.get('gender'):
-            p['gender'] = "Male"  # Fallback
-        if not p.get('age') and mode_age:
-            p['age'] = mode_age
-        elif not p.get('age'):
-            p['age'] = 35  # Fallback
-        if not p.get('hiv'):
-            p['hiv'] = mode_hiv
-        if not p.get('diabetes'):
-            p['diabetes'] = mode_diabetes
+        for field in numerical_fields:
+            val = p.get(field)
+            if val is None or (isinstance(val, float) and np.isnan(val)):
+                p[field] = fill_values[field]
+        for field in categorical_fields:
+            val = p.get(field)
+            if val is None or val == '' or val == 'Unknown':
+                p[field] = fill_values[field]
 
     return patient_dict_list
 
@@ -233,17 +258,17 @@ def import_symptoms_dataset(file_path):
     try:
         df = pd.read_csv(file_path)
         print(f"  Found {len(df)} patient records")
-        
-        imported_count = 0
-        
+
+        patient_dicts = []
+
         for idx, row in df.iterrows():
             patient_id = str(row.get('id', f'SYM{idx+1:04d}'))
-            
+
             # Check if already exists
             existing = Patient.query.filter_by(patient_id=patient_id).first()
             if existing:
                 continue
-            
+
             # Extract symptoms
             symptoms_list = []
             if int(row.get('fever for two weeks', 0)) == 1:
@@ -272,39 +297,45 @@ def import_symptoms_dataset(file_path):
                 symptoms_list.append("Swollen lymph nodes")
             if int(row.get('loss of appetite', 0)) == 1:
                 symptoms_list.append("Loss of appetite")
-            
+
             symptoms = ", ".join(symptoms_list) if symptoms_list else "No symptoms reported"
-            
+
             # Determine test results based on symptoms (since dataset doesn't have direct tests)
             score = len(symptoms_list)
             sputum = "Positive" if score >= 4 else ("Negative" if score >= 2 else "Unknown")
             genexpert = "Positive" if score >= 3 else ("Negative" if score >= 2 else "Unknown")
             chest_xray = "Abnormal" if score >= 3 else ("Normal" if score < 2 else "Unknown")
             drug_resistant = "Yes" if score >= 6 else "No"
-            
-            patient = Patient(
-                patient_id=patient_id,
-                first_name=clean_text(row.get('name', f'Patient{idx+1}')),
-                last_name='',
-                age=int(row.get('age', 35)) if pd.notna(row.get('age')) else 35,
-                gender=normalize_gender(row.get('gender')),
-                city='',
-                symptoms=symptoms,
-                sputum_smear_test=sputum,
-                genexpert_test=genexpert,
-                chest_xray=chest_xray,
-                drug_resistance=drug_resistant,
-                hiv='No',
-                diabetes='No'
-            )
-            
+
+            patient_dicts.append({
+                "patient_id": patient_id,
+                "first_name": clean_text(row.get('name', f'Patient{idx+1}')),
+                "last_name": '',
+                "age": int(row.get('age', 35)) if pd.notna(row.get('age')) else None,
+                "gender": normalize_gender(row.get('gender')),
+                "city": '',
+                "symptoms": symptoms,
+                "sputum_smear_test": sputum,
+                "genexpert_test": genexpert,
+                "chest_xray": chest_xray,
+                "drug_resistance": drug_resistant,
+                "hiv": 'No',
+                "diabetes": 'No'
+            })
+
+        # Preprocess and fill missing values
+        patient_dicts = preprocess_and_fill_missing(df, patient_dicts)
+
+        imported_count = 0
+        for p_dict in patient_dicts:
+            patient = Patient(**p_dict)
             db.session.add(patient)
             imported_count += 1
-        
+
         db.session.commit()
         print(f"  Successfully imported {imported_count} patients")
         return imported_count
-        
+
     except Exception as e:
         print(f"  Error importing symptoms dataset: {e}")
         db.session.rollback()
@@ -317,40 +348,46 @@ def import_bangladesh_dataset(file_path):
     try:
         df = pd.read_csv(file_path)
         print(f"  Found {len(df)} patient records")
-        
-        imported_count = 0
-        
+
+        patient_dicts = []
+
         for idx, row in df.iterrows():
             patient_id = f"BD{int(row.get('Patient ID', idx+1)):04d}"
-            
+
             # Check if already exists
             existing = Patient.query.filter_by(patient_id=patient_id).first()
             if existing:
                 continue
-            
-            patient = Patient(
-                patient_id=patient_id,
-                first_name=f'Patient{int(row.get("Patient ID", idx+1))}',
-                last_name='',
-                age=int(row.get('Age', 35)) if pd.notna(row.get('Age')) else 35,
-                gender=normalize_gender(row.get('Gender')),
-                city=clean_text(row.get('City', '')),
-                symptoms=clean_text(row.get('Symptoms', '')),
-                sputum_smear_test=normalize_test_result(row.get('Sputum Smear Test')),
-                genexpert_test=normalize_test_result(row.get('GeneXpert Test')),
-                chest_xray=normalize_test_result(row.get('Chest X-ray Results')),
-                drug_resistance=normalize_yes_no(row.get('Drug Resistance')),
-                hiv=normalize_yes_no(row.get('HIV')),
-                diabetes=normalize_yes_no(row.get('Diabetes'))
-            )
-            
+
+            patient_dicts.append({
+                "patient_id": patient_id,
+                "first_name": f'Patient{int(row.get("Patient ID", idx+1))}',
+                "last_name": '',
+                "age": int(row.get('Age', 35)) if pd.notna(row.get('Age')) else None,
+                "gender": normalize_gender(row.get('Gender')),
+                "city": clean_text(row.get('City', '')),
+                "symptoms": clean_text(row.get('Symptoms', '')),
+                "sputum_smear_test": normalize_test_result(row.get('Sputum Smear Test')),
+                "genexpert_test": normalize_test_result(row.get('GeneXpert Test')),
+                "chest_xray": normalize_test_result(row.get('Chest X-ray Results')),
+                "drug_resistance": normalize_yes_no(row.get('Drug Resistance')),
+                "hiv": normalize_yes_no(row.get('HIV')),
+                "diabetes": normalize_yes_no(row.get('Diabetes'))
+            })
+
+        # Preprocess and fill missing values
+        patient_dicts = preprocess_and_fill_missing(df, patient_dicts)
+
+        imported_count = 0
+        for p_dict in patient_dicts:
+            patient = Patient(**p_dict)
             db.session.add(patient)
             imported_count += 1
-        
+
         db.session.commit()
         print(f"  Successfully imported {imported_count} patients")
         return imported_count
-        
+
     except Exception as e:
         print(f"  Error importing Bangladesh dataset: {e}")
         db.session.rollback()
@@ -363,17 +400,17 @@ def import_xray_dataset(file_path):
     try:
         df = pd.read_csv(file_path)
         print(f"  Found {len(df)} patient records")
-        
-        imported_count = 0
-        
+
+        patient_dicts = []
+
         for idx, row in df.iterrows():
             patient_id = clean_text(row.get('Patient_ID', f'XRAY{idx+1:04d}'))
-            
+
             # Check if already exists
             existing = Patient.query.filter_by(patient_id=patient_id).first()
             if existing:
                 continue
-            
+
             # Build symptoms list
             symptoms_list = []
             if normalize_yes_no(row.get('Chest_Pain')) == 'Yes':
@@ -394,39 +431,45 @@ def import_xray_dataset(file_path):
                 symptoms_list.append(f'Sputum production ({row.get("Sputum_Production")})')
             if normalize_yes_no(row.get('Blood_in_Sputum')) == 'Yes':
                 symptoms_list.append('Blood in sputum (hemoptysis)')
-            
+
             symptoms = ", ".join(symptoms_list) if symptoms_list else 'No symptoms reported'
-            
+
             class_label = str(row.get('Class', '')).strip()
             is_tb = class_label == 'Tuberculosis'
             tb_label = 'Yes' if is_tb else 'No'
-            
-            patient = Patient(
-                patient_id=patient_id,
-                first_name=f'Patient{idx+1}',
-                last_name='',
-                age=int(row.get('Age', 35)) if pd.notna(row.get('Age')) else 35,
-                gender=normalize_gender(row.get('Gender')),
-                city='',
-                symptoms=symptoms,
-                sputum_smear_test='Positive' if is_tb else 'Negative',
-                genexpert_test='Positive' if is_tb else 'Negative',
-                chest_xray='Abnormal' if is_tb else 'Normal',
-                drug_resistance='No',
-                hiv='No',
-                diabetes='No',
-                tb_status_label=tb_label,
-                source_dataset='tuberculosis_xray_dataset',
-                source_row_id=patient_id
-            )
-            
+
+            patient_dicts.append({
+                "patient_id": patient_id,
+                "first_name": f'Patient{idx+1}',
+                "last_name": '',
+                "age": int(row.get('Age', 35)) if pd.notna(row.get('Age')) else None,
+                "gender": normalize_gender(row.get('Gender')),
+                "city": '',
+                "symptoms": symptoms,
+                "sputum_smear_test": 'Positive' if is_tb else 'Negative',
+                "genexpert_test": 'Positive' if is_tb else 'Negative',
+                "chest_xray": 'Abnormal' if is_tb else 'Normal',
+                "drug_resistance": 'No',
+                "hiv": 'No',
+                "diabetes": 'No',
+                "tb_status_label": tb_label,
+                "source_dataset": 'tuberculosis_xray_dataset',
+                "source_row_id": patient_id
+            })
+
+        # Preprocess and fill missing values
+        patient_dicts = preprocess_and_fill_missing(df, patient_dicts)
+
+        imported_count = 0
+        for p_dict in patient_dicts:
+            patient = Patient(**p_dict)
             db.session.add(patient)
             imported_count += 1
-        
+
         db.session.commit()
         print(f"  Successfully imported {imported_count} patients")
         return imported_count
-        
+
     except Exception as e:
         print(f"  Error importing X-ray dataset: {e}")
         db.session.rollback()
@@ -441,7 +484,7 @@ def import_owner_species_dataset(file_path):
         df = pd.read_csv(file_path)
         print(f"  Found {len(df)} curated patient records")
 
-        imported_count = 0
+        patient_dicts = []
         external_count = 0
 
         for idx, row in df.iterrows():
@@ -457,28 +500,35 @@ def import_owner_species_dataset(file_path):
             if existing:
                 continue
 
-            patient = Patient(
-                patient_id=patient_id,
-                first_name=f'Owner{idx+1}',
-                last_name='Dataset',
-                age=int(record.get('age', 35)) if record.get('age') is not None else 35,
-                gender=normalize_gender(record.get('gender')),
-                city=clean_text(record.get('city', '')),
-                region=clean_text(record.get('region', '')),
-                symptoms=clean_text(record.get('symptoms', '')),
-                exposure_history=clean_text(record.get('exposure_history', '')),
-                sputum_smear_test=normalize_optional_result(record.get('sputum_smear_test')),
-                genexpert_test=normalize_optional_result(record.get('genexpert_test')),
-                chest_xray=normalize_optional_result(record.get('chest_xray')),
-                bacteria_species=clean_text(record.get('bacteria_species', '')) or None,
-                treatment_type=clean_text(record.get('treatment_regimen', '')),
-                drug_resistance=clean_text(record.get('drug_resistance', '')) or 'No',
-                hiv='Unknown',
-                diabetes='Unknown',
-                tb_status_label='Yes' if str(record.get('tb_status_label', 'Yes')).strip().lower() == 'yes' else 'No',
-                source_dataset='owner_tb_species_dataset',
-                source_row_id=patient_id,
-            )
+            patient_dicts.append({
+                "patient_id": patient_id,
+                "first_name": f'Owner{idx+1}',
+                "last_name": 'Dataset',
+                "age": int(record.get('age', 35)) if record.get('age') is not None else None,
+                "gender": normalize_gender(record.get('gender')),
+                "city": clean_text(record.get('city', '')),
+                "region": clean_text(record.get('region', '')),
+                "symptoms": clean_text(record.get('symptoms', '')),
+                "exposure_history": clean_text(record.get('exposure_history', '')),
+                "sputum_smear_test": normalize_optional_result(record.get('sputum_smear_test')),
+                "genexpert_test": normalize_optional_result(record.get('genexpert_test')),
+                "chest_xray": normalize_optional_result(record.get('chest_xray')),
+                "bacteria_species": clean_text(record.get('bacteria_species', '')) or None,
+                "treatment_type": clean_text(record.get('treatment_regimen', '')),
+                "drug_resistance": clean_text(record.get('drug_resistance', '')) or 'No',
+                "hiv": 'Unknown',
+                "diabetes": 'Unknown',
+                "tb_status_label": 'Yes' if str(record.get('tb_status_label', 'Yes')).strip().lower() == 'yes' else 'No',
+                "source_dataset": 'owner_tb_species_dataset',
+                "source_row_id": patient_id
+            })
+
+        # Preprocess and fill missing values
+        patient_dicts = preprocess_and_fill_missing(df, patient_dicts)
+
+        imported_count = 0
+        for p_dict in patient_dicts:
+            patient = Patient(**p_dict)
             db.session.add(patient)
             imported_count += 1
 

@@ -91,45 +91,149 @@ def _normalize_gender(value):
         return "Other"
     return "Unknown"
 
+# Global stats for filling missing values during prediction
+_global_fill_values = None
+
+def _calculate_global_fill_values():
+    """Calculate global fill values from existing patients (median for numerical, mode for categorical)"""
+    global _global_fill_values
+    if _global_fill_values:
+        return _global_fill_values
+
+    from collections import Counter
+    import numpy as np
+    from models.models import Patient
+
+    patients = Patient.query.all()
+
+    numerical_fields = ['age', 'weight', 'persistent_cough_duration_weeks', 'oxygen_saturation_spo2']
+    categorical_fields = ['gender', 'hiv', 'diabetes', 'smoking_status', 'alcohol_use',
+                          'contact_with_tb_patient', 'previous_tb_treatment',
+                          'sputum_smear_test', 'genexpert_test', 'chest_xray']
+
+    values = {f: [] for f in numerical_fields + categorical_fields}
+
+    for patient in patients:
+        for field in numerical_fields:
+            val = _get_value(patient, field)
+            if val is not None and (isinstance(val, (int, float)) and not np.isnan(val)):
+                values[field].append(val)
+        for field in categorical_fields:
+            val = _get_value(patient, field)
+            if val is not None and val not in ['', 'Unknown']:
+                values[field].append(val)
+
+    fill_values = {}
+
+    # Numerical fields: use median
+    for field in numerical_fields:
+        if len(values[field]) > 0:
+            fill_values[field] = np.median(values[field])
+        else:
+            if field == 'age':
+                fill_values[field] = 35
+            elif field == 'weight':
+                fill_values[field] = 70
+            elif field == 'persistent_cough_duration_weeks':
+                fill_values[field] = 0
+            elif field == 'oxygen_saturation_spo2':
+                fill_values[field] = 98
+
+    # Categorical fields: use mode
+    for field in categorical_fields:
+        if len(values[field]) > 0:
+            fill_values[field] = Counter(values[field]).most_common(1)[0][0]
+        else:
+            if field == 'gender':
+                fill_values[field] = 'Male'
+            elif field in ['hiv', 'diabetes', 'contact_with_tb_patient', 'previous_tb_treatment']:
+                fill_values[field] = 'No'
+            elif field == 'smoking_status':
+                fill_values[field] = 'Never'
+            elif field == 'alcohol_use':
+                fill_values[field] = 'Never'
+            else:
+                fill_values[field] = 'Unknown'
+
+    _global_fill_values = fill_values
+    return fill_values
+
+
 def get_patient_features(patient):
+    fill_values = _calculate_global_fill_values()
+    import numpy as np
+
     symptoms_text = _get_value(patient, "symptoms", "") or ""
     symptoms_features = preprocess_symptoms(symptoms_text)
 
+    # Get and fill gender
     gender = _normalize_gender(_get_value(patient, "gender", None))
+    if gender is None or gender == 'Unknown':
+        gender = fill_values['gender']
 
+    # Get and fill test results
     sputum = _normalize_test_result(_get_value(patient, "sputum_smear_test", None))
-    genexpert = _normalize_test_result(_get_value(patient, "genexpert_test", None))
-    chest_xray = _normalize_test_result(_get_value(patient, "chest_xray", None))
-    hiv = _normalize_yes_no(_get_value(patient, "hiv", None)) or "No"
-    diabetes = _normalize_yes_no(_get_value(patient, "diabetes", None)) or "No"
+    if sputum == 'Unknown':
+        sputum = fill_values['sputum_smear_test']
 
+    genexpert = _normalize_test_result(_get_value(patient, "genexpert_test", None))
+    if genexpert == 'Unknown':
+        genexpert = fill_values['genexpert_test']
+
+    chest_xray = _normalize_test_result(_get_value(patient, "chest_xray", None))
+    if chest_xray == 'Unknown':
+        chest_xray = fill_values['chest_xray']
+
+    # Get and fill yes/no fields
+    hiv = _normalize_yes_no(_get_value(patient, "hiv", None))
+    if hiv is None or hiv == 'Unknown':
+        hiv = fill_values['hiv']
+
+    diabetes = _normalize_yes_no(_get_value(patient, "diabetes", None))
+    if diabetes is None or diabetes == 'Unknown':
+        diabetes = fill_values['diabetes']
+
+    # Get and fill numerical fields
     age = _get_value(patient, "age", None)
     try:
-        age = int(age) if age is not None else 30
+        age = int(age) if age is not None and not np.isnan(age) else fill_values['age']
     except Exception:
-        age = 30
+        age = fill_values['age']
 
     weight = _get_value(patient, "weight", None)
     try:
-        weight = float(weight) if weight is not None else 70.0
+        weight = float(weight) if weight is not None and not np.isnan(weight) else fill_values['weight']
     except Exception:
-        weight = 70.0
+        weight = fill_values['weight']
 
     persistent_cough_weeks = _get_value(patient, "persistent_cough_duration_weeks", None)
     try:
-        persistent_cough_weeks = int(persistent_cough_weeks) if persistent_cough_weeks is not None else 0
+        persistent_cough_weeks = int(persistent_cough_weeks) if persistent_cough_weeks is not None and not np.isnan(persistent_cough_weeks) else fill_values['persistent_cough_duration_weeks']
     except Exception:
-        persistent_cough_weeks = 0
+        persistent_cough_weeks = fill_values['persistent_cough_duration_weeks']
 
-    contact_tb = _normalize_yes_no(_get_value(patient, "contact_with_tb_patient", None)) or "No"
-    previous_tb_tx = _normalize_yes_no(_get_value(patient, "previous_tb_treatment", None)) or "No"
+    # Get and fill other categorical fields
+    contact_tb = _normalize_yes_no(_get_value(patient, "contact_with_tb_patient", None))
+    if contact_tb is None or contact_tb == 'Unknown':
+        contact_tb = fill_values['contact_with_tb_patient']
+
+    previous_tb_tx = _normalize_yes_no(_get_value(patient, "previous_tb_treatment", None))
+    if previous_tb_tx is None or previous_tb_tx == 'Unknown':
+        previous_tb_tx = fill_values['previous_tb_treatment']
+
     smoking_status = str(_get_value(patient, "smoking_status", "") or "").strip()
+    if smoking_status in ['', 'Unknown']:
+        smoking_status = fill_values['smoking_status']
+
     alcohol_use = str(_get_value(patient, "alcohol_use", "") or "").strip()
+    if alcohol_use in ['', 'Unknown']:
+        alcohol_use = fill_values['alcohol_use']
+
     spo2 = _get_value(patient, "oxygen_saturation_spo2", None)
     try:
-        spo2 = float(spo2) if spo2 is not None else 98.0
+        spo2 = float(spo2) if spo2 is not None and not np.isnan(spo2) else fill_values['oxygen_saturation_spo2']
     except Exception:
-        spo2 = 98.0
+        spo2 = fill_values['oxygen_saturation_spo2']
 
     return {
         "age": age,
