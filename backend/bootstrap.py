@@ -46,12 +46,12 @@ from sqlalchemy.engine import make_url
 
 from app import app, db, load_models
 from import_data import main as import_data_main
-from models.models import Alert, Diagnosis, ExternalDatasetRow, Patient, Treatment, User
+from models.models import Alert, Diagnosis, ExternalDatasetRow, Patient, Treatment, User, LabTest, Prescription, AuditLog
 from models.train_model import train_models_from_database
 from seed_users import seed_users
 
 
-MANAGED_MODELS = [User, Patient, Diagnosis, Treatment, Alert, ExternalDatasetRow]
+MANAGED_MODELS = [User, Patient, Diagnosis, Treatment, Alert, ExternalDatasetRow, LabTest, Prescription, AuditLog]
 
 
 def recreate_database():

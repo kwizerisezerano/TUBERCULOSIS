@@ -219,6 +219,104 @@ class Alert(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
+class LabTest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
+    requested_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    test_type = db.Column(db.String(100), nullable=False)  # e.g., "GeneXpert", "Sputum Smear", "Chest X-ray", "Blood Test"
+    status = db.Column(db.String(50), default='requested')  # requested, in_progress, completed, cancelled
+    results = db.Column(db.Text)
+    notes = db.Column(db.Text)
+    completed_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    completed_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+    patient = db.relationship('Patient', backref=db.backref('lab_tests', lazy=True))
+    requester = db.relationship('User', foreign_keys=[requested_by], backref=db.backref('requested_lab_tests', lazy=True))
+    completer = db.relationship('User', foreign_keys=[completed_by], backref=db.backref('completed_lab_tests', lazy=True))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "patient_id": self.patient_id,
+            "requested_by": self.requested_by,
+            "test_type": self.test_type,
+            "status": self.status,
+            "results": self.results,
+            "notes": self.notes,
+            "completed_by": self.completed_by,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class Prescription(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
+    diagnosis_id = db.Column(db.Integer, db.ForeignKey('diagnosis.id'))
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    medication = db.Column(db.String(200), nullable=False)
+    dosage = db.Column(db.String(200))
+    duration = db.Column(db.String(100))
+    risk_level = db.Column(db.String(50))
+    ml_recommended = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(50), default='pending')  # pending, approved, rejected
+    rejection_reason = db.Column(db.Text)
+    approved_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    approved_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+    patient = db.relationship('Patient', backref=db.backref('prescriptions', lazy=True))
+    diagnosis = db.relationship('Diagnosis', backref=db.backref('prescriptions', lazy=True))
+    creator = db.relationship('User', foreign_keys=[created_by], backref=db.backref('created_prescriptions', lazy=True))
+    approver = db.relationship('User', foreign_keys=[approved_by], backref=db.backref('approved_prescriptions', lazy=True))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "patient_id": self.patient_id,
+            "diagnosis_id": self.diagnosis_id,
+            "created_by": self.created_by,
+            "medication": self.medication,
+            "dosage": self.dosage,
+            "duration": self.duration,
+            "risk_level": self.risk_level,
+            "ml_recommended": self.ml_recommended,
+            "status": self.status,
+            "rejection_reason": self.rejection_reason,
+            "approved_by": self.approved_by,
+            "approved_at": self.approved_at.isoformat() if self.approved_at else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class AuditLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    action = db.Column(db.String(100), nullable=False)
+    entity_type = db.Column(db.String(100))  # "patient", "lab_test", "prescription", "diagnosis"
+    entity_id = db.Column(db.Integer)
+    details = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    user = db.relationship('User', backref=db.backref('audit_logs', lazy=True))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "action": self.action,
+            "entity_type": self.entity_type,
+            "entity_id": self.entity_id,
+            "details": self.details,
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+
+
 class ExternalDatasetRow(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     dataset_name = db.Column(db.String(100), nullable=False, index=True)

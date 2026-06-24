@@ -7,6 +7,7 @@ import joblib
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from functools import wraps
 
 
 def _use_project_venv_when_available():
@@ -49,7 +50,7 @@ from flask_jwt_extended import (
     get_jwt
 )
 from dotenv import load_dotenv
-from models.models import db, User, Patient, Diagnosis, Treatment, Alert
+from models.models import db, User, Patient, Diagnosis, Treatment, Alert, LabTest, Prescription, AuditLog
 from models.train_model import preprocess_symptoms, get_patient_features, train_models_from_database
 from utils.security import encrypt_data, decrypt_data, hash_password, verify_password
 
@@ -59,6 +60,24 @@ app = Flask(__name__)
 CORS(app)
 
 SUPPORTED_UI_LANGS = {"EN", "FR", "SW", "RW"}
+
+
+def role_required(*roles):
+    """
+    Decorator to restrict endpoint access to specific roles
+    """
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            from flask_jwt_extended import get_jwt_identity
+            user_id = get_jwt_identity()
+            user = User.query.get(user_id)
+            if not user or user.role not in roles:
+                lang = get_request_lang()
+                return jsonify({"msg": I18N["ACCESS_DENIED"][lang]}), 403
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
 
 
 def get_request_lang():
@@ -3285,6 +3304,249 @@ def patients():
         db.session.add(patient)
         db.session.commit()
         return jsonify(patient.to_dict()), 201
+
+# Lab Test Management
+@app.route('/api/lab-tests', methods=['GET', 'POST'])
+@jwt_required()
+def lab_tests():
+    from flask_jwt_extended import get_jwt_identity
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    if request.method == 'GET':
+        if user.role == 'lab_technician':
+            # Lab techs can see all requested lab tests
+            tests = LabTest.query.all()
+        elif user.role in ['doctor', 'system_admin', 'hospital_admin']:
+            # Doctors and admins can see all lab tests
+            tests = LabTest.query.all()
+        elif user.role == 'pharmacist':
+            # Pharmacists don't see lab tests
+            tests = []
+        else:
+            tests = []
+        
+        return jsonify({'lab_tests': [test.to_dict() for test in tests]})
+    
+    if request.method == 'POST':
+        if user.role not in ['doctor', 'system_admin', 'hospital_admin']:
+            lang = get_request_lang()
+            return jsonify({"msg": I18N["ACCESS_DENIED"][lang]}), 403
+        
+        data = request.get_json()
+        test = LabTest(
+            patient_id=data.get('patient_id'),
+            requested_by=user_id,
+            test_type=data.get('test_type'),
+            notes=data.get('notes')
+        )
+        db.session.add(test)
+        
+        # Create audit log
+        audit = AuditLog(
+            user_id=user_id,
+            action='request_lab_test',
+            entity_type='lab_test',
+            entity_id=test.id,
+            details=f"Requested {test.test_type} for patient {test.patient_id}"
+        )
+        db.session.add(audit)
+        
+        db.session.commit()
+        return jsonify(test.to_dict()), 201
+
+
+@app.route('/api/lab-tests/<int:test_id>', methods=['GET', 'PUT'])
+@jwt_required()
+def lab_test_detail(test_id):
+    from flask_jwt_extended import get_jwt_identity
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    test = LabTest.query.get_or_404(test_id)
+    
+    if request.method == 'GET':
+        # Check if user can access
+        if user.role == 'lab_technician' or user.role in ['doctor', 'system_admin', 'hospital_admin']:
+            return jsonify(test.to_dict())
+        else:
+            lang = get_request_lang()
+            return jsonify({"msg": I18N["ACCESS_DENIED"][lang]}), 403
+    
+    if request.method == 'PUT':
+        # Only lab techs, doctors, or admins can update
+        if user.role not in ['lab_technician', 'doctor', 'system_admin', 'hospital_admin']:
+            lang = get_request_lang()
+            return jsonify({"msg": I18N["ACCESS_DENIED"][lang]}), 403
+        
+        data = request.get_json()
+        for key, value in data.items():
+            if hasattr(test, key):
+                setattr(test, key, value)
+        
+        # If status is being set to completed, set completed by and completed at
+        if data.get('status') == 'completed' and user.role == 'lab_technician':
+            test.completed_by = user_id
+            test.completed_at = datetime.now()
+        
+        # Create audit log
+        audit = AuditLog(
+            user_id=user_id,
+            action='update_lab_test',
+            entity_type='lab_test',
+            entity_id=test.id,
+            details=f"Updated lab test {test.id}"
+        )
+        db.session.add(audit)
+        
+        db.session.commit()
+        return jsonify(test.to_dict())
+
+
+# Prescription Management
+@app.route('/api/prescriptions', methods=['GET', 'POST'])
+@jwt_required()
+def prescriptions():
+    from flask_jwt_extended import get_jwt_identity
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    if request.method == 'GET':
+        if user.role == 'pharmacist':
+            # Pharmacists see all pending and their approved/rejected
+            prescs = Prescription.query.all()
+        elif user.role in ['doctor', 'system_admin', 'hospital_admin']:
+            # Doctors and admins see all
+            prescs = Prescription.query.all()
+        elif user.role == 'lab_technician':
+            # Lab techs don't see prescriptions
+            prescs = []
+        else:
+            prescs = []
+        
+        return jsonify({'prescriptions': [p.to_dict() for p in prescs]})
+    
+    if request.method == 'POST':
+        if user.role not in ['doctor', 'system_admin', 'hospital_admin']:
+            lang = get_request_lang()
+            return jsonify({"msg": I18N["ACCESS_DENIED"][lang]}), 403
+        
+        data = request.get_json()
+        presc = Prescription(
+            patient_id=data.get('patient_id'),
+            diagnosis_id=data.get('diagnosis_id'),
+            created_by=user_id,
+            medication=data.get('medication'),
+            dosage=data.get('dosage'),
+            duration=data.get('duration'),
+            risk_level=data.get('risk_level'),
+            ml_recommended=data.get('ml_recommended', False)
+        )
+        db.session.add(presc)
+        
+        # Check for antimicrobial stewardship alerts
+        # Basic check: if more than 2 prescriptions for antibiotics in last 30 days
+        recent_prescs = Prescription.query.filter(
+            Prescription.patient_id == presc.patient_id,
+            Prescription.created_at >= datetime.now() - timedelta(days=30)
+        ).all()
+        
+        if len(recent_prescs) >= 2:
+            # Create alert
+            alert = Alert(
+                patient_id=presc.patient_id,
+                user_id=user_id,
+                alert_type='antimicrobial_stewardship',
+                message='Possible antibiotic overuse detected. Review patient prescription history before prescribing.',
+                severity='warning'
+            )
+            db.session.add(alert)
+        
+        # Create audit log
+        audit = AuditLog(
+            user_id=user_id,
+            action='create_prescription',
+            entity_type='prescription',
+            entity_id=presc.id,
+            details=f"Created prescription for {presc.medication}"
+        )
+        db.session.add(audit)
+        
+        db.session.commit()
+        return jsonify(presc.to_dict()), 201
+
+
+@app.route('/api/prescriptions/<int:presc_id>', methods=['GET', 'PUT'])
+@jwt_required()
+def prescription_detail(presc_id):
+    from flask_jwt_extended import get_jwt_identity
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    presc = Prescription.query.get_or_404(presc_id)
+    
+    if request.method == 'GET':
+        # Check if user can access
+        if user.role in ['doctor', 'pharmacist', 'system_admin', 'hospital_admin']:
+            return jsonify(presc.to_dict())
+        else:
+            lang = get_request_lang()
+            return jsonify({"msg": I18N["ACCESS_DENIED"][lang]}), 403
+    
+    if request.method == 'PUT':
+        data = request.get_json()
+        
+        if user.role == 'pharmacist' and ('status' in data):
+            # Pharmacist can only update status to approved/rejected
+            if data['status'] == 'approved':
+                presc.status = 'approved'
+                presc.approved_by = user_id
+                presc.approved_at = datetime.now()
+            elif data['status'] == 'rejected':
+                presc.status = 'rejected'
+                presc.rejection_reason = data.get('rejection_reason')
+            
+            # Create audit log
+            audit = AuditLog(
+                user_id=user_id,
+                action=f"{data['status']}_prescription",
+                entity_type='prescription',
+                entity_id=presc.id,
+                details=f"{data['status'].capitalize()} prescription for {presc.medication}"
+            )
+            db.session.add(audit)
+            
+            db.session.commit()
+            return jsonify(presc.to_dict())
+        elif user.role in ['doctor', 'system_admin', 'hospital_admin']:
+            # Doctor or admin can update other fields
+            for key, value in data.items():
+                if hasattr(presc, key):
+                    setattr(presc, key, value)
+            
+            # Create audit log
+            audit = AuditLog(
+                user_id=user_id,
+                action='update_prescription',
+                entity_type='prescription',
+                entity_id=presc.id,
+                details=f"Updated prescription {presc.id}"
+            )
+            db.session.add(audit)
+            
+            db.session.commit()
+            return jsonify(presc.to_dict())
+        else:
+            lang = get_request_lang()
+            return jsonify({"msg": I18N["ACCESS_DENIED"][lang]}), 403
+
+
+# Audit Logs
+@app.route('/api/audit-logs')
+@jwt_required()
+@role_required('system_admin', 'hospital_admin')
+def audit_logs():
+    logs = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(100).all()
+    return jsonify({'audit_logs': [log.to_dict() for log in logs]})
+
 
 @app.route('/api/patients/<int:patient_id>', methods=['GET', 'PUT', 'DELETE'])  
 @jwt_required()
