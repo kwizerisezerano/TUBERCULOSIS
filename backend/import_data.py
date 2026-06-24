@@ -93,6 +93,20 @@ def normalize_optional_result(value):
         return "Negative"
     return value
 
+def extract_symptom_fields(symptoms_text):
+    """Extract boolean symptom fields from symptoms text"""
+    symptoms_lower = str(symptoms_text).lower()
+    return {
+        'has_fever': 'yes' if 'fever' in symptoms_lower else 'no',
+        'has_cough': 'yes' if 'cough' in symptoms_lower else 'no',
+        'has_blood': 'yes' if 'blood' in symptoms_lower or 'hemoptysis' in symptoms_lower else 'no',
+        'has_chest_pain': 'yes' if 'chest pain' in symptoms_lower else 'no',
+        'has_night_sweats': 'yes' if 'night sweats' in symptoms_lower else 'no',
+        'has_weight_loss': 'yes' if 'weight loss' in symptoms_lower else 'no',
+        'has_fatigue': 'yes' if 'fatigue' in symptoms_lower or 'tired' in symptoms_lower else 'no',
+        'has_shortness_of_breath': 'yes' if 'shortness of breath' in symptoms_lower or 'breathlessness' in symptoms_lower else 'no'
+    }
+
 
 def preprocess_and_fill_missing(df, patient_dict_list):
     """Preprocess dataframe and fill missing values using mode for categorical, median for numerical"""
@@ -214,6 +228,7 @@ def import_tb_symptdata_april2024(file_path):
             except Exception:
                 tb_label = None
 
+            symptom_fields = extract_symptom_fields(symptoms)
             patient_dicts.append({
                 "patient_id": patient_id,
                 "first_name": f"Patient{idx+1}",
@@ -225,9 +240,20 @@ def import_tb_symptdata_april2024(file_path):
                 "sputum_smear_test": "Unknown",
                 "genexpert_test": "Unknown",
                 "chest_xray": "Unknown",
+                "tb_culture": "Unknown",
+                "tst": "Unknown",
+                "igra": "Unknown",
                 "drug_resistance": "Unknown",
                 "hiv": "No",
                 "diabetes": "No",
+                **symptom_fields,
+                "weight": None,
+                "persistent_cough_duration_weeks": 0,
+                "contact_with_tb_patient": "No",
+                "previous_tb_treatment": "No",
+                "smoking_status": "Never",
+                "alcohol_use": "Never",
+                "oxygen_saturation_spo2": 98,
                 "tb_status_label": tb_label,
                 "source_dataset": "TB_SymptdataApril2024",
                 "source_row_id": str(idx + 1)
@@ -307,6 +333,7 @@ def import_symptoms_dataset(file_path):
             chest_xray = "Abnormal" if score >= 3 else ("Normal" if score < 2 else "Unknown")
             drug_resistant = "Yes" if score >= 6 else "No"
 
+            symptom_fields = extract_symptom_fields(symptoms)
             patient_dicts.append({
                 "patient_id": patient_id,
                 "first_name": clean_text(row.get('name', f'Patient{idx+1}')),
@@ -318,9 +345,20 @@ def import_symptoms_dataset(file_path):
                 "sputum_smear_test": sputum,
                 "genexpert_test": genexpert,
                 "chest_xray": chest_xray,
+                "tb_culture": "Unknown",
+                "tst": "Unknown",
+                "igra": "Unknown",
                 "drug_resistance": drug_resistant,
                 "hiv": 'No',
-                "diabetes": 'No'
+                "diabetes": 'No',
+                **symptom_fields,
+                "weight": None,
+                "persistent_cough_duration_weeks": 0,
+                "contact_with_tb_patient": "No",
+                "previous_tb_treatment": "No",
+                "smoking_status": "Never",
+                "alcohol_use": "Never",
+                "oxygen_saturation_spo2": 98
             })
 
         # Preprocess and fill missing values
@@ -438,6 +476,7 @@ def import_xray_dataset(file_path):
             is_tb = class_label == 'Tuberculosis'
             tb_label = 'Yes' if is_tb else 'No'
 
+            symptom_fields = extract_symptom_fields(symptoms)
             patient_dicts.append({
                 "patient_id": patient_id,
                 "first_name": f'Patient{idx+1}',
@@ -449,9 +488,20 @@ def import_xray_dataset(file_path):
                 "sputum_smear_test": 'Positive' if is_tb else 'Negative',
                 "genexpert_test": 'Positive' if is_tb else 'Negative',
                 "chest_xray": 'Abnormal' if is_tb else 'Normal',
+                "tb_culture": 'Unknown',
+                "tst": 'Unknown',
+                "igra": 'Unknown',
                 "drug_resistance": 'No',
                 "hiv": 'No',
                 "diabetes": 'No',
+                **symptom_fields,
+                "weight": None,
+                "persistent_cough_duration_weeks": int(row.get('Cough_Severity', 0)) * 2 if int(row.get('Cough_Severity', 0)) > 0 else 0,
+                "contact_with_tb_patient": 'No',
+                "previous_tb_treatment": 'No',
+                "smoking_status": 'Never',
+                "alcohol_use": 'Never',
+                "oxygen_saturation_spo2": 98,
                 "tb_status_label": tb_label,
                 "source_dataset": 'tuberculosis_xray_dataset',
                 "source_row_id": patient_id
@@ -500,6 +550,7 @@ def import_owner_species_dataset(file_path):
             if existing:
                 continue
 
+            symptom_fields = extract_symptom_fields(record.get('symptoms', ''))
             patient_dicts.append({
                 "patient_id": patient_id,
                 "first_name": f'Owner{idx+1}',
@@ -513,11 +564,22 @@ def import_owner_species_dataset(file_path):
                 "sputum_smear_test": normalize_optional_result(record.get('sputum_smear_test')),
                 "genexpert_test": normalize_optional_result(record.get('genexpert_test')),
                 "chest_xray": normalize_optional_result(record.get('chest_xray')),
+                "tb_culture": normalize_optional_result(record.get('tb_culture')),
+                "tst": normalize_optional_result(record.get('tst')),
+                "igra": normalize_optional_result(record.get('igra')),
                 "bacteria_species": clean_text(record.get('bacteria_species', '')) or None,
                 "treatment_type": clean_text(record.get('treatment_regimen', '')),
                 "drug_resistance": clean_text(record.get('drug_resistance', '')) or 'No',
-                "hiv": 'Unknown',
-                "diabetes": 'Unknown',
+                "hiv": normalize_optional_result(record.get('hiv')),
+                "diabetes": normalize_optional_result(record.get('diabetes')),
+                **symptom_fields,
+                "weight": record.get('weight', None),
+                "persistent_cough_duration_weeks": record.get('persistent_cough_duration_weeks', None),
+                "contact_with_tb_patient": normalize_optional_result(record.get('contact_with_tb_patient')),
+                "previous_tb_treatment": normalize_optional_result(record.get('previous_tb_treatment')),
+                "smoking_status": record.get('smoking_status', 'Unknown'),
+                "alcohol_use": record.get('alcohol_use', 'Unknown'),
+                "oxygen_saturation_spo2": record.get('oxygen_saturation_spo2', None),
                 "tb_status_label": 'Yes' if str(record.get('tb_status_label', 'Yes')).strip().lower() == 'yes' else 'No',
                 "source_dataset": 'owner_tb_species_dataset',
                 "source_row_id": patient_id
@@ -546,7 +608,8 @@ def create_comprehensive_sample_patients():
     """Create sample patients covering various TB scenarios"""
     print("Creating comprehensive sample patients...")
     
-    sample_patients = [
+    sample_patients = []
+    raw_samples = [
         {
             'patient_id': 'PT001',
             'first_name': 'Kwizera',
@@ -560,7 +623,14 @@ def create_comprehensive_sample_patients():
             'chest_xray': 'Abnormal',
             'drug_resistance': 'No',
             'hiv': 'No',
-            'diabetes': 'No'
+            'diabetes': 'No',
+            'weight': 72,
+            'persistent_cough_duration_weeks': 3,
+            'contact_with_tb_patient': 'Yes',
+            'previous_tb_treatment': 'No',
+            'smoking_status': 'Former',
+            'alcohol_use': 'Occasional',
+            'oxygen_saturation_spo2': 95
         },
         {
             'patient_id': 'PT002',
@@ -575,7 +645,14 @@ def create_comprehensive_sample_patients():
             'chest_xray': 'Normal',
             'drug_resistance': 'No',
             'hiv': 'No',
-            'diabetes': 'No'
+            'diabetes': 'No',
+            'weight': 65,
+            'persistent_cough_duration_weeks': 2,
+            'contact_with_tb_patient': 'No',
+            'previous_tb_treatment': 'No',
+            'smoking_status': 'Never',
+            'alcohol_use': 'Never',
+            'oxygen_saturation_spo2': 97
         },
         {
             'patient_id': 'PT003',
@@ -590,7 +667,14 @@ def create_comprehensive_sample_patients():
             'chest_xray': 'Abnormal',
             'drug_resistance': 'Yes',
             'hiv': 'No',
-            'diabetes': 'Yes'
+            'diabetes': 'Yes',
+            'weight': 68,
+            'persistent_cough_duration_weeks': 4,
+            'contact_with_tb_patient': 'Yes',
+            'previous_tb_treatment': 'Yes',
+            'smoking_status': 'Current',
+            'alcohol_use': 'Regular',
+            'oxygen_saturation_spo2': 92
         },
         {
             'patient_id': 'PT004',
@@ -605,9 +689,20 @@ def create_comprehensive_sample_patients():
             'chest_xray': 'Abnormal',
             'drug_resistance': 'No',
             'hiv': 'Yes',
-            'diabetes': 'No'
+            'diabetes': 'No',
+            'weight': 58,
+            'persistent_cough_duration_weeks': 5,
+            'contact_with_tb_patient': 'Yes',
+            'previous_tb_treatment': 'No',
+            'smoking_status': 'Never',
+            'alcohol_use': 'Never',
+            'oxygen_saturation_spo2': 93
         }
     ]
+
+    for raw in raw_samples:
+        sym_fields = extract_symptom_fields(raw['symptoms'])
+        sample_patients.append({**raw, **sym_fields})
     
     added_count = 0
     for patient_data in sample_patients:
