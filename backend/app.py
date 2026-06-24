@@ -3402,6 +3402,33 @@ def lab_test_detail(test_id):
         return jsonify(test.to_dict())
 
 
+# ATC Drug Management
+@app.route('/api/atc-drugs', methods=['GET', 'POST'])
+@jwt_required()
+def atc_drugs():
+    if request.method == 'GET':
+        drugs = ATCDrug.query.all()
+        return jsonify({'atc_drugs': [d.to_dict() for d in drugs]})
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        drug = ATCDrug(
+            atc_code=data.get('atc_code'),
+            atc_level_1=data.get('atc_level_1'),
+            atc_level_2=data.get('atc_level_2'),
+            atc_level_3=data.get('atc_level_3'),
+            atc_level_4=data.get('atc_level_4'),
+            atc_level_5=data.get('atc_level_5'),
+            drug_name=data.get('drug_name'),
+            ddd=data.get('ddd'),
+            ddd_unit=data.get('ddd_unit'),
+            administration_route=data.get('administration_route')
+        )
+        db.session.add(drug)
+        db.session.commit()
+        return jsonify(drug.to_dict()), 201
+
+
 # Prescription Management
 @app.route('/api/prescriptions', methods=['GET', 'POST'])
 @jwt_required()
@@ -3436,11 +3463,27 @@ def prescriptions():
             diagnosis_id=data.get('diagnosis_id'),
             created_by=user_id,
             medication=data.get('medication'),
+            atc_drug_id=data.get('atc_drug_id'),
             dosage=data.get('dosage'),
+            dosage_mg=data.get('dosage_mg'),
+            duration_days=data.get('duration_days'),
             duration=data.get('duration'),
             risk_level=data.get('risk_level'),
             ml_recommended=data.get('ml_recommended', False)
         )
+        
+        # Calculate total_mg and ddds if possible
+        if presc.dosage_mg and presc.duration_days:
+            presc.total_mg = presc.dosage_mg * presc.duration_days
+            
+            if presc.atc_drug_id:
+                atc_drug = ATCDrug.query.get(presc.atc_drug_id)
+                if atc_drug and atc_drug.ddd:
+                    # Convert DDD from grams to mg if needed
+                    ddd_mg = atc_drug.ddd * 1000 if atc_drug.ddd_unit == 'g' else atc_drug.ddd
+                    if ddd_mg > 0:
+                        presc.ddds = presc.total_mg / ddd_mg
+        
         db.session.add(presc)
         
         # Check for antimicrobial stewardship alerts
@@ -3556,7 +3599,7 @@ def dashboard():
     
     # Alert stats
     total_alerts = Alert.query.count()
-    unread_alerts = Alert.query.filter_by(read=False).count()
+    unread_alerts = Alert.query.filter_by(is_read=False).count()
     stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship').count()
     
     # Lab test stats
@@ -3601,6 +3644,41 @@ def dashboard():
         'model_info': model_info,
         'recent_activity': [audit.to_dict() for audit in recent_audits]
     })
+
+
+# Cumulative Antibiogram
+@app.route('/api/antibiogram')
+@jwt_required()
+def antibiogram():
+    # Sample antibiogram data (in real app, this would come from lab results)
+    antibiogram_data = [
+        {
+            'bacteria': 'Escherichia coli',
+            'amoxicillin': 68,
+            'ceftriaxone': 82,
+            'ciprofloxacin': 75,
+            'gentamicin': 90,
+            'meropenem': 98
+        },
+        {
+            'bacteria': 'Staphylococcus aureus',
+            'amoxicillin': 35,
+            'ceftriaxone': 58,
+            'ciprofloxacin': 62,
+            'gentamicin': 78,
+            'meropenem': 95
+        },
+        {
+            'bacteria': 'Klebsiella pneumoniae',
+            'amoxicillin': 42,
+            'ceftriaxone': 70,
+            'ciprofloxacin': 65,
+            'gentamicin': 85,
+            'meropenem': 96
+        }
+    ]
+    
+    return jsonify({'antibiogram': antibiogram_data})
 
 # Audit Logs
 @app.route('/api/audit-logs')

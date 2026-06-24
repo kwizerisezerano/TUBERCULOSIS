@@ -252,13 +252,49 @@ class LabTest(db.Model):
         }
 
 
+class ATCDrug(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    atc_code = db.Column(db.String(20), unique=True, nullable=False)  # e.g., J01CA04
+    atc_level_1 = db.Column(db.String(10))  # J
+    atc_level_2 = db.Column(db.String(10))  # J01
+    atc_level_3 = db.Column(db.String(10))  # J01C
+    atc_level_4 = db.Column(db.String(10))  # J01CA
+    atc_level_5 = db.Column(db.String(20))  # J01CA04
+    drug_name = db.Column(db.String(200), nullable=False)
+    ddd = db.Column(db.Float)  # Defined Daily Dose in grams
+    ddd_unit = db.Column(db.String(50))  # e.g., g, mg
+    administration_route = db.Column(db.String(100))  # e.g., oral, IV
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "atc_code": self.atc_code,
+            "atc_level_1": self.atc_level_1,
+            "atc_level_2": self.atc_level_2,
+            "atc_level_3": self.atc_level_3,
+            "atc_level_4": self.atc_level_4,
+            "atc_level_5": self.atc_level_5,
+            "drug_name": self.drug_name,
+            "ddd": self.ddd,
+            "ddd_unit": self.ddd_unit,
+            "administration_route": self.administration_route,
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+
+
 class Prescription(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
     diagnosis_id = db.Column(db.Integer, db.ForeignKey('diagnosis.id'))
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     medication = db.Column(db.String(200), nullable=False)
+    atc_drug_id = db.Column(db.Integer, db.ForeignKey('atc_drug.id'))
     dosage = db.Column(db.String(200))
+    dosage_mg = db.Column(db.Float)  # Dosage in milligrams
+    duration_days = db.Column(db.Integer)
+    total_mg = db.Column(db.Float)  # Total dosage in milligrams
+    ddds = db.Column(db.Float)  # Number of Defined Daily Doses
     duration = db.Column(db.String(100))
     risk_level = db.Column(db.String(50))
     ml_recommended = db.Column(db.Boolean, default=False)
@@ -273,6 +309,7 @@ class Prescription(db.Model):
     diagnosis = db.relationship('Diagnosis', backref=db.backref('prescriptions', lazy=True))
     creator = db.relationship('User', foreign_keys=[created_by], backref=db.backref('created_prescriptions', lazy=True))
     approver = db.relationship('User', foreign_keys=[approved_by], backref=db.backref('approved_prescriptions', lazy=True))
+    atc_drug = db.relationship('ATCDrug', backref=db.backref('prescriptions', lazy=True))
 
     def to_dict(self):
         return {
@@ -281,7 +318,13 @@ class Prescription(db.Model):
             "diagnosis_id": self.diagnosis_id,
             "created_by": self.created_by,
             "medication": self.medication,
+            "atc_drug_id": self.atc_drug_id,
+            "atc_drug": self.atc_drug.to_dict() if self.atc_drug else None,
             "dosage": self.dosage,
+            "dosage_mg": self.dosage_mg,
+            "duration_days": self.duration_days,
+            "total_mg": self.total_mg,
+            "ddds": self.ddds,
             "duration": self.duration,
             "risk_level": self.risk_level,
             "ml_recommended": self.ml_recommended,

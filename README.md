@@ -75,6 +75,23 @@ A **predictive EHR analytics dashboard** for patient risk monitoring and antimic
     └── assets/css/main.css
 ```
 
+## 🌍 ATC/DDD Standard Integration
+- **ATC Codes**: Full 5-level ATC (Anatomical Therapeutic Chemical) classification for all drugs
+- **DDD Calculation**: Automated Defined Daily Dose (DDD) calculation for antibiotic usage monitoring
+- **Consumption Tracking**: Tracks antibiotic consumption using DDD per 100 bed-days (standard hospital metric)
+- **Drug Lookup**: When a doctor prescribes a medicine, the system automatically links it to the correct Level 5 ATC Code
+
+## 📊 Cumulative Antibiogram
+- **Automated Antibiogram Generation**: Mines lab results to calculate bacterial isolate susceptibility percentages
+- **Empirical Treatment Guidance**: Helps doctors select the most effective antibiotic based on local resistance patterns
+- **Trend Analysis**: Monitors resistance trends over time
+
+## 🏗️ Implementation Pillars
+1. **Predictive Risk Module**: ML models trained on historical data to predict patient readmission and treatment failure risks
+2. **Automated Antibiogram Visualization**: Cumulative antibiogram dashboard showing susceptibility percentages
+3. **Consumption Surveillance**: Antibiotic usage tracking using WHO ATC/DDD standards
+4. **Real-Time Alerts**: Email and in-app alerts for highly resistant organisms and prescription deviations
+
 ## Additional Features
 
 - **Multi-database support** (SQLite, MySQL, PostgreSQL)
