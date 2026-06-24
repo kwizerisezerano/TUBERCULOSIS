@@ -228,7 +228,6 @@ def import_tb_symptdata_april2024(file_path):
             except Exception:
                 tb_label = None
 
-            symptom_fields = extract_symptom_fields(symptoms)
             patient_dicts.append({
                 "patient_id": patient_id,
                 "first_name": f"Patient{idx+1}",
@@ -246,7 +245,6 @@ def import_tb_symptdata_april2024(file_path):
                 "drug_resistance": "Unknown",
                 "hiv": "No",
                 "diabetes": "No",
-                **symptom_fields,
                 "weight": None,
                 "persistent_cough_duration_weeks": 0,
                 "contact_with_tb_patient": "No",
@@ -333,7 +331,6 @@ def import_symptoms_dataset(file_path):
             chest_xray = "Abnormal" if score >= 3 else ("Normal" if score < 2 else "Unknown")
             drug_resistant = "Yes" if score >= 6 else "No"
 
-            symptom_fields = extract_symptom_fields(symptoms)
             patient_dicts.append({
                 "patient_id": patient_id,
                 "first_name": clean_text(row.get('name', f'Patient{idx+1}')),
@@ -351,7 +348,6 @@ def import_symptoms_dataset(file_path):
                 "drug_resistance": drug_resistant,
                 "hiv": 'No',
                 "diabetes": 'No',
-                **symptom_fields,
                 "weight": None,
                 "persistent_cough_duration_weeks": 0,
                 "contact_with_tb_patient": "No",
@@ -476,7 +472,6 @@ def import_xray_dataset(file_path):
             is_tb = class_label == 'Tuberculosis'
             tb_label = 'Yes' if is_tb else 'No'
 
-            symptom_fields = extract_symptom_fields(symptoms)
             patient_dicts.append({
                 "patient_id": patient_id,
                 "first_name": f'Patient{idx+1}',
@@ -494,7 +489,6 @@ def import_xray_dataset(file_path):
                 "drug_resistance": 'No',
                 "hiv": 'No',
                 "diabetes": 'No',
-                **symptom_fields,
                 "weight": None,
                 "persistent_cough_duration_weeks": int(row.get('Cough_Severity', 0)) * 2 if int(row.get('Cough_Severity', 0)) > 0 else 0,
                 "contact_with_tb_patient": 'No',
@@ -550,7 +544,6 @@ def import_owner_species_dataset(file_path):
             if existing:
                 continue
 
-            symptom_fields = extract_symptom_fields(record.get('symptoms', ''))
             patient_dicts.append({
                 "patient_id": patient_id,
                 "first_name": f'Owner{idx+1}',
@@ -572,7 +565,6 @@ def import_owner_species_dataset(file_path):
                 "drug_resistance": clean_text(record.get('drug_resistance', '')) or 'No',
                 "hiv": normalize_optional_result(record.get('hiv')),
                 "diabetes": normalize_optional_result(record.get('diabetes')),
-                **symptom_fields,
                 "weight": record.get('weight', None),
                 "persistent_cough_duration_weeks": record.get('persistent_cough_duration_weeks', None),
                 "contact_with_tb_patient": normalize_optional_result(record.get('contact_with_tb_patient')),
@@ -611,30 +603,25 @@ def import_synthetic_dataset(file_path: str = None):
         import pandas as pd
         df = pd.read_csv(file_path)
         patient_dicts = df.to_dict('records')
-        imported_count = 0
-        for p_dict in patient_dicts:
-            existing = Patient.query.filter_by(patient_id=p_dict['patient_id']).first()
-            if not existing:
-                patient = Patient(**p_dict)
-                db.session.add(patient)
-                imported_count +=1
-        db.session.commit()
-        print(f"Successfully imported {imported_count} synthetic patients!")
-        return imported_count
     else:
         print("Generating synthetic TB dataset (5000 patients)...")
         from generate_synthetic_tb_data import generate_dataset
-        patients = generate_dataset(5000)
-        imported_count = 0
-        for p_dict in patients:
-            existing = Patient.query.filter_by(patient_id=p_dict['patient_id']).first()
-            if not existing:
-                patient = Patient(**p_dict)
-                db.session.add(patient)
-                imported_count += 1
-        db.session.commit()
-        print(f"Generated and imported {imported_count} synthetic patients!")
-        return imported_count
+        patient_dicts = generate_dataset(5000)
+    
+    # Preprocess and fill any missing values (as a safety net)
+    print("  Preprocessing and validating synthetic data...")
+    patient_dicts = preprocess_and_fill_missing(None, patient_dicts)
+    
+    imported_count = 0
+    for p_dict in patient_dicts:
+        existing = Patient.query.filter_by(patient_id=p_dict['patient_id']).first()
+        if not existing:
+            patient = Patient(**p_dict)
+            db.session.add(patient)
+            imported_count += 1
+    db.session.commit()
+    print(f"Successfully imported {imported_count} synthetic patients!")
+    return imported_count
 
 
 def create_comprehensive_sample_patients():

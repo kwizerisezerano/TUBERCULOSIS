@@ -48,7 +48,8 @@ def preprocess_symptoms(symptoms_text):
         'has_night_sweats': 1 if 'night' in symptoms_text or 'sweat' in symptoms_text else 0,
         'has_chest_pain': 1 if 'chest' in symptoms_text and 'pain' in symptoms_text else 0,
         'has_blood': 1 if 'blood' in symptoms_text or 'hemoptysis' in symptoms_text else 0,
-        'has_fatigue': 1 if 'fatigue' in symptoms_text or 'tired' in symptoms_text else 0
+        'has_fatigue': 1 if 'fatigue' in symptoms_text or 'tired' in symptoms_text else 0,
+        'has_shortness_of_breath': 1 if 'shortness' in symptoms_text or 'breath' in symptoms_text or 'dyspnea' in symptoms_text else 0
     }
     return features
 
@@ -161,12 +162,45 @@ def _calculate_global_fill_values():
     return fill_values
 
 
+def _get_bool_symptom(patient, key):
+    """Helper to get boolean symptom field"""
+    val = _get_value(patient, key, None)
+    if val is not None:
+        val_str = str(val).lower().strip()
+        if val_str in ['yes', 'y', '1', 'true']:
+            return 1
+        elif val_str in ['no', 'n', '0', 'false']:
+            return 0
+    return None
+
+
 def get_patient_features(patient):
     fill_values = _calculate_global_fill_values()
     import numpy as np
 
+    # First check if we have pre-extracted symptom fields in the patient model
+    has_fever_val = _get_bool_symptom(patient, "has_fever")
+    has_cough_val = _get_bool_symptom(patient, "has_cough")
+    has_blood_val = _get_bool_symptom(patient, "has_blood")
+    has_chest_pain_val = _get_bool_symptom(patient, "has_chest_pain")
+    has_night_sweats_val = _get_bool_symptom(patient, "has_night_sweats")
+    has_weight_loss_val = _get_bool_symptom(patient, "has_weight_loss")
+    has_fatigue_val = _get_bool_symptom(patient, "has_fatigue")
+    has_shortness_of_breath_val = _get_bool_symptom(patient, "has_shortness_of_breath")
+
+    # Fallback to parsing symptoms text if needed
     symptoms_text = _get_value(patient, "symptoms", "") or ""
     symptoms_features = preprocess_symptoms(symptoms_text)
+
+    # Use model field if present, else fallback to parsed text
+    has_fever = has_fever_val if has_fever_val is not None else symptoms_features["has_fever"]
+    has_cough = has_cough_val if has_cough_val is not None else symptoms_features["has_cough"]
+    has_blood = has_blood_val if has_blood_val is not None else symptoms_features["has_blood"]
+    has_chest_pain = has_chest_pain_val if has_chest_pain_val is not None else symptoms_features["has_chest_pain"]
+    has_night_sweats = has_night_sweats_val if has_night_sweats_val is not None else symptoms_features["has_night_sweats"]
+    has_weight_loss = has_weight_loss_val if has_weight_loss_val is not None else symptoms_features["has_weight_loss"]
+    has_fatigue = has_fatigue_val if has_fatigue_val is not None else symptoms_features["has_fatigue"]
+    has_shortness_of_breath = has_shortness_of_breath_val if has_shortness_of_breath_val is not None else symptoms_features["has_shortness_of_breath"]
 
     # Get and fill gender
     gender = _normalize_gender(_get_value(patient, "gender", None))
@@ -250,13 +284,14 @@ def get_patient_features(patient):
         "smoking_former": 1 if "Former" in smoking_status else 0,
         "alcohol_regular": 1 if "Regular" in alcohol_use else 0,
         "oxygen_saturation_spo2": spo2,
-        "has_fever": symptoms_features["has_fever"],
-        "has_cough": symptoms_features["has_cough"],
-        "has_weight_loss": symptoms_features["has_weight_loss"],
-        "has_night_sweats": symptoms_features["has_night_sweats"],
-        "has_chest_pain": symptoms_features["has_chest_pain"],
-        "has_blood": symptoms_features["has_blood"],
-        "has_fatigue": symptoms_features["has_fatigue"],
+        "has_fever": has_fever,
+        "has_cough": has_cough,
+        "has_weight_loss": has_weight_loss,
+        "has_night_sweats": has_night_sweats,
+        "has_chest_pain": has_chest_pain,
+        "has_blood": has_blood,
+        "has_fatigue": has_fatigue,
+        "has_shortness_of_breath": has_shortness_of_breath,
         "sputum_positive": 1 if sputum == "Positive" else 0,
         "genexpert_positive": 1 if genexpert == "Positive" else 0,
         "chest_xray_abnormal": 1 if chest_xray == "Abnormal" else 0,

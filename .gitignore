@@ -83,6 +83,7 @@ frontend/.output/
 *.xls
 *.pdf
 !backend/data/raw/*.csv
+backend/data/raw/synthetic_tb_patients.csv
 
 # Models and local artifacts
 backend/models/*.pkl
