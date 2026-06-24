@@ -604,6 +604,39 @@ def import_owner_species_dataset(file_path):
         db.session.rollback()
         return 0
 
+def import_synthetic_dataset(file_path: str = None):
+    """Import or generate synthetic TB patient data"""
+    if file_path and os.path.exists(file_path):
+        print(f"Importing synthetic TB dataset from {file_path}...")
+        import pandas as pd
+        df = pd.read_csv(file_path)
+        patient_dicts = df.to_dict('records')
+        imported_count = 0
+        for p_dict in patient_dicts:
+            existing = Patient.query.filter_by(patient_id=p_dict['patient_id']).first()
+            if not existing:
+                patient = Patient(**p_dict)
+                db.session.add(patient)
+                imported_count +=1
+        db.session.commit()
+        print(f"Successfully imported {imported_count} synthetic patients!")
+        return imported_count
+    else:
+        print("Generating synthetic TB dataset (5000 patients)...")
+        from generate_synthetic_tb_data import generate_dataset
+        patients = generate_dataset(5000)
+        imported_count = 0
+        for p_dict in patients:
+            existing = Patient.query.filter_by(patient_id=p_dict['patient_id']).first()
+            if not existing:
+                patient = Patient(**p_dict)
+                db.session.add(patient)
+                imported_count += 1
+        db.session.commit()
+        print(f"Generated and imported {imported_count} synthetic patients!")
+        return imported_count
+
+
 def create_comprehensive_sample_patients():
     """Create sample patients covering various TB scenarios"""
     print("Creating comprehensive sample patients...")
@@ -758,6 +791,10 @@ def main():
         else:
             print(f"Owner TB species dataset not found at: {owner_species_path}")
             print()
+
+        synthetic_path = os.path.join(data_raw_dir, "synthetic_tb_patients.csv")
+        total_imported += import_synthetic_dataset(synthetic_path)
+        print()
 
         if os.path.exists(incidence_path):
             print(f"Importing incidence dataset rows from: {incidence_path}")
