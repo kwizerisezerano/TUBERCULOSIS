@@ -1584,6 +1584,173 @@
         </div>
       </div>
 
+      <!-- Dashboard View -->
+      <div v-else-if="currentView === 'dashboard'">
+        <div class="space-y-5">
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">{{ t(TEXT.tabDashboard) }}</h2>
+            
+            <div v-if="dashboardData" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/30">
+                <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Total Patients</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white mt-2">{{ dashboardData.patient_stats?.total || 0 }}</p>
+              </div>
+              <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/30">
+                <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Unread Alerts</p>
+                <p class="text-2xl font-bold text-red-600 dark:text-red-400 mt-2">{{ dashboardData.alert_stats?.unread || 0 }}</p>
+              </div>
+              <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/30">
+                <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Pending Prescriptions</p>
+                <p class="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-2">{{ dashboardData.prescription_stats?.pending || 0 }}</p>
+              </div>
+              <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/30">
+                <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Requested Lab Tests</p>
+                <p class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-2">{{ dashboardData.lab_test_stats?.requested || 0 }}</p>
+              </div>
+            </div>
+
+            <div v-if="dashboardData?.recent_activity?.length > 0" class="mt-6">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Activity</h3>
+              <div class="space-y-2">
+                <div v-for="activity in dashboardData.recent_activity" :key="activity.id" class="p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <p class="text-sm text-gray-900 dark:text-white">{{ activity.action }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(activity.created_at) }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lab Tests View -->
+      <div v-else-if="currentView === 'labTests'">
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{{ t(TEXT.tabLabTests) }}</h2>
+          </div>
+          
+          <div v-if="labTests.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
+            No lab tests found
+          </div>
+
+          <div v-else class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b border-gray-200 dark:border-gray-700">
+                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Test Type</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Patient</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Status</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="test in labTests" :key="test.id" class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                  <td class="py-3 px-4 text-gray-900 dark:text-white">{{ test.test_type }}</td>
+                  <td class="py-3 px-4 text-gray-600 dark:text-gray-400">Patient #{{ test.patient_id }}</td>
+                  <td class="py-3 px-4">
+                    <span class="px-2 py-1 rounded-full text-xs font-medium" :class="{
+                      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300': test.status === 'requested',
+                      'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300': test.status === 'in_progress',
+                      'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300': test.status === 'completed'
+                    }">{{ test.status }}</span>
+                  </td>
+                  <td class="py-3 px-4 text-gray-600 dark:text-gray-400">{{ formatDate(test.created_at) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Prescriptions View -->
+      <div v-else-if="currentView === 'prescriptions'">
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{{ t(TEXT.tabPrescriptions) }}</h2>
+          </div>
+          
+          <div v-if="prescriptions.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
+            No prescriptions found
+          </div>
+
+          <div v-else class="space-y-3">
+            <div v-for="presc in prescriptions" :key="presc.id" class="p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="font-medium text-gray-900 dark:text-white">{{ presc.medication }}</p>
+                  <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Dosage: {{ presc.dosage }}</p>
+                  <p class="text-sm text-gray-600 dark:text-gray-400">Duration: {{ presc.duration }}</p>
+                </div>
+                <span class="px-2 py-1 rounded-full text-xs font-medium" :class="{
+                  'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300': presc.status === 'pending',
+                  'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300': presc.status === 'approved',
+                  'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300': presc.status === 'rejected'
+                }">{{ presc.status }}</span>
+              </div>
+              <p class="text-xs text-gray-400 mt-2">{{ formatDate(presc.created_at) }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Antibiogram View -->
+      <div v-else-if="currentView === 'antibiogram'">
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{{ t(TEXT.tabAntibiogram) }}</h2>
+          </div>
+          
+          <div v-if="antibiogramData.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
+            No antibiogram data available
+          </div>
+
+          <div v-else class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b border-gray-200 dark:border-gray-700">
+                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Bacteria</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Amoxicillin</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Ceftriaxone</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Ciprofloxacin</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Gentamicin</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Meropenem</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in antibiogramData" :key="item.bacteria" class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                  <td class="py-3 px-4 font-medium text-gray-900 dark:text-white">{{ item.bacteria }}</td>
+                  <td class="py-3 px-4" :class="{
+                    'text-green-600 dark:text-green-400': item.amoxicillin >= 80,
+                    'text-yellow-600 dark:text-yellow-400': item.amoxicillin >= 50 && item.amoxicillin < 80,
+                    'text-red-600 dark:text-red-400': item.amoxicillin < 50
+                  }">{{ item.amoxicillin }}%</td>
+                  <td class="py-3 px-4" :class="{
+                    'text-green-600 dark:text-green-400': item.ceftriaxone >= 80,
+                    'text-yellow-600 dark:text-yellow-400': item.ceftriaxone >= 50 && item.ceftriaxone < 80,
+                    'text-red-600 dark:text-red-400': item.ceftriaxone < 50
+                  }">{{ item.ceftriaxone }}%</td>
+                  <td class="py-3 px-4" :class="{
+                    'text-green-600 dark:text-green-400': item.ciprofloxacin >= 80,
+                    'text-yellow-600 dark:text-yellow-400': item.ciprofloxacin >= 50 && item.ciprofloxacin < 80,
+                    'text-red-600 dark:text-red-400': item.ciprofloxacin < 50
+                  }">{{ item.ciprofloxacin }}%</td>
+                  <td class="py-3 px-4" :class="{
+                    'text-green-600 dark:text-green-400': item.gentamicin >= 80,
+                    'text-yellow-600 dark:text-yellow-400': item.gentamicin >= 50 && item.gentamicin < 80,
+                    'text-red-600 dark:text-red-400': item.gentamicin < 50
+                  }">{{ item.gentamicin }}%</td>
+                  <td class="py-3 px-4" :class="{
+                    'text-green-600 dark:text-green-400': item.meropenem >= 80,
+                    'text-yellow-600 dark:text-yellow-400': item.meropenem >= 50 && item.meropenem < 80,
+                    'text-red-600 dark:text-red-400': item.meropenem < 50
+                  }">{{ item.meropenem }}%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- Alerts View -->
       <div v-else-if="currentView === 'alerts'">
         <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
@@ -1672,6 +1839,10 @@ const TEXT = {
   tabDiagnose: { EN: 'Diagnose', FR: 'Diagnostic', SW: 'Uchunguzi', RW: 'Isuzuma' },
   tabPatients: { EN: 'Patients', FR: 'Patients', SW: 'Wagonjwa', RW: 'Abarwayi' },
   tabAlerts: { EN: 'Alerts', FR: 'Alertes', SW: 'Tahadhari', RW: 'Amatangazo' },
+  tabDashboard: { EN: 'Dashboard', FR: 'Tableau de bord', SW: 'Dashibodi', RW: 'Dashibodi' },
+  tabLabTests: { EN: 'Lab Tests', FR: 'Tests de laboratoire', SW: 'Vipimo vya Maabara', RW: 'Ibizamini bya labo' },
+  tabPrescriptions: { EN: 'Prescriptions', FR: 'Ordonnances', SW: 'Dawa', RW: 'Ibijyanye n\'imiti' },
+  tabAntibiogram: { EN: 'Antibiogram', FR: 'Antibiogramme', SW: 'Antibiogram', RW: 'Antibiogram' },
   sessionExpired: {
     EN: 'Your session expired. Please sign in again.',
     FR: 'Votre session a expiré. Veuillez vous reconnecter.',
@@ -3303,6 +3474,10 @@ const loading = ref(false)
 const searchQuery = ref('')
 const patients = ref([])
 const alerts = ref([])
+const labTests = ref([])
+const prescriptions = ref([])
+const dashboardData = ref(null)
+const antibiogramData = ref([])
 const diagnosisResult = ref(null)
 const patientTotal = ref(0)
 const patientPages = ref(1)
@@ -3328,8 +3503,12 @@ const userRoleLabel = computed(() => {
 })
 
 const tabs = computed(() => [
+  { id: 'dashboard', label: t(TEXT.tabDashboard), icon: '📊' },
   { id: 'diagnose', label: t(TEXT.tabDiagnose), icon: '🏥' },
   { id: 'patients', label: t(TEXT.tabPatients), icon: '👥' },
+  { id: 'labTests', label: t(TEXT.tabLabTests), icon: '🔬' },
+  { id: 'prescriptions', label: t(TEXT.tabPrescriptions), icon: '💊' },
+  { id: 'antibiogram', label: t(TEXT.tabAntibiogram), icon: '🧫' },
   { id: 'alerts', label: t(TEXT.tabAlerts), icon: '🔔' }
 ])
 
@@ -3966,6 +4145,50 @@ async function loadAlerts() {
   }
 }
 
+async function loadDashboard() {
+  try {
+    if (!isLoggedIn.value) return
+    const response = await apiFetch('/dashboard')
+    const data = await response.json()
+    dashboardData.value = data
+  } catch (error) {
+    console.error('Failed to load dashboard:', error)
+  }
+}
+
+async function loadLabTests() {
+  try {
+    if (!isLoggedIn.value) return
+    const response = await apiFetch('/lab-tests')
+    const data = await response.json()
+    labTests.value = data.lab_tests || []
+  } catch (error) {
+    console.error('Failed to load lab tests:', error)
+  }
+}
+
+async function loadPrescriptions() {
+  try {
+    if (!isLoggedIn.value) return
+    const response = await apiFetch('/prescriptions')
+    const data = await response.json()
+    prescriptions.value = data.prescriptions || []
+  } catch (error) {
+    console.error('Failed to load prescriptions:', error)
+  }
+}
+
+async function loadAntibiogram() {
+  try {
+    if (!isLoggedIn.value) return
+    const response = await apiFetch('/antibiogram')
+    const data = await response.json()
+    antibiogramData.value = data.antibiogram || []
+  } catch (error) {
+    console.error('Failed to load antibiogram:', error)
+  }
+}
+
 async function markAsRead(alert) {
   if (alert.is_read) return
   try {
@@ -4007,7 +4230,16 @@ onMounted(() => {
   if (isLoggedIn.value) {
     loadPatients()
     loadAlerts()
+    loadDashboard()
   }
+})
+
+watch(currentView, (newView) => {
+  if (!isLoggedIn.value) return
+  if (newView === 'dashboard') loadDashboard()
+  if (newView === 'labTests') loadLabTests()
+  if (newView === 'prescriptions') loadPrescriptions()
+  if (newView === 'antibiogram') loadAntibiogram()
 })
 
 watch(uiLanguage, (value) => {
