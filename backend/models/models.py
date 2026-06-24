@@ -88,6 +88,7 @@ class Patient(db.Model):
     access_to_healthcare = db.Column(db.String(50))
     city = db.Column(db.String(100))
     region_code = db.Column(db.String(50))
+    antibiotic_usage_history = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
 
@@ -126,6 +127,7 @@ class Patient(db.Model):
             "alcohol_use": self.alcohol_use,
             "oxygen_saturation_spo2": self.oxygen_saturation_spo2,
             "city": self.city,
+            "antibiotic_usage_history": self.antibiotic_usage_history,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }

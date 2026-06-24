@@ -3589,69 +3589,136 @@ def dashboard():
     from flask_jwt_extended import get_jwt_identity
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
+    role = user.role
     
-    # Patient stats
-    total_patients = Patient.query.count()
-    high_risk_patients = 0  # To be calculated from ML predictions
-    recent_patients = Patient.query.filter(
-        Patient.created_at >= datetime.now() - timedelta(days=30)
-    ).count()
+    # Base response structure
+    response = {
+        'role': role,
+        'alert_stats': {
+            'total': 0,
+            'unread': 0,
+            'stewardship': 0
+        },
+        'recent_activity': []
+    }
     
-    # Alert stats
-    total_alerts = Alert.query.count()
-    unread_alerts = Alert.query.filter_by(is_read=False).count()
-    stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship').count()
-    
-    # Lab test stats
-    requested_lab_tests = LabTest.query.filter_by(status='requested').count()
-    completed_lab_tests = LabTest.query.filter_by(status='completed').count()
-    
-    # Prescription stats
-    pending_prescriptions = Prescription.query.filter_by(status='pending').count()
-    approved_prescriptions = Prescription.query.filter_by(status='approved').count()
-    rejected_prescriptions = Prescription.query.filter_by(status='rejected').count()
-    
-    # Load model info
-    model_info = {}
-    model_info_path = os.path.join(MODELS_DIR, 'model_info.json')
-    if os.path.exists(model_info_path):
-        with open(model_info_path, 'r', encoding='utf-8') as f:
-            model_info = json.load(f)
-    
-    # Recent activity
-    recent_audits = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(10).all()
-    
-    return jsonify({
-        'patient_stats': {
+    if role in ['system_admin', 'hospital_admin']:
+        # Admin dashboard: Full stats
+        total_patients = Patient.query.count()
+        high_risk_patients = 0
+        recent_patients = Patient.query.filter(
+            Patient.created_at >= datetime.now() - timedelta(days=30)
+        ).count()
+        total_alerts = Alert.query.count()
+        unread_alerts = Alert.query.filter_by(is_read=False).count()
+        stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship').count()
+        requested_lab_tests = LabTest.query.filter_by(status='requested').count()
+        completed_lab_tests = LabTest.query.filter_by(status='completed').count()
+        pending_prescriptions = Prescription.query.filter_by(status='pending').count()
+        approved_prescriptions = Prescription.query.filter_by(status='approved').count()
+        rejected_prescriptions = Prescription.query.filter_by(status='rejected').count()
+        recent_audits = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(20).all()
+        
+        model_info = {}
+        model_info_path = os.path.join(MODELS_DIR, 'model_info.json')
+        if os.path.exists(model_info_path):
+            with open(model_info_path, 'r', encoding='utf-8') as f:
+                model_info = json.load(f)
+        
+        response['patient_stats'] = {
             'total': total_patients,
             'high_risk': high_risk_patients,
             'recent': recent_patients
-        },
-        'alert_stats': {
-            'total': total_alerts,
-            'unread': unread_alerts,
-            'stewardship': stewardship_alerts
-        },
-        'lab_test_stats': {
+        }
+        response['lab_test_stats'] = {
             'requested': requested_lab_tests,
             'completed': completed_lab_tests
-        },
-        'prescription_stats': {
+        }
+        response['prescription_stats'] = {
             'pending': pending_prescriptions,
             'approved': approved_prescriptions,
             'rejected': rejected_prescriptions
-        },
-        'model_info': model_info,
-        'recent_activity': [audit.to_dict() for audit in recent_audits]
-    })
+        }
+        response['model_info'] = model_info
+        response['recent_activity'] = [audit.to_dict() for audit in recent_audits]
+        response['alert_stats'] = {
+            'total': total_alerts,
+            'unread': unread_alerts,
+            'stewardship': stewardship_alerts
+        }
+    
+    elif role == 'doctor':
+        # Doctor dashboard
+        total_patients = Patient.query.count()
+        recent_patients = Patient.query.filter(
+            Patient.created_at >= datetime.now() - timedelta(days=30)
+        ).count()
+        unread_alerts = Alert.query.filter_by(is_read=False, user_id=user_id).count()
+        stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship').count()
+        requested_lab_tests = LabTest.query.filter_by(requested_by=user_id, status='requested').count()
+        recent_audits = AuditLog.query.filter_by(user_id=user_id).order_by(AuditLog.created_at.desc()).limit(10).all()
+        pending_prescriptions = Prescription.query.filter_by(created_by=user_id, status='pending').count()
+        
+        response['patient_stats'] = {
+            'total': total_patients,
+            'recent': recent_patients
+        }
+        response['lab_test_stats'] = {
+            'requested': requested_lab_tests
+        }
+        response['prescription_stats'] = {
+            'pending': pending_prescriptions
+        }
+        response['alert_stats']['unread'] = unread_alerts
+        response['alert_stats']['stewardship'] = stewardship_alerts
+        response['recent_activity'] = [audit.to_dict() for audit in recent_audits]
+    
+    elif role == 'lab_technician':
+        # Lab tech dashboard: Only lab tests
+        requested_lab_tests = LabTest.query.filter_by(status='requested').count()
+        in_progress_lab_tests = LabTest.query.filter_by(status='in_progress').count()
+        completed_lab_tests = LabTest.query.filter_by(status='completed', completed_by=user_id).count()
+        recent_audits = AuditLog.query.filter_by(user_id=user_id).order_by(AuditLog.created_at.desc()).limit(10).all()
+        
+        response['lab_test_stats'] = {
+            'requested': requested_lab_tests,
+            'in_progress': in_progress_lab_tests,
+            'completed_by_me': completed_lab_tests
+        }
+        response['recent_activity'] = [audit.to_dict() for audit in recent_audits]
+    
+    elif role == 'pharmacist':
+        # Pharmacist dashboard: Only prescriptions
+        pending_prescriptions = Prescription.query.filter_by(status='pending').count()
+        approved_prescriptions = Prescription.query.filter_by(status='approved', approved_by=user_id).count()
+        rejected_prescriptions = Prescription.query.filter_by(status='rejected', approved_by=user_id).count()
+        recent_audits = AuditLog.query.filter_by(user_id=user_id).order_by(AuditLog.created_at.desc()).limit(10).all()
+        
+        response['prescription_stats'] = {
+            'pending': pending_prescriptions,
+            'approved_by_me': approved_prescriptions,
+            'rejected_by_me': rejected_prescriptions
+        }
+        response['recent_activity'] = [audit.to_dict() for audit in recent_audits]
+    
+    return jsonify(response)
 
 
 # Cumulative Antibiogram
 @app.route('/api/antibiogram')
 @jwt_required()
 def antibiogram():
-    # Sample antibiogram data (in real app, this would come from lab results)
+    # Sample antibiogram data - in a real system this would aggregate from DST/Lab results
     antibiogram_data = [
+        {
+            'bacteria': 'Mycobacterium tuberculosis complex',
+            'isoniazid': 85,
+            'rifampicin': 78,
+            'pyrazinamide': 90,
+            'ethambutol': 92,
+            'streptomycin': 70,
+            'fluoroquinolones': 82
+        },
         {
             'bacteria': 'Escherichia coli',
             'amoxicillin': 68,
@@ -3771,6 +3838,7 @@ def diagnose():
             "smoking_status",
             "alcohol_use",
             "oxygen_saturation_spo2",
+            "antibiotic_usage_history",
         ]:
             if field in payload:
                 setattr(patient, field, payload.get(field))
@@ -4011,6 +4079,52 @@ def diagnose():
         administration_notes=treatment_plan["selected_option"]["notes"]
     )
     db.session.add(treatment_record)
+    db.session.flush()
+
+    # Automatically create ML-recommended prescription
+    atc_drug = ATCDrug.query.filter(
+        ATCDrug.drug_name.ilike("%isoniazid%") | ATCDrug.drug_name.ilike("%rifampicin%")
+    ).first()
+
+    prescription = Prescription(
+        patient_id=patient.id,
+        diagnosis_id=diagnosis_record.id,
+        created_by=user.id,
+        medication=treatment_plan["selected_option"]["drugs"],
+        atc_drug_id=atc_drug.id if atc_drug else None,
+        dosage=treatment_record.dosage,
+        duration=treatment_record.duration,
+        risk_level=symptom_analysis["risk_level"],
+        ml_recommended=True,
+        status="pending"
+    )
+    db.session.add(prescription)
+
+    # Check for antibiotic misuse
+    recent_prescriptions = Prescription.query.filter(
+        Prescription.patient_id == patient.id,
+        Prescription.created_at >= datetime.now() - timedelta(days=90)
+    ).all()
+
+    misuse_detected = False
+    misuse_reason = ""
+    if len(recent_prescriptions) >= 3:
+        misuse_detected = True
+        misuse_reason = "Multiple antibiotic prescriptions in last 90 days"
+    if patient.antibiotic_usage_history and "without prescription" in patient.antibiotic_usage_history.lower():
+        misuse_detected = True
+        misuse_reason = "Reported antibiotic use without prescription"
+
+    if misuse_detected:
+        alert = Alert(
+            patient_id=patient.id,
+            user_id=user.id,
+            alert_type="antimicrobial_stewardship",
+            message=f"Possible antibiotic misuse detected: {misuse_reason}. Review patient history.",
+            severity="high"
+        )
+        db.session.add(alert)
+        alert_created = alert
 
     urgency = treatment.get("priority", "MODERATE")
     treatment_recommendation = {
@@ -4071,6 +4185,7 @@ def diagnose():
         "treatment_recommendation": treatment_recommendation,
         "saved_diagnosis": diagnosis_record.to_dict(),
         "saved_treatment": treatment_record.to_dict(),
+        "saved_prescription": prescription.to_dict(),
         "alert_created": alert_created.id if alert_created else None,
     })
 

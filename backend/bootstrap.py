@@ -48,7 +48,7 @@ from app import app, db, load_models
 from import_data import main as import_data_main
 from models.models import Alert, Diagnosis, ExternalDatasetRow, Patient, Treatment, User, LabTest, Prescription, AuditLog
 from models.train_model import train_models_from_database
-from seed_users import seed_users
+from seed_users import seed_all
 
 
 MANAGED_MODELS = [User, Patient, Diagnosis, Treatment, Alert, ExternalDatasetRow, LabTest, Prescription, AuditLog]
@@ -165,11 +165,12 @@ def bootstrap(import_data_enabled=True, seed_enabled=True, train_enabled=True, r
         print("[2/4] Skipping dataset import.")
 
     if seed_enabled:
-        print("[3/4] Seeding users and roles...")
-        seed_result = seed_users()
-        print(f"      Users in database: {seed_result['total']} (added {seed_result['added']}).")
+        print("[3/4] Seeding users, roles, and sample data...")
+        seed_result = seed_all()
+        print(f"      Users in database: {seed_result['users']['total']} (added {seed_result['users']['added']}).")
+        print(f"      Sample data added: {seed_result['sample_data']}")
     else:
-        print("[3/4] Skipping user seeding.")
+        print("[3/4] Skipping user/sample data seeding.")
 
     training_result = None
     if train_enabled:
