@@ -204,39 +204,72 @@ Model: Random Forest Classifier
 Parameters: n_estimators=300, max_depth=14, min_samples_split=5, min_samples_leaf=2, class_weight='balanced', random_state=42
 
 Feature Importances (%):
-  - genexpert_positive: 29.71%
-  - chest_xray_abnormal: 27.23%
-  - sputum_positive: 21.41%
-  - age: 10.03%
-  - has_fever: 3.52%
-  - has_weight_loss: 1.73%
-  - has_cough: 1.33%
+  - genexpert_positive: 28.48%
+  - chest_xray_abnormal: 23.02%
+  - sputum_positive: 21.78%
+  - persistent_cough_duration_weeks: 6.2%
+  - age: 5.36%
+  - oxygen_saturation_spo2: 3.58%
+  - has_cough: 2.57%
+  - has_weight_loss: 1.38%
+  - has_fever: 1.36%
   - has_blood: 1.3%
-  - has_fatigue: 1.21%
-  - gender_female: 1.05%
-  - gender_male: 0.73%
-  - has_chest_pain: 0.48%
-  - has_night_sweats: 0.27%
-  - weight: 0.0%
-  - gender_other: 0.0%
-  - persistent_cough_duration_weeks: 0.0%
-  - contact_with_tb_patient_yes: 0.0%
-  - previous_tb_treatment_yes: 0.0%
-  - smoking_current: 0.0%
-  - smoking_former: 0.0%
-  - alcohol_regular: 0.0%
-  - oxygen_saturation_spo2: 0.0%
-  - hiv_yes: 0.0%
-  - diabetes_yes: 0.0%
+  - weight: 0.95%
+  - gender_female: 0.94%
+  - gender_male: 0.75%
+  - has_fatigue: 0.52%
+  - has_shortness_of_breath: 0.48%
+  - has_chest_pain: 0.42%
+  - has_night_sweats: 0.37%
+  - contact_with_tb_patient_yes: 0.18%
+  - smoking_former: 0.1%
+  - previous_tb_treatment_yes: 0.09%
+  - smoking_current: 0.06%
+  - alcohol_regular: 0.05%
+  - gender_other: 0.03%
+  - hiv_yes: 0.02%
+  - diabetes_yes: 0.02%
+
+=== Model Information ===
+Model: Random Forest Classifier
+Parameters: n_estimators=300, max_depth=14, min_samples_split=5, min_samples_leaf=2, class_weight='balanced', random_state=42
+
+Feature Importances (%):
+  - oxygen_saturation_spo2: 36.86%
+  - weight: 14.67%
+  - chest_xray_abnormal: 9.36%
+  - genexpert_positive: 8.47%
+  - persistent_cough_duration_weeks: 5.7%
+  - has_fever: 5.19%
+  - has_weight_loss: 4.73%
+  - sputum_positive: 3.03%
+  - has_fatigue: 1.81%
+  - age: 1.78%
+  - gender_male: 1.14%
+  - gender_female: 1.04%
+  - has_cough: 0.98%
+  - contact_with_tb_patient_yes: 0.76%
+  - has_shortness_of_breath: 0.75%
+  - smoking_current: 0.65%
+  - alcohol_regular: 0.55%
+  - smoking_former: 0.49%
+  - has_night_sweats: 0.39%
+  - has_chest_pain: 0.39%
+  - hiv_yes: 0.32%
+  - previous_tb_treatment_yes: 0.3%
+  - has_blood: 0.23%
+  - gender_other: 0.2%
+  - diabetes_yes: 0.2%
 ```
 
 **What does this mean?**
 
 Each feature importance percentage represents how much that factor contributed to the ML model's predictions:
-- **Top features (20-30%):** GenXpert test results, chest X-ray abnormalities, and sputum smear results are the strongest predictors of TB status
-- **Age (10%):** Age is also a significant factor
-- **Symptoms (1-4%):** Fever, weight loss, cough, blood in sputum, and fatigue contribute moderately
-- **Other features (<1%):** Gender, lifestyle factors, and other fields have minimal or no impact on the current model with the available training data
+- **Top features (20-30% for TB Status): GenXpert test results, chest X-ray abnormalities, and sputum smear results are the strongest predictors of TB status
+- **Persistent Cough Duration (6.2%): Important for both TB and Drug Resistance
+- **Oxygen Saturation (3.6% for TB, 36.9% for Drug Resistance): Significant factor for predicting drug resistance
+- **Symptoms (0.3-2.6%): All WHO-aligned TB symptoms now captured, including `has_shortness_of_breath`
+- **Total Patients:** 28,191 patients in training dataset
 
 ### Owner Dataset
 
