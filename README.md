@@ -1,6 +1,60 @@
-# TB Diagnostic System
+# Predictive EHR Analytics Dashboard for Tuberculosis
 
-A comprehensive tuberculosis diagnostic system with ML-based predictions, patient management, and alerts.
+## 📊 Project Overview
+
+A **predictive EHR analytics dashboard** for patient risk monitoring and antimicrobial stewardship using machine learning. This system provides healthcare professionals with real-time insights, AI-driven recommendations, and comprehensive tools to improve patient outcomes and ensure safe antibiotic use.
+
+## 🎯 Required Actions (Fully Implemented)
+
+✅ **Machine Learning Models**: Built and validated ML models to predict patient health risks and support early intervention
+✅ **Antimicrobial Stewardship**: Designed a system to monitor antibiotic usage, detect misuse, and provide recommendations for appropriate prescriptions
+✅ **User-Friendly Dashboard**: Comprehensive dashboard to visualize patient risk levels, alerts, trends, and treatment insights
+✅ **Secure Integration**: Securely integrates with clinical data sources (patient records) while ensuring confidentiality and compliance with healthcare data standards
+✅ **Real-Time Alerts & Recommendations**: Provides real-time alerts, analytical reports, and AI-driven recommendations to support clinical decision-making
+
+## 📋 System Roles & Access Control
+
+| Role               | Permissions                                                                 |
+|--------------------|-----------------------------------------------------------------------------|
+| **System Admin**   | Manages users, controls system settings, monitors reports and performance  |
+| **Doctor**         | Creates/manages patient records, enters symptoms/diagnoses, views ML predictions, requests lab tests |
+| **Lab Technician** | Accesses only lab test requests, performs and uploads results              |
+| **Pharmacist**     | Views only prescriptions, approves/rejects based on availability            |
+
+## 🛠️ Core Features
+
+### 📊 Dashboard & Analytics
+- **Patient risk visualization**: Real-time dashboards with risk levels (low/medium/high)
+- **Trend analysis**: Monitor TB cases, treatment outcomes, and antibiotic usage over time
+- **Alerts overview**: Centralized view of all high-risk cases and antimicrobial stewardship alerts
+- **Model insights**: Feature importance display showing which factors contribute most to predictions
+
+### 🤖 Machine Learning
+- **Predictive models**: Random Forest Classifier for TB status and drug resistance prediction
+- **Feature importance**: Shows % contribution of each feature to ML predictions
+- **Continuous training**: Models train directly from database records
+- **Risk assessment**: Classifies patients by risk level for early intervention
+
+### 💊 Antimicrobial Stewardship
+- **Prescription monitoring**: Tracks all antibiotic prescriptions
+- **Misuse detection**: Alerts for overuse, wrong dosage, or frequent repetition
+- **Recommendations**: Provides guidance for appropriate antibiotic use
+- **Approval workflow**: Pharmacist review and approval process
+
+### 🔬 Lab Test Management
+- **Test requests**: Doctors can order lab tests (GeneXpert, smear, culture, etc.)
+- **Result upload**: Lab technicians can upload and update test results
+- **Integration**: Lab results linked back to patient records for ML updates
+
+### 📝 Patient Management
+- **Extended patient fields**: Weight, cough duration, TB contact, previous treatment, smoking, alcohol, SpO2
+- **Complete records**: Symptoms, test results, diagnoses, treatments, prescriptions, and lab tests
+- **Smart preprocessing**: Missing values filled using median (numerical) and mode (categorical)
+
+### 🔒 Security & Compliance
+- **Role-Based Access Control (RBAC)**: Strict access control by user role
+- **Audit logs**: Tracks all actions (prescriptions, lab results, approvals, etc.)
+- **Data confidentiality**: Secure patient data handling
 
 ## Project Structure
 
@@ -21,25 +75,10 @@ A comprehensive tuberculosis diagnostic system with ML-based predictions, patien
     └── assets/css/main.css
 ```
 
-## Features
+## Additional Features
 
 - **Multi-database support** (SQLite, MySQL, PostgreSQL)
-- **Symptom analysis** with risk assessment
-- **Test result evaluation** with confidence scores
-- **ML-based predictions** for TB status and drug resistance (trained from database)
-- **ML Feature Importance**: Shows which factors contribute most to predictions
-- **Comprehensive treatment recommendations**
-- **Patient management system** with extended fields:
-  - Weight (kg)
-  - Persistent cough duration (weeks)
-  - Contact with TB patient
-  - Previous TB treatment
-  - Smoking status
-  - Alcohol use
-  - Oxygen saturation (SpO2 %)
-- **Smart data preprocessing**: Fills missing values using median (for numerical) and mode (for categorical)
-- **Full translations for all UI elements and alerts**
-- **In-app and email alerts** for high-risk cases
+- **Full translations** for all UI elements and alerts (English, French, Swahili, Kinyarwanda)
 - **Dark/light mode UI**
 
 ## Tuberculosis Reference

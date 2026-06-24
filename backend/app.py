@@ -3539,6 +3539,69 @@ def prescription_detail(presc_id):
             return jsonify({"msg": I18N["ACCESS_DENIED"][lang]}), 403
 
 
+# Dashboard
+@app.route('/api/dashboard')
+@jwt_required()
+def dashboard():
+    from flask_jwt_extended import get_jwt_identity
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    # Patient stats
+    total_patients = Patient.query.count()
+    high_risk_patients = 0  # To be calculated from ML predictions
+    recent_patients = Patient.query.filter(
+        Patient.created_at >= datetime.now() - timedelta(days=30)
+    ).count()
+    
+    # Alert stats
+    total_alerts = Alert.query.count()
+    unread_alerts = Alert.query.filter_by(read=False).count()
+    stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship').count()
+    
+    # Lab test stats
+    requested_lab_tests = LabTest.query.filter_by(status='requested').count()
+    completed_lab_tests = LabTest.query.filter_by(status='completed').count()
+    
+    # Prescription stats
+    pending_prescriptions = Prescription.query.filter_by(status='pending').count()
+    approved_prescriptions = Prescription.query.filter_by(status='approved').count()
+    rejected_prescriptions = Prescription.query.filter_by(status='rejected').count()
+    
+    # Load model info
+    model_info = {}
+    model_info_path = os.path.join(MODELS_DIR, 'model_info.json')
+    if os.path.exists(model_info_path):
+        with open(model_info_path, 'r', encoding='utf-8') as f:
+            model_info = json.load(f)
+    
+    # Recent activity
+    recent_audits = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(10).all()
+    
+    return jsonify({
+        'patient_stats': {
+            'total': total_patients,
+            'high_risk': high_risk_patients,
+            'recent': recent_patients
+        },
+        'alert_stats': {
+            'total': total_alerts,
+            'unread': unread_alerts,
+            'stewardship': stewardship_alerts
+        },
+        'lab_test_stats': {
+            'requested': requested_lab_tests,
+            'completed': completed_lab_tests
+        },
+        'prescription_stats': {
+            'pending': pending_prescriptions,
+            'approved': approved_prescriptions,
+            'rejected': rejected_prescriptions
+        },
+        'model_info': model_info,
+        'recent_activity': [audit.to_dict() for audit in recent_audits]
+    })
+
 # Audit Logs
 @app.route('/api/audit-logs')
 @jwt_required()
