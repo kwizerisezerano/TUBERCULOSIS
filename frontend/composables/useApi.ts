@@ -1,0 +1,88 @@
+
+import type { User } from './useAuth';
+
+const API_BASE = 'http://127.0.0.1:5000/api';
+
+export interface Patient {
+  id: number;
+  patient_id: string;
+  first_name: string;
+  last_name: string;
+  age: number;
+  gender: string;
+  city: string;
+  symptoms: string;
+  tb_risk_score?: number;
+  tb_risk_level?: string;
+  tb_type?: string;
+}
+
+export interface DetailedLabResult {
+  id: number;
+  patient_id?: number;
+  hospital?: string;
+  test_name: string;
+  test_value?: string;
+  unit?: string;
+  reference_range?: string;
+  collection_date?: string;
+  source_dataset?: string;
+}
+
+export interface AntibioticResistance {
+  id: number;
+  sample_id: string;
+  patient_name?: string;
+  patient_email?: string;
+  bacterial_species?: string;
+  diabetes?: string;
+  hypertension?: string;
+  amx_amp?: string;
+  amc?: string;
+  cz?: string;
+  fox?: string;
+  ctx_cro?: string;
+  ipm?: string;
+  gen?: string;
+  an?: string;
+  nalidixic_acid?: string;
+  ofx?: string;
+  cip?: string;
+  chloramphenicol?: string;
+  co_trimoxazole?: string;
+  furanes?: string;
+  colistine?: string;
+  notes?: string;
+}
+
+export const useApi = () => {
+  const { authToken } = useAuth();
+
+  const request = async (url: string, options: any = {}) => {
+    return $fetch(`${API_BASE}${url}`, {
+      ...options,
+      headers: {
+        Authorization: authToken.value ? `Bearer ${authToken.value}` : undefined,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+  };
+
+  return {
+    getPatients: (page = 1, perPage = 20, search = '') => {
+      let url = `/patients?page=${page}&per_page=${perPage}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      return request(url);
+    },
+    getPatientById: (id: number) => request(`/patients/${id}`),
+    createPatient: (data: Partial<Patient>) => request('/patients', { method: 'POST', body: data }),
+    getDetailedLabResults: (page = 1, perPage = 20) => request(`/detailed-lab-results?page=${page}&per_page=${perPage}`),
+    getAntibioticResistanceRecords: (page = 1, perPage = 20) => request(`/antibiotic-resistance?page=${page}&per_page=${perPage}`),
+    getPrescriptions: () => request('/prescriptions'),
+    getDashboardStats: () => request('/dashboard'),
+    diagnose: (data: any) => request('/diagnose', { method: 'POST', body: data }),
+    getDiagnoses: () => request('/diagnoses'),
+  };
+};
+

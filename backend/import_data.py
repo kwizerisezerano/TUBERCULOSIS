@@ -39,7 +39,7 @@ def _use_project_venv_when_available():
 _use_project_venv_when_available()
 
 from app import app
-from models.models import db, Patient, ExternalDatasetRow
+from models.models import db, Patient, ExternalDatasetRow, ATCDrug, DetailedLabResult, AntibioticResistance
 
 def clean_text(text):
     """Clean and normalize text data"""
@@ -258,6 +258,9 @@ def import_tb_symptdata_april2024(file_path):
             })
 
         # Preprocess and fill missing values
+        for idx in range(len(patient_dicts)):
+            sym_fields = extract_symptom_fields(patient_dicts[idx]['symptoms'])
+            patient_dicts[idx] = {**patient_dicts[idx], **sym_fields}
         patient_dicts = preprocess_and_fill_missing(df, patient_dicts)
 
         imported_count = 0
@@ -358,6 +361,9 @@ def import_symptoms_dataset(file_path):
             })
 
         # Preprocess and fill missing values
+        for idx in range(len(patient_dicts)):
+            sym_fields = extract_symptom_fields(patient_dicts[idx]['symptoms'])
+            patient_dicts[idx] = {**patient_dicts[idx], **sym_fields}
         patient_dicts = preprocess_and_fill_missing(df, patient_dicts)
 
         imported_count = 0
@@ -410,6 +416,9 @@ def import_bangladesh_dataset(file_path):
             })
 
         # Preprocess and fill missing values
+        for idx in range(len(patient_dicts)):
+            sym_fields = extract_symptom_fields(patient_dicts[idx]['symptoms'])
+            patient_dicts[idx] = {**patient_dicts[idx], **sym_fields}
         patient_dicts = preprocess_and_fill_missing(df, patient_dicts)
 
         imported_count = 0
@@ -502,6 +511,9 @@ def import_xray_dataset(file_path):
             })
 
         # Preprocess and fill missing values
+        for idx in range(len(patient_dicts)):
+            sym_fields = extract_symptom_fields(patient_dicts[idx]['symptoms'])
+            patient_dicts[idx] = {**patient_dicts[idx], **sym_fields}
         patient_dicts = preprocess_and_fill_missing(df, patient_dicts)
 
         imported_count = 0
@@ -578,6 +590,9 @@ def import_owner_species_dataset(file_path):
             })
 
         # Preprocess and fill missing values
+        for idx in range(len(patient_dicts)):
+            sym_fields = extract_symptom_fields(patient_dicts[idx]['symptoms'])
+            patient_dicts[idx] = {**patient_dicts[idx], **sym_fields}
         patient_dicts = preprocess_and_fill_missing(df, patient_dicts)
 
         imported_count = 0
@@ -593,6 +608,64 @@ def import_owner_species_dataset(file_path):
 
     except Exception as e:
         print(f"  Error importing owner TB species dataset: {e}")
+        db.session.rollback()
+        return 0
+
+def import_atc_ddd_dataset(file_path):
+    """Import WHO ATC-DDD dataset into ATCDrug model"""
+    print(f"Importing WHO ATC-DDD dataset from: {file_path}")
+
+    try:
+        df = pd.read_csv(file_path)
+        print(f"  Found {len(df)} ATC-DDD records")
+
+        imported_count = 0
+
+        for idx, row in df.iterrows():
+            atc_code = clean_text(row.get('atc_code', ''))
+            if not atc_code:
+                continue
+
+            existing = ATCDrug.query.filter_by(atc_code=atc_code).first()
+            if existing:
+                continue
+
+            atc_level_1 = atc_code[0] if len(atc_code) >=1 else None
+            atc_level_2 = atc_code[:2] if len(atc_code)>=2 else None
+            atc_level_3 = atc_code[:3] if len(atc_code)>=3 else None
+            atc_level_4 = atc_code[:4] if len(atc_code)>=4 else None
+            atc_level_5 = atc_code if len(atc_code)>=5 else None
+
+            ddd_val = row.get('ddd')
+            if pd.isna(ddd_val) or str(ddd_val).strip().upper() in ['NA', 'NAN', '']:
+                ddd_val = None
+            try:
+                ddd_val = float(ddd_val) if ddd_val is not None else None
+            except (ValueError, TypeError):
+                ddd_val = None
+
+            atc_drug = ATCDrug(
+                atc_code=atc_code,
+                atc_level_1=atc_level_1,
+                atc_level_2=atc_level_2,
+                atc_level_3=atc_level_3,
+                atc_level_4=atc_level_4,
+                atc_level_5=atc_level_5,
+                drug_name=clean_text(row.get('atc_name', '')),
+                ddd=ddd_val,
+                ddd_unit=clean_text(row.get('uom', '')),
+                administration_route=clean_text(row.get('adm_r', ''))
+            )
+
+            with db.session.no_autoflush:
+                db.session.add(atc_drug)
+            imported_count +=1
+
+        db.session.commit()
+        print(f"  Successfully imported {imported_count} ATC drugs")
+        return imported_count
+    except Exception as e:
+        print(f"  Error importing ATC-DDD dataset: {e}")
         db.session.rollback()
         return 0
 
@@ -622,6 +695,123 @@ def import_synthetic_dataset(file_path: str = None):
     db.session.commit()
     print(f"Successfully imported {imported_count} synthetic patients!")
     return imported_count
+
+
+def normalize_ab_result(val):
+    """Normalize antibiotic resistance result (R/S/I/Unknown)"""
+    if pd.isna(val) or val is None:
+        return 'Unknown'
+    s = str(val).strip().upper()
+    if s in ['R', 'RESISTANT']:
+        return 'R'
+    elif s in ['S', 'SUSCEPTIBLE']:
+        return 'S'
+    elif s in ['I', 'INTERMEDIATE']:
+        return 'I'
+    return 'Unknown'
+
+
+def normalize_yes_no_unknown(val):
+    """Normalize yes/no/unknown values"""
+    if pd.isna(val) or val is None:
+        return 'Unknown'
+    s = str(val).strip().upper()
+    if s in ['YES', 'Y', '1']:
+        return 'Yes'
+    elif s in ['NO', 'N', '0']:
+        return 'No'
+    return 'Unknown'
+
+
+def import_multi_hospital_lab_results(file_path):
+    """Import multi-hospital lab results dataset into DetailedLabResult model"""
+    print(f"Importing multi-hospital lab results from: {file_path}")
+    try:
+        df = pd.read_csv(file_path)
+        print(f"  Found {len(df)} lab results")
+        imported_count = 0
+        for idx, row in df.iterrows():
+            lab_result = DetailedLabResult(
+                hospital=clean_text(row.get('hospital', 'Unknown Hospital')),
+                test_name=clean_text(row.get('test_name', 'Unknown Test')),
+                test_value=clean_text(row.get('test_value', 'Not Available')),
+                unit=clean_text(row.get('unit', 'N/A')),
+                reference_range=clean_text(row.get('reference_range', 'Not Specified')),
+                collection_date=clean_text(row.get('collection_date', 'Unknown Date')),
+                source_dataset='multi_hospital_lab_results'
+            )
+            db.session.add(lab_result)
+            imported_count += 1
+        db.session.commit()
+        print(f"  Successfully imported {imported_count} detailed lab results")
+        return imported_count
+    except Exception as e:
+        print(f"  Error importing lab results: {e}")
+        db.session.rollback()
+        return 0
+
+
+def import_antibiotic_resistance(file_path):
+    """Import antibiotic resistance dataset into AntibioticResistance model"""
+    print(f"Importing antibiotic resistance data from: {file_path}")
+    try:
+        df = pd.read_csv(file_path)
+        print(f"  Found {len(df)} resistance records")
+        imported_count = 0
+        for idx, row in df.iterrows():
+            # Handle infection frequency: convert to float, default to 0.0
+            try:
+                inf_freq = float(row.get('Infection_Freq', 0)) if pd.notna(row.get('Infection_Freq')) else 0.0
+            except (ValueError, TypeError):
+                inf_freq = 0.0
+                
+            sample_id = clean_text(row.get('ID', f'S{idx+1}'))
+            
+            # Check if already exists
+            existing = AntibioticResistance.query.filter_by(sample_id=sample_id).first()
+            if existing:
+                continue
+                
+            ar = AntibioticResistance(
+                sample_id=sample_id,
+                patient_name=clean_text(row.get('Name', 'Anonymous Patient')),
+                patient_email=clean_text(row.get('Email', 'unknown@example.com')),
+                patient_address=clean_text(row.get('Address', 'Unknown Address')),
+                age_gender=clean_text(row.get('age/gender', 'Unknown')),
+                bacterial_species=clean_text(row.get('Souches', 'Unknown Species')),
+                diabetes=normalize_yes_no_unknown(row.get('Diabetes')),
+                hypertension=normalize_yes_no_unknown(row.get('Hypertension')),
+                previous_hospitalization=normalize_yes_no_unknown(row.get('Hospital_before')),
+                infection_frequency=inf_freq,
+                amx_amp=normalize_ab_result(row.get('AMX/AMP')),
+                amc=normalize_ab_result(row.get('AMC')),
+                cz=normalize_ab_result(row.get('CZ')),
+                fox=normalize_ab_result(row.get('FOX')),
+                ctx_cro=normalize_ab_result(row.get('CTX/CRO')),
+                ipm=normalize_ab_result(row.get('IPM')),
+                gen=normalize_ab_result(row.get('GEN')),
+                an=normalize_ab_result(row.get('AN')),
+                nalidixic_acid=normalize_ab_result(row.get('Acide nalidixique')),
+                ofx=normalize_ab_result(row.get('ofx')),
+                cip=normalize_ab_result(row.get('CIP')),
+                chloramphenicol=normalize_ab_result(row.get('C')),
+                co_trimoxazole=normalize_ab_result(row.get('Co-trimoxazole')),
+                furanes=normalize_ab_result(row.get('Furanes')),
+                colistine=normalize_ab_result(row.get('colistine')),
+                collection_date=clean_text(row.get('Collection_Date', 'Unknown Date')),
+                notes=clean_text(row.get('Notes', 'No notes')),
+                source_dataset='Bacteria_dataset_Multiresictance'
+            )
+            with db.session.no_autoflush:
+                db.session.add(ar)
+            imported_count += 1
+        db.session.commit()
+        print(f"  Successfully imported {imported_count} antibiotic resistance records")
+        return imported_count
+    except Exception as e:
+        print(f"  Error importing antibiotic resistance data: {e}")
+        db.session.rollback()
+        return 0
 
 
 def create_comprehensive_sample_patients():
@@ -739,7 +929,7 @@ def create_comprehensive_sample_patients():
 def main():
     """Main import function"""
     with app.app_context():
-        print("=== TB Diagnostic System - Data Import ===")
+        print("=== TB Predictive EHR Analytics Dashboard - Data Import ===")
         print()
         
         # Create tables
@@ -757,6 +947,9 @@ def main():
         owner_species_path = os.path.join(data_raw_dir, "owner_tb_species_dataset.csv")
         incidence_path = os.path.join(data_raw_dir, "incidenceoftuberculosis_new.csv")
         treatment_path = os.path.join(data_raw_dir, "treatment.csv")
+        atc_ddd_path = os.path.join(data_raw_dir, "WHO ATC-DDD 2026-04-25.csv")
+        lab_results_path = os.path.join(data_raw_dir, "multi_hospital_lab_results.csv")
+        ar_path = os.path.join(data_raw_dir, "Bacteria_dataset_Multiresictance.csv")
 
         if os.path.exists(sympt_2024_path):
             total_imported += import_tb_symptdata_april2024(sympt_2024_path)
@@ -821,14 +1014,39 @@ def main():
                 print(f"  Error importing treatment dataset: {e}")
                 db.session.rollback()
                 print()
+
+        if os.path.exists(atc_ddd_path):
+            import_atc_ddd_dataset(atc_ddd_path)
+            print()
+        else:
+            print(f"WHO ATC-DDD dataset not found at: {atc_ddd_path}")
+            print()
+        
+        if os.path.exists(lab_results_path):
+            import_multi_hospital_lab_results(lab_results_path)
+            print()
+        else:
+            print(f"Multi-hospital lab results not found at: {lab_results_path}")
+            print()
+        
+        if os.path.exists(ar_path):
+            import_antibiotic_resistance(ar_path)
+            print()
+        else:
+            print(f"Antibiotic resistance dataset not found at: {ar_path}")
+            print()
         
         # Create sample patients only when the database is still empty.
         if Patient.query.count() == 0:
             create_comprehensive_sample_patients()
         
         total_patients = Patient.query.count()
+        total_lab_results = DetailedLabResult.query.count()
+        total_ar_records = AntibioticResistance.query.count()
         print(f"\n=== Import Complete ===")
         print(f"Total patients in database: {total_patients}")
+        print(f"Total detailed lab results: {total_lab_results}")
+        print(f"Total antibiotic resistance records: {total_ar_records}")
         print("The system is ready to use!")
 
 if __name__ == "__main__":

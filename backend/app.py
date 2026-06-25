@@ -50,7 +50,7 @@ from flask_jwt_extended import (
     get_jwt
 )
 from dotenv import load_dotenv
-from models.models import db, User, Patient, Diagnosis, Treatment, Alert, LabTest, Prescription, AuditLog
+from models.models import db, User, Patient, Diagnosis, Treatment, Alert, LabTest, Prescription, AuditLog, ATCDrug, DetailedLabResult, AntibioticResistance
 from models.train_model import preprocess_symptoms, get_patient_features, train_models_from_database
 from utils.security import encrypt_data, decrypt_data, hash_password, verify_password
 
@@ -3299,7 +3299,15 @@ def patients():
             diabetes=data.get('diabetes'),
             smoking_status=data.get('smoking_status'),
             alcohol_use=data.get('alcohol_use'),
-            oxygen_saturation_spo2=data.get('oxygen_saturation_spo2')
+            oxygen_saturation_spo2=data.get('oxygen_saturation_spo2'),
+            has_fever=data.get('has_fever'),
+            has_cough=data.get('has_cough'),
+            has_weight_loss=data.get('has_weight_loss'),
+            has_night_sweats=data.get('has_night_sweats'),
+            has_chest_pain=data.get('has_chest_pain'),
+            has_blood=data.get('has_blood'),
+            has_fatigue=data.get('has_fatigue'),
+            has_shortness_of_breath=data.get('has_shortness_of_breath')
         )
         db.session.add(patient)
         db.session.commit()
@@ -3427,6 +3435,92 @@ def atc_drugs():
         db.session.add(drug)
         db.session.commit()
         return jsonify(drug.to_dict()), 201
+
+
+# Detailed Lab Results Management
+@app.route('/api/detailed-lab-results', methods=['GET', 'POST'])
+@jwt_required()
+def detailed_lab_results():
+    if request.method == 'GET':
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        pagination = DetailedLabResult.query.order_by(DetailedLabResult.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+        results = [r.to_dict() for r in pagination.items]
+        return jsonify({
+            'detailed_lab_results': results,
+            'total': pagination.total,
+            'pages': pagination.pages,
+            'current_page': pagination.page
+        })
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        lab_result = DetailedLabResult(
+            patient_id=data.get('patient_id'),
+            hospital=data.get('hospital'),
+            test_name=data.get('test_name'),
+            test_value=data.get('test_value'),
+            unit=data.get('unit'),
+            reference_range=data.get('reference_range'),
+            collection_date=data.get('collection_date'),
+            source_dataset=data.get('source_dataset')
+        )
+        db.session.add(lab_result)
+        db.session.commit()
+        return jsonify(lab_result.to_dict()), 201
+
+
+# Antibiotic Resistance Management
+@app.route('/api/antibiotic-resistance', methods=['GET', 'POST'])
+@jwt_required()
+def antibiotic_resistance():
+    if request.method == 'GET':
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        pagination = AntibioticResistance.query.order_by(AntibioticResistance.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+        results = [r.to_dict() for r in pagination.items]
+        return jsonify({
+            'antibiotic_resistance_records': results,
+            'total': pagination.total,
+            'pages': pagination.pages,
+            'current_page': pagination.page
+        })
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        ar = AntibioticResistance(
+            sample_id=data.get('sample_id'),
+            patient_name=data.get('patient_name'),
+            patient_email=data.get('patient_email'),
+            patient_address=data.get('patient_address'),
+            age_gender=data.get('age_gender'),
+            bacterial_species=data.get('bacterial_species'),
+            diabetes=data.get('diabetes'),
+            hypertension=data.get('hypertension'),
+            previous_hospitalization=data.get('previous_hospitalization'),
+            infection_frequency=data.get('infection_frequency'),
+            amx_amp=data.get('amx_amp'),
+            amc=data.get('amc'),
+            cz=data.get('cz'),
+            fox=data.get('fox'),
+            ctx_cro=data.get('ctx_cro'),
+            ipm=data.get('ipm'),
+            gen=data.get('gen'),
+            an=data.get('an'),
+            nalidixic_acid=data.get('nalidixic_acid'),
+            ofx=data.get('ofx'),
+            cip=data.get('cip'),
+            chloramphenicol=data.get('chloramphenicol'),
+            co_trimoxazole=data.get('co_trimoxazole'),
+            furanes=data.get('furanes'),
+            colistine=data.get('colistine'),
+            collection_date=data.get('collection_date'),
+            notes=data.get('notes'),
+            source_dataset=data.get('source_dataset')
+        )
+        db.session.add(ar)
+        db.session.commit()
+        return jsonify(ar.to_dict()), 201
 
 
 # Prescription Management
@@ -3656,18 +3750,24 @@ def dashboard():
         unread_alerts = Alert.query.filter_by(is_read=False, user_id=user_id).count()
         stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship').count()
         requested_lab_tests = LabTest.query.filter_by(requested_by=user_id, status='requested').count()
+        completed_lab_tests = DetailedLabResult.query.count()
         recent_audits = AuditLog.query.filter_by(user_id=user_id).order_by(AuditLog.created_at.desc()).limit(10).all()
-        pending_prescriptions = Prescription.query.filter_by(created_by=user_id, status='pending').count()
+        pending_prescriptions = Prescription.query.filter_by(status='pending').count()
+        approved_prescriptions = Prescription.query.filter_by(status='approved').count()
+        rejected_prescriptions = Prescription.query.filter_by(status='rejected').count()
         
         response['patient_stats'] = {
             'total': total_patients,
             'recent': recent_patients
         }
         response['lab_test_stats'] = {
-            'requested': requested_lab_tests
+            'requested': requested_lab_tests,
+            'completed': completed_lab_tests
         }
         response['prescription_stats'] = {
-            'pending': pending_prescriptions
+            'pending': pending_prescriptions,
+            'approved': approved_prescriptions,
+            'rejected': rejected_prescriptions
         }
         response['alert_stats']['unread'] = unread_alerts
         response['alert_stats']['stewardship'] = stewardship_alerts
@@ -3766,7 +3866,8 @@ def patient_detail(patient_id):
             'patient': patient.to_dict(),
             'diagnoses': [d.to_dict() for d in patient.diagnoses],
             'treatments': [t.to_dict() for t in patient.treatments],
-            'alerts': [a.to_dict() for a in patient.alerts]
+            'alerts': [a.to_dict() for a in patient.alerts],
+            'detailed_lab_results': [r.to_dict() for r in patient.detailed_lab_results]
         })
 
     if request.method == 'PUT':

@@ -220,7 +220,7 @@ def seed_sample_data():
         # Seed sample prescriptions
         added_prescriptions = 0
         meds = ['Amoxicillin', 'Ciprofloxacin', 'Isoniazid and rifampicin', 'Ceftriaxone']
-        atc_drugs = ATCDrug.query.all()
+        atc_drugs = [d for d in ATCDrug.query.all() if d.ddd is not None]
         
         for i, patient in enumerate(sample_patients):
             atc_drug = atc_drugs[i%len(atc_drugs)] if atc_drugs else None

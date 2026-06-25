@@ -1,0 +1,348 @@
+Your project should be redesigned as a Tuberculosis (TB) Predictive EHR Analytics Dashboard where Machine Learning, Laboratory Results, Clinical Data, and Antimicrobial Stewardship work together to support doctors, laboratory staff, and pharmacists.
+
+Project Title
+
+TB Predictive EHR Analytics Dashboard for Patient Risk Monitoring, Diagnosis Support, Treatment Recommendation, and Antimicrobial Stewardship Using Machine Learning
+
+Main Goal
+
+Develop a web-based Electronic Health Record (EHR) system that uses patient data, laboratory results, antibiotic history, and machine learning to:
+
+Predict Tuberculosis (TB) risk.
+Predict treatment complications and treatment failure.
+Predict possible bacterial co-infections.
+Recommend appropriate TB treatment regimens.
+Detect antibiotic misuse and antimicrobial resistance risks.
+Generate prescriptions automatically.
+Support doctors, laboratory staff, pharmacists, and administrators through role-based access control.
+Provide real-time alerts, analytics, and clinical decision support.
+1. User Roles and Responsibilities
+Admin
+Manage users and roles.
+Manage system settings.
+Monitor dashboard analytics.
+Monitor ML model performance.
+View reports and audit logs.
+Manage treatment guidelines.
+Doctor
+Register and manage patient records.
+Record symptoms and medical history.
+Request laboratory tests.
+Enter diagnosis information.
+View ML predictions and recommendations.
+Review automatically generated prescriptions.
+Monitor patient treatment progress.
+Laboratory Staff
+
+Laboratory staff can ONLY access laboratory-related modules.
+
+Allowed:
+
+View pending lab requests.
+Enter laboratory results.
+Upload GeneXpert results.
+Upload sputum test results.
+Upload culture and sensitivity results.
+Upload chest X-ray findings.
+
+Not Allowed:
+
+Edit diagnoses.
+View prescriptions.
+Modify treatment plans.
+Access pharmacy modules.
+Pharmacist
+
+Allowed:
+
+View prescriptions generated after diagnosis.
+Approve medications if available.
+Reject medications if unavailable.
+Record rejection reasons.
+Monitor medicine stock levels.
+Monitor antibiotic consumption.
+
+Not Allowed:
+
+Modify diagnosis.
+Modify laboratory results.
+2. Patient Diagnosis Workflow
+Step 1: Patient Registration
+
+Capture:
+
+Patient ID
+Name
+Age
+Gender
+Weight
+Height
+Address
+Contact information
+Step 2: Clinical Assessment
+
+Doctor records:
+
+Symptoms:
+
+Persistent cough
+Fever
+Night sweats
+Weight loss
+Chest pain
+Fatigue
+Difficulty breathing
+
+Risk Factors:
+
+HIV status
+Diabetes
+Smoking history
+Previous TB history
+Family TB history
+Malnutrition
+Step 3: Antibiotic Usage Assessment
+
+Before diagnosis, doctor must ask:
+
+Have you used antibiotics before?
+Which antibiotics?
+For how long?
+Did you complete treatment?
+Did you stop early?
+Did you self-medicate?
+
+The system automatically analyzes responses to detect:
+
+Antibiotic misuse
+Overuse
+Incomplete treatment
+Self-medication behavior
+
+This information becomes an important ML feature.
+
+3. Laboratory Testing Module
+
+Supported tests:
+
+TB-Specific Tests
+GeneXpert MTB/RIF
+Sputum Smear Microscopy
+Sputum Culture
+Drug Susceptibility Testing (DST)
+Chest X-Ray
+Additional Tests
+CBC
+ESR
+CRP
+HIV Test
+Blood Glucose
+Liver Function Tests
+4. Machine Learning Prediction Engine
+
+Using patient data + laboratory data + antibiotic history.
+
+The model predicts:
+
+TB Risk Prediction
+
+Output:
+
+Low Risk
+Medium Risk
+High Risk
+
+Example:
+
+Patient Risk Score = 92%
+
+High Risk TB Alert
+
+Infection Prediction
+
+Predict:
+
+Mycobacterium tuberculosis
+Drug-sensitive TB
+Multidrug Resistant TB (MDR-TB)
+Extensively Drug Resistant TB (XDR-TB)
+
+Possible bacterial co-infections:
+
+Streptococcus pneumoniae
+Staphylococcus aureus
+Klebsiella pneumoniae
+Pseudomonas aeruginosa
+Treatment Failure Prediction
+
+Predict:
+
+Probability of treatment failure.
+Probability of relapse.
+Probability of readmission.
+Probability of drug resistance development.
+5. Automated Treatment Recommendation
+
+After diagnosis and laboratory confirmation:
+
+The ML model recommends:
+
+Recommendation	Description
+Treatment Regimen	Appropriate TB treatment
+Treatment Duration	Number of months
+Drug Dosage	Based on weight and age
+Follow-Up Schedule	Clinical monitoring plan
+Risk Warnings	Possible complications
+
+Example:
+
+Recommended Regimen:
+
+Rifampicin
+Isoniazid
+Pyrazinamide
+Ethambutol
+
+Duration:
+
+Intensive Phase: 2 months
+Continuation Phase: 4 months
+6. Automatic Prescription Generation
+
+When doctor confirms diagnosis:
+
+System automatically creates a prescription record.
+
+Prescription Table:
+
+Prescription ID
+Patient ID
+Diagnosis
+Recommended Medicines
+Dosages
+Frequency
+Duration
+Generated Date
+Status
+
+Status:
+
+Pending
+Approved
+Rejected
+7. Pharmacy Workflow
+
+Pharmacist sees only prescriptions.
+
+Example:
+
+Patient ID: TB-2026-001
+
+Medicine:
+
+Rifampicin
+Isoniazid
+Pyrazinamide
+Ethambutol
+
+Decision:
+
+Approve:
+
+Medication available.
+
+Reject:
+
+Out of stock.
+Expired stock.
+Alternative required.
+
+Reason stored in database.
+
+8. Antimicrobial Stewardship Module
+
+The system continuously monitors:
+
+Antibiotic prescriptions.
+Antibiotic consumption.
+Drug resistance patterns.
+Antibiotic misuse.
+
+Detect:
+
+Over-prescription.
+Duplicate therapy.
+Wrong antibiotic selection.
+Incomplete treatments.
+Self-medication risks.
+
+Generate recommendations:
+
+"Patient has a history of incomplete antibiotic use. Increased risk of antimicrobial resistance."
+
+9. Dashboard Analytics
+Doctor Dashboard
+
+Shows:
+
+High-risk TB patients.
+Treatment recommendations.
+Active alerts.
+Pending laboratory results.
+Treatment outcome trends.
+Laboratory Dashboard
+
+Shows:
+
+Pending tests.
+Completed tests.
+Positive TB cases.
+MDR-TB cases.
+Pharmacy Dashboard
+
+Shows:
+
+Pending prescriptions.
+Approved prescriptions.
+Rejected prescriptions.
+Drug stock levels.
+Antibiotic usage trends.
+Admin Dashboard
+
+Shows:
+
+System usage.
+User activities.
+TB trends.
+Drug resistance trends.
+ML performance metrics.
+10. Real-Time Alerts
+
+Examples:
+
+🚨 High TB Risk Detected
+
+🚨 MDR-TB Suspected
+
+🚨 Treatment Failure Risk > 80%
+
+🚨 Antibiotic Misuse Detected
+
+🚨 Critical Laboratory Result Available
+
+🚨 Medication Out of Stock
+
+Expected Outcome
+
+The system transforms raw patient and laboratory data into intelligent clinical decisions by:
+
+Predicting TB risk early.
+Identifying likely infections and resistant strains.
+Recommending evidence-based TB treatment.
+Automatically generating prescriptions.
+Detecting antibiotic misuse.
+Supporting pharmacists in medicine approval.
+Monitoring antimicrobial resistance.
+Improving patient outcomes through machine learning and real-time clinical decision support.
+
+This version aligns much better with your panel's requirements because it focuses on Tuberculosis, patient risk prediction, laboratory evidence, antimicrobial stewardship, automated prescriptions, role-based security, and machine learning-driven clinical decision support.

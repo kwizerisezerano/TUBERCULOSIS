@@ -46,12 +46,12 @@ from sqlalchemy.engine import make_url
 
 from app import app, db, load_models
 from import_data import main as import_data_main
-from models.models import Alert, Diagnosis, ExternalDatasetRow, Patient, Treatment, User, LabTest, Prescription, AuditLog
+from models.models import Alert, Diagnosis, ExternalDatasetRow, Patient, Treatment, User, LabTest, Prescription, AuditLog, ATCDrug, DetailedLabResult, AntibioticResistance
 from models.train_model import train_models_from_database
 from seed_users import seed_all
 
 
-MANAGED_MODELS = [User, Patient, Diagnosis, Treatment, Alert, ExternalDatasetRow, LabTest, Prescription, AuditLog]
+MANAGED_MODELS = [User, Patient, Diagnosis, Treatment, Alert, ExternalDatasetRow, LabTest, Prescription, AuditLog, ATCDrug, DetailedLabResult, AntibioticResistance]
 
 
 def recreate_database():
@@ -188,12 +188,16 @@ def bootstrap(import_data_enabled=True, seed_enabled=True, train_enabled=True, r
             "patients": Patient.query.count(),
             "users": User.query.count(),
             "training_result": training_result,
+            "detailed_lab_results": DetailedLabResult.query.count(),
+            "antibiotic_resistance_records": AntibioticResistance.query.count(),
         }
 
     print("=" * 60)
     print(f"Database type: {summary['database']}")
     print(f"Patients available: {summary['patients']}")
     print(f"Users available: {summary['users']}")
+    print(f"Detailed lab results: {summary['detailed_lab_results']}")
+    print(f"Antibiotic resistance records: {summary['antibiotic_resistance_records']}")
     print("=" * 60)
     return summary
 

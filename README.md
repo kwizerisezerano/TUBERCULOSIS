@@ -1,5 +1,20 @@
 # Predictive EHR Analytics Dashboard for Tuberculosis
 
+## 🎯 Key Points
+
+1. **ML-Powered Risk Prediction**: Random Forest models predict TB status and drug resistance with feature importance analysis
+2. **Automatic Prescription Generation**: ML recommends and creates prescriptions automatically when diagnosis is completed
+3. **Antimicrobial Stewardship**: Detects misuse (overuse, self-medication) and triggers real-time alerts
+4. **Role-Based Access Control (RBAC)**:
+   - Doctors: Full patient/diagnosis/prescription/lab access
+   - Lab Techs: Only lab test requests and results
+   - Pharmacists: Only prescriptions to approve/reject
+   - Admins: Full system control
+5. **Cumulative Antibiogram**: Includes TB-specific (MTBC) and common bacterial pathogens
+6. **WHO-Aligned Treatment**: Follows WHO TB treatment guidelines
+7. **Multi-Language Support**: English, French, Swahili, Kinyarwanda
+8. **Real-Time Alerts & Audit Logs**: Complete audit trail of all clinical actions
+
 ## 📊 Project Overview
 
 A **predictive EHR analytics dashboard** for patient risk monitoring and antimicrobial stewardship using machine learning. This system provides healthcare professionals with real-time insights, AI-driven recommendations, and comprehensive tools to improve patient outcomes and ensure safe antibiotic use.

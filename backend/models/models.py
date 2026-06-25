@@ -89,6 +89,15 @@ class Patient(db.Model):
     city = db.Column(db.String(100))
     region_code = db.Column(db.String(50))
     antibiotic_usage_history = db.Column(db.Text)
+    # Symptom checkboxes for ML model
+    has_fever = db.Column(db.String(10))  # Yes/No/Unknown
+    has_cough = db.Column(db.String(10))
+    has_weight_loss = db.Column(db.String(10))
+    has_night_sweats = db.Column(db.String(10))
+    has_chest_pain = db.Column(db.String(10))
+    has_blood = db.Column(db.String(10))
+    has_fatigue = db.Column(db.String(10))
+    has_shortness_of_breath = db.Column(db.String(10))
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
 
@@ -128,6 +137,14 @@ class Patient(db.Model):
             "oxygen_saturation_spo2": self.oxygen_saturation_spo2,
             "city": self.city,
             "antibiotic_usage_history": self.antibiotic_usage_history,
+            "has_fever": self.has_fever,
+            "has_cough": self.has_cough,
+            "has_weight_loss": self.has_weight_loss,
+            "has_night_sweats": self.has_night_sweats,
+            "has_chest_pain": self.has_chest_pain,
+            "has_blood": self.has_blood,
+            "has_fatigue": self.has_fatigue,
+            "has_shortness_of_breath": self.has_shortness_of_breath,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }
@@ -375,5 +392,96 @@ class ExternalDatasetRow(db.Model):
             "dataset_name": self.dataset_name,
             "source_key": self.source_key,
             "record_json": self.record_json,
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class DetailedLabResult(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'))
+    hospital = db.Column(db.String(100))
+    test_name = db.Column(db.String(100), nullable=False)
+    test_value = db.Column(db.String(100))
+    unit = db.Column(db.String(50))
+    reference_range = db.Column(db.String(100))
+    collection_date = db.Column(db.String(50))
+    source_dataset = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    patient = db.relationship('Patient', backref=db.backref('detailed_lab_results', lazy=True))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "patient_id": self.patient_id,
+            "hospital": self.hospital,
+            "test_name": self.test_name,
+            "test_value": self.test_value,
+            "unit": self.unit,
+            "reference_range": self.reference_range,
+            "collection_date": self.collection_date,
+            "source_dataset": self.source_dataset,
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class AntibioticResistance(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sample_id = db.Column(db.String(100), unique=True)
+    patient_name = db.Column(db.String(100))
+    patient_email = db.Column(db.String(200))
+    patient_address = db.Column(db.Text)
+    age_gender = db.Column(db.String(50))
+    bacterial_species = db.Column(db.String(100))
+    diabetes = db.Column(db.String(10))
+    hypertension = db.Column(db.String(10))
+    previous_hospitalization = db.Column(db.String(10))
+    infection_frequency = db.Column(db.Float)
+    amx_amp = db.Column(db.String(10))  # Amoxicillin/Ampicillin
+    amc = db.Column(db.String(10))  # Amoxicillin-clavulanate
+    cz = db.Column(db.String(10))  # Cefazolin
+    fox = db.Column(db.String(10))  # Cefoxitin
+    ctx_cro = db.Column(db.String(10))  # Cefotaxime/Ceftriaxone
+    ipm = db.Column(db.String(10))  # Imipenem
+    gen = db.Column(db.String(10))  # Gentamicin
+    an = db.Column(db.String(10))  # Amikacin
+    nalidixic_acid = db.Column(db.String(10))
+    ofx = db.Column(db.String(10))  # Ofloxacin
+    cip = db.Column(db.String(10))  # Ciprofloxacin
+    chloramphenicol = db.Column(db.String(10))
+    co_trimoxazole = db.Column(db.String(10))
+    furanes = db.Column(db.String(10))
+    colistine = db.Column(db.String(10))
+    collection_date = db.Column(db.String(50))
+    notes = db.Column(db.Text)
+    source_dataset = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "sample_id": self.sample_id,
+            "patient_name": self.patient_name,
+            "patient_email": self.patient_email,
+            "bacterial_species": self.bacterial_species,
+            "diabetes": self.diabetes,
+            "hypertension": self.hypertension,
+            "amx_amp": self.amx_amp,
+            "amc": self.amc,
+            "cz": self.cz,
+            "fox": self.fox,
+            "ctx_cro": self.ctx_cro,
+            "ipm": self.ipm,
+            "gen": self.gen,
+            "an": self.an,
+            "nalidixic_acid": self.nalidixic_acid,
+            "ofx": self.ofx,
+            "cip": self.cip,
+            "chloramphenicol": self.chloramphenicol,
+            "co_trimoxazole": self.co_trimoxazole,
+            "furanes": self.furanes,
+            "colistine": self.colistine,
+            "collection_date": self.collection_date,
+            "notes": self.notes,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
