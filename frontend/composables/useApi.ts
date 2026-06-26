@@ -84,6 +84,12 @@ export const useApi = () => {
     diagnose: (data: any) => request('/diagnose', { method: 'POST', body: data }),
     getDiagnoses: (page = 1, perPage = 20) => request(`/diagnoses?page=${page}&per_page=${perPage}`),
     getAtcDrugs: (page = 1, perPage = 20) => request(`/atc-drugs?page=${page}&per_page=${perPage}`),
+    getAlerts: (page = 1, perPage = 20, unreadOnly = false) => {
+      let url = `/alerts?page=${page}&per_page=${perPage}`;
+      if (unreadOnly) url += `&unread_only=true`;
+      return request(url);
+    },
+    markAlertRead: (id: number) => request(`/alerts/${id}/read`, { method: 'PUT' }),
   };
 };
 

@@ -3756,20 +3756,46 @@ def dashboard():
         'recent_activity': []
     }
     
+    # Universal stats for all roles that should see them
+    total_detailed_lab_results = DetailedLabResult.query.count()
+    total_antibiotic_resistance_records = AntibioticResistance.query.count()
+    total_atc_drugs = ATCDrug.query.count()
+    total_diagnoses = Diagnosis.query.count()
+    total_treatments = Treatment.query.count()
+    
+    # Calculate patient risk levels for ALL roles
+    total_patients = Patient.query.count()
+    all_patients = Patient.query.all()
+    high_risk_patients = 0
+    medium_risk_patients = 0
+    low_risk_patients = 0
+    for patient in all_patients:
+        level = calculate_risk_level(patient)
+        if level == 'high':
+            high_risk_patients += 1
+        elif level == 'medium':
+            medium_risk_patients += 1
+        else:
+            low_risk_patients +=1
+    recent_patients = Patient.query.filter(
+        Patient.created_at >= datetime.now() - timedelta(days=30)
+    ).count()
+    
+    response['patient_stats'] = {
+        'total': total_patients,
+        'high_risk': high_risk_patients,
+        'medium_risk': medium_risk_patients,
+        'low_risk': low_risk_patients,
+        'recent': recent_patients
+    }
+    response['detailed_lab_stats'] = { 'total': total_detailed_lab_results }
+    response['antimicrobial_resistance_stats'] = { 'total': total_antibiotic_resistance_records }
+    response['atc_drug_stats'] = { 'total': total_atc_drugs }
+    response['diagnosis_stats'] = { 'total': total_diagnoses }
+    response['treatment_stats'] = { 'total': total_treatments }
+    
     if role in ['system_admin', 'hospital_admin']:
         # Admin dashboard: Full stats
-        total_patients = Patient.query.count()
-        
-        # Calculate high risk patients
-        all_patients = Patient.query.all()
-        high_risk_patients = 0
-        for patient in all_patients:
-            if calculate_risk_level(patient) == 'high':
-                high_risk_patients += 1
-        
-        recent_patients = Patient.query.filter(
-            Patient.created_at >= datetime.now() - timedelta(days=30)
-        ).count()
         total_alerts = Alert.query.count()
         unread_alerts = Alert.query.filter_by(is_read=False).count()
         stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship').count()
@@ -3786,11 +3812,6 @@ def dashboard():
             with open(model_info_path, 'r', encoding='utf-8') as f:
                 model_info = json.load(f)
         
-        response['patient_stats'] = {
-            'total': total_patients,
-            'high_risk': high_risk_patients,
-            'recent': recent_patients
-        }
         response['lab_test_stats'] = {
             'requested': requested_lab_tests,
             'completed': completed_lab_tests
@@ -3810,10 +3831,6 @@ def dashboard():
     
     elif role == 'doctor':
         # Doctor dashboard
-        total_patients = Patient.query.count()
-        recent_patients = Patient.query.filter(
-            Patient.created_at >= datetime.now() - timedelta(days=30)
-        ).count()
         unread_alerts = Alert.query.filter_by(is_read=False, user_id=user_id).count()
         stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship').count()
         requested_lab_tests = LabTest.query.filter_by(requested_by=user_id, status='requested').count()
@@ -3823,10 +3840,6 @@ def dashboard():
         approved_prescriptions = Prescription.query.filter_by(status='approved').count()
         rejected_prescriptions = Prescription.query.filter_by(status='rejected').count()
         
-        response['patient_stats'] = {
-            'total': total_patients,
-            'recent': recent_patients
-        }
         response['lab_test_stats'] = {
             'requested': requested_lab_tests,
             'completed': completed_lab_tests
@@ -3934,7 +3947,8 @@ def patient_detail(patient_id):
             'diagnoses': [d.to_dict() for d in patient.diagnoses],
             'treatments': [t.to_dict() for t in patient.treatments],
             'alerts': [a.to_dict() for a in patient.alerts],
-            'detailed_lab_results': [r.to_dict() for r in patient.detailed_lab_results]
+            'detailed_lab_results': [r.to_dict() for r in patient.detailed_lab_results],
+            'antibiotic_resistance_records': [r.to_dict() for r in patient.antibiotic_resistance_records]
         })
 
     if request.method == 'PUT':

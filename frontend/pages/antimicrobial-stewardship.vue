@@ -36,7 +36,12 @@
                     <span v-if="record.gen === 'R'" class="px-2 py-0.5 text-xs rounded bg-red-900/30 text-red-400">GEN R</span>
                   </div>
                 </td>
-                <td class="px-6 py-4 text-sm text-gray-400">{{ record.collection_date ? new Date(record.collection_date).toLocaleDateString() : 'Unknown' }}</td>
+                <td class="px-6 py-4 text-sm text-gray-400">
+                  <span v-if="isValidDate(record.collection_date)">
+                    {{ new Date(record.collection_date).toLocaleDateString() }}
+                  </span>
+                  <span v-else>{{ record.collection_date || 'Unknown' }}</span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -77,6 +82,12 @@ const currentPage = ref(1);
 const perPage = 20;
 const totalRecords = ref(0);
 const totalPages = ref(1);
+
+const isValidDate = (dateString: any): boolean => {
+  if (!dateString) return false;
+  const date = new Date(dateString);
+  return !isNaN(date.getTime());
+};
 
 const loadRecords = async () => {
   const res = await getAntibioticResistanceRecords(currentPage.value, perPage);

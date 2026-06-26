@@ -167,8 +167,12 @@ def preprocess_and_fill_missing(df, patient_dict_list):
                 fill_values[field] = 'Never'
             elif field == 'alcohol_use':
                 fill_values[field] = 'Never'
-            else:
-                fill_values[field] = 'Unknown'
+            elif field in ['sputum_smear_test', 'genexpert_test', 'tb_culture', 'tst', 'igra']:
+                fill_values[field] = 'Negative'  # Default test results
+            elif field == 'chest_xray':
+                fill_values[field] = 'Normal'
+            elif field == 'drug_resistance':
+                fill_values[field] = 'No'
 
     # Apply fill values
     for p in patient_dict_list:
@@ -611,6 +615,31 @@ def import_owner_species_dataset(file_path):
         db.session.rollback()
         return 0
 
+def preprocess_atc_ddd_data(df):
+    """Preprocess ATC-DDD DataFrame, clean data, handle missing values"""
+    from collections import Counter
+
+    # Clean ATC code: ensure it's uppercase and remove whitespace
+    df['atc_code'] = df['atc_code'].astype(str).str.strip().str.upper()
+
+    # Compute mode for administration route and unit to fill missing values
+    route_values = []
+    unit_values = []
+    for val in df.get('adm_r', []):
+        cleaned = clean_text(val)
+        if cleaned:
+            route_values.append(cleaned)
+    for val in df.get('uom', []):
+        cleaned = clean_text(val)
+        if cleaned:
+            unit_values.append(cleaned)
+
+    route_mode = Counter(route_values).most_common(1)[0][0] if route_values else 'Oral'
+    unit_mode = Counter(unit_values).most_common(1)[0][0] if unit_values else 'mg'
+
+    return df, route_mode, unit_mode
+
+
 def import_atc_ddd_dataset(file_path):
     """Import WHO ATC-DDD dataset into ATCDrug model"""
     print(f"Importing WHO ATC-DDD dataset from: {file_path}")
@@ -618,12 +647,15 @@ def import_atc_ddd_dataset(file_path):
     try:
         df = pd.read_csv(file_path)
         print(f"  Found {len(df)} ATC-DDD records")
+        # Preprocess the data
+        print("  Preprocessing ATC-DDD data...")
+        df, route_mode, unit_mode = preprocess_atc_ddd_data(df)
 
         imported_count = 0
 
         for idx, row in df.iterrows():
-            atc_code = clean_text(row.get('atc_code', ''))
-            if not atc_code:
+            atc_code = row['atc_code']
+            if not atc_code or atc_code == 'NAN':
                 continue
 
             existing = ATCDrug.query.filter_by(atc_code=atc_code).first()
@@ -644,6 +676,11 @@ def import_atc_ddd_dataset(file_path):
             except (ValueError, TypeError):
                 ddd_val = None
 
+            # Get cleaned values, use modes if missing
+            drug_name = clean_text(row.get('atc_name', ''))
+            ddd_unit = clean_text(row.get('uom', '')) or unit_mode
+            administration_route = clean_text(row.get('adm_r', '')) or route_mode
+
             atc_drug = ATCDrug(
                 atc_code=atc_code,
                 atc_level_1=atc_level_1,
@@ -651,10 +688,10 @@ def import_atc_ddd_dataset(file_path):
                 atc_level_3=atc_level_3,
                 atc_level_4=atc_level_4,
                 atc_level_5=atc_level_5,
-                drug_name=clean_text(row.get('atc_name', '')),
+                drug_name=drug_name,
                 ddd=ddd_val,
-                ddd_unit=clean_text(row.get('uom', '')),
-                administration_route=clean_text(row.get('adm_r', ''))
+                ddd_unit=ddd_unit,
+                administration_route=administration_route
             )
 
             with db.session.no_autoflush:
@@ -729,15 +766,53 @@ def import_multi_hospital_lab_results(file_path):
     try:
         df = pd.read_csv(file_path)
         print(f"  Found {len(df)} lab results")
+        
+        from collections import Counter
+
+        # Calculate mode for categorical fields first
+        field_modes = {}
+        text_fields = ['hospital', 'test_name', 'test_value', 'unit', 'reference_range', 'collection_date']
+        
+        for field in text_fields:
+            values = []
+            for val in df.get(field, []):
+                cleaned = clean_text(val)
+                if cleaned and cleaned not in ['', 'Unknown', 'Unknown Hospital', 'Unknown Test', 
+                                               'Not Available', 'N/A', 'Not Specified', 'Unknown Date']:
+                    values.append(cleaned)
+            if values:
+                field_modes[field] = Counter(values).most_common(1)[0][0]
+            else:
+                # Defaults
+                if field == 'hospital':
+                    field_modes[field] = 'General Hospital'
+                elif field == 'test_name':
+                    field_modes[field] = 'Complete Blood Count'
+                elif field == 'test_value':
+                    field_modes[field] = 'Normal'
+                elif field == 'unit':
+                    field_modes[field] = 'mg/dL'
+                elif field == 'reference_range':
+                    field_modes[field] = 'Standard Range'
+                elif field == 'collection_date':
+                    field_modes[field] = '2024-01-01'
+        
         imported_count = 0
         for idx, row in df.iterrows():
+            def get_field(field_name):
+                val = clean_text(row.get(field_name))
+                if val and val not in ['', 'Unknown', 'Unknown Hospital', 'Unknown Test', 
+                                       'Not Available', 'N/A', 'Not Specified', 'Unknown Date']:
+                    return val
+                return field_modes[field_name]
+            
             lab_result = DetailedLabResult(
-                hospital=clean_text(row.get('hospital', 'Unknown Hospital')),
-                test_name=clean_text(row.get('test_name', 'Unknown Test')),
-                test_value=clean_text(row.get('test_value', 'Not Available')),
-                unit=clean_text(row.get('unit', 'N/A')),
-                reference_range=clean_text(row.get('reference_range', 'Not Specified')),
-                collection_date=clean_text(row.get('collection_date', 'Unknown Date')),
+                hospital=get_field('hospital'),
+                test_name=get_field('test_name'),
+                test_value=get_field('test_value'),
+                unit=get_field('unit'),
+                reference_range=get_field('reference_range'),
+                collection_date=get_field('collection_date'),
                 source_dataset='multi_hospital_lab_results'
             )
             db.session.add(lab_result)
@@ -751,55 +826,207 @@ def import_multi_hospital_lab_results(file_path):
         return 0
 
 
+def preprocess_antibiotic_resistance_data(df):
+    """Preprocess antibiotic resistance DataFrame to handle missing values, normalize data"""
+    from collections import Counter
+    import pandas as pd
+
+    def is_valid_date(date_str):
+        if pd.isna(date_str) or not date_str:
+            return False
+        try:
+            pd.to_datetime(date_str, errors='raise')
+            return True
+        except:
+            return False
+
+    # First, collect all non-unknown values to compute mode for categorical fields
+    yes_no_fields = ['Diabetes', 'Hypertension', 'Hospital_before']
+    antibiotic_fields = ['AMX/AMP', 'AMC', 'CZ', 'FOX', 'CTX/CRO', 'IPM', 'GEN', 'AN', 
+                         'Acide nalidixique', 'ofx', 'CIP', 'C', 'Co-trimoxazole', 'Furanes', 'colistine']
+    text_fields_to_process = ['ID', 'Name', 'Email', 'Address', 'age/gender', 'Souches', 'Notes', 'Collection_Date']
+
+    # Compute mode for yes/no fields
+    field_modes = {}
+    for field in yes_no_fields:
+        values = []
+        for val in df.get(field, []):
+            normalized = normalize_yes_no_unknown(val)
+            if normalized != 'Unknown':
+                values.append(normalized)
+        if values:
+            field_modes[field] = Counter(values).most_common(1)[0][0]
+        else:
+            field_modes[field] = 'No'  # Default to No for yes/no fields
+
+    # Compute mode for antibiotic fields
+    for field in antibiotic_fields:
+        values = []
+        for val in df.get(field, []):
+            normalized = normalize_ab_result(val)
+            if normalized != 'Unknown':
+                values.append(normalized)
+        if values:
+            field_modes[field] = Counter(values).most_common(1)[0][0]
+        else:
+            field_modes[field] = 'S'  # Default to susceptible for AB results
+
+    # Compute mode for all text fields (including ID, Name, etc.)
+    text_field_modes = {}
+    for field in ['Souches', 'Name', 'Email', 'Address', 'age/gender', 'Notes']:
+        values = []
+        for val in df.get(field, []):
+            cleaned = clean_text(val)
+            if cleaned and cleaned not in ['Unknown', '', 'missing']:
+                values.append(cleaned)
+        if values:
+            text_field_modes[field] = Counter(values).most_common(1)[0][0]
+        else:
+            # Default fallbacks
+            defaults = {
+                'Souches': 'Unknown Species',
+                'Name': 'Anonymous Patient',
+                'Email': 'unknown@example.com',
+                'Address': 'Unknown Address',
+                'age/gender': 'Unknown',
+                'Notes': 'No notes'
+            }
+            text_field_modes[field] = defaults.get(field, 'Unknown')
+
+    # Compute mode for valid Collection_Date
+    date_values = []
+    for val in df.get('Collection_Date', []):
+        cleaned = clean_text(val)
+        if cleaned and cleaned not in ['Unknown', '', 'missing'] and is_valid_date(cleaned):
+            date_values.append(cleaned)
+    if date_values:
+        date_mode = Counter(date_values).most_common(1)[0][0]
+    else:
+        date_mode = 'Unknown Date'
+
+    # Now fill missing values for ALL fields
+    processed_records = []
+    for idx, row in df.iterrows():
+        record = row.to_dict()
+        
+        # Fill yes/no fields with mode
+        for field in yes_no_fields:
+            val = record.get(field)
+            normalized = normalize_yes_no_unknown(val)
+            if normalized == 'Unknown':
+                record[field] = field_modes[field]
+            else:
+                record[field] = normalized
+        
+        # Fill antibiotic fields with mode
+        for field in antibiotic_fields:
+            val = record.get(field)
+            normalized = normalize_ab_result(val)
+            if normalized == 'Unknown':
+                record[field] = field_modes[field]
+            else:
+                record[field] = normalized
+        
+        # Fill text fields - handle "missing" value too
+        def get_processed_text(field_name, fallback_default):
+            val = clean_text(record.get(field_name))
+            if val and val not in ['Unknown', '', 'missing']:
+                return val
+            return text_field_modes.get(field_name, fallback_default)
+        
+        def normalize_bacterial_species(species_str):
+            normalized = clean_text(species_str)
+            typos = {
+                'E.cli': 'E. coli',
+                'Ecoli': 'E. coli',
+                'E Coli': 'E. coli',
+                'Escherichia Coli': 'Escherichia coli',
+                'Escherichia coli ': 'Escherichia coli'
+            }
+            return typos.get(normalized, normalized)
+        
+        record['Name'] = get_processed_text('Name', 'Anonymous Patient')
+        record['Email'] = get_processed_text('Email', 'unknown@example.com')
+        record['Address'] = get_processed_text('Address', 'Unknown Address')
+        record['age/gender'] = get_processed_text('age/gender', 'Unknown')
+        record['Souches'] = normalize_bacterial_species(get_processed_text('Souches', 'Unknown Species'))
+        record['Notes'] = get_processed_text('Notes', 'No notes')
+        
+        # Handle ID (sample_id): if missing, generate one (S + idx + 1)
+        id_val = clean_text(record.get('ID'))
+        if id_val and id_val not in ['Unknown', '', 'missing']:
+            record['ID'] = id_val
+        else:
+            record['ID'] = f'S{idx + 1}'
+        
+        # Handle Collection_Date - validate and use mode if invalid/missing
+        cd_val = clean_text(record.get('Collection_Date'))
+        if cd_val and cd_val not in ['Unknown', '', 'missing'] and is_valid_date(cd_val):
+            record['Collection_Date'] = cd_val
+        else:
+            record['Collection_Date'] = date_mode
+        
+        processed_records.append(record)
+    
+    return processed_records
+
+
 def import_antibiotic_resistance(file_path):
     """Import antibiotic resistance dataset into AntibioticResistance model"""
     print(f"Importing antibiotic resistance data from: {file_path}")
     try:
         df = pd.read_csv(file_path)
         print(f"  Found {len(df)} resistance records")
+        # Preprocess data
+        print("  Preprocessing data (handling missing values)...")
+        processed_records = preprocess_antibiotic_resistance_data(df)
         imported_count = 0
-        for idx, row in df.iterrows():
+        for idx, record in enumerate(processed_records):
             # Handle infection frequency: convert to float, default to 0.0
             try:
-                inf_freq = float(row.get('Infection_Freq', 0)) if pd.notna(row.get('Infection_Freq')) else 0.0
+                inf_freq = float(record.get('Infection_Freq', 0)) if pd.notna(record.get('Infection_Freq')) else 0.0
             except (ValueError, TypeError):
                 inf_freq = 0.0
                 
-            sample_id = clean_text(row.get('ID', f'S{idx+1}'))
+            sample_id = clean_text(record.get('ID', f'S{idx+1}'))
             
             # Check if already exists
             existing = AntibioticResistance.query.filter_by(sample_id=sample_id).first()
             if existing:
                 continue
                 
+            # For now, skip patient matching (Patient model doesn't have email/address)
+            patient_id = None
+                
             ar = AntibioticResistance(
                 sample_id=sample_id,
-                patient_name=clean_text(row.get('Name', 'Anonymous Patient')),
-                patient_email=clean_text(row.get('Email', 'unknown@example.com')),
-                patient_address=clean_text(row.get('Address', 'Unknown Address')),
-                age_gender=clean_text(row.get('age/gender', 'Unknown')),
-                bacterial_species=clean_text(row.get('Souches', 'Unknown Species')),
-                diabetes=normalize_yes_no_unknown(row.get('Diabetes')),
-                hypertension=normalize_yes_no_unknown(row.get('Hypertension')),
-                previous_hospitalization=normalize_yes_no_unknown(row.get('Hospital_before')),
+                patient_id=patient_id,
+                patient_name=record.get('Name'),
+                patient_email=record.get('Email'),
+                patient_address=record.get('Address'),
+                age_gender=record.get('age/gender'),
+                bacterial_species=record.get('Souches'),
+                diabetes=record.get('Diabetes'),
+                hypertension=record.get('Hypertension'),
+                previous_hospitalization=record.get('Hospital_before'),
                 infection_frequency=inf_freq,
-                amx_amp=normalize_ab_result(row.get('AMX/AMP')),
-                amc=normalize_ab_result(row.get('AMC')),
-                cz=normalize_ab_result(row.get('CZ')),
-                fox=normalize_ab_result(row.get('FOX')),
-                ctx_cro=normalize_ab_result(row.get('CTX/CRO')),
-                ipm=normalize_ab_result(row.get('IPM')),
-                gen=normalize_ab_result(row.get('GEN')),
-                an=normalize_ab_result(row.get('AN')),
-                nalidixic_acid=normalize_ab_result(row.get('Acide nalidixique')),
-                ofx=normalize_ab_result(row.get('ofx')),
-                cip=normalize_ab_result(row.get('CIP')),
-                chloramphenicol=normalize_ab_result(row.get('C')),
-                co_trimoxazole=normalize_ab_result(row.get('Co-trimoxazole')),
-                furanes=normalize_ab_result(row.get('Furanes')),
-                colistine=normalize_ab_result(row.get('colistine')),
-                collection_date=clean_text(row.get('Collection_Date', 'Unknown Date')),
-                notes=clean_text(row.get('Notes', 'No notes')),
+                amx_amp=record.get('AMX/AMP'),
+                amc=record.get('AMC'),
+                cz=record.get('CZ'),
+                fox=record.get('FOX'),
+                ctx_cro=record.get('CTX/CRO'),
+                ipm=record.get('IPM'),
+                gen=record.get('GEN'),
+                an=record.get('AN'),
+                nalidixic_acid=record.get('Acide nalidixique'),
+                ofx=record.get('ofx'),
+                cip=record.get('CIP'),
+                chloramphenicol=record.get('C'),
+                co_trimoxazole=record.get('Co-trimoxazole'),
+                furanes=record.get('Furanes'),
+                colistine=record.get('colistine'),
+                collection_date=record.get('Collection_Date'),
+                notes=record.get('Notes'),
                 source_dataset='Bacteria_dataset_Multiresictance'
             )
             with db.session.no_autoflush:

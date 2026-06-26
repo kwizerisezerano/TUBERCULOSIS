@@ -428,6 +428,7 @@ class DetailedLabResult(db.Model):
 class AntibioticResistance(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sample_id = db.Column(db.String(100), unique=True)
+    patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'))
     patient_name = db.Column(db.String(100))
     patient_email = db.Column(db.String(200))
     patient_address = db.Column(db.Text)
@@ -457,10 +458,14 @@ class AntibioticResistance(db.Model):
     source_dataset = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
+    # Relationship to Patient
+    patient = db.relationship('Patient', backref=db.backref('antibiotic_resistance_records', lazy=True))
+
     def to_dict(self):
         return {
             "id": self.id,
             "sample_id": self.sample_id,
+            "patient_id": self.patient_id,
             "patient_name": self.patient_name,
             "patient_email": self.patient_email,
             "bacterial_species": self.bacterial_species,
