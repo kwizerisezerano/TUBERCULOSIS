@@ -143,8 +143,8 @@ onMounted(async () => {
     ]);
     dashboard.value = dashRes;
     patients.value = (pRes as any).patients || [];
-    labResults.value = (lRes as any)['detailed-lab-results'] || [];
-    arRecords.value = (arRes as any)['antibiotic-resistance'] || [];
+    labResults.value = (lRes as any).detailed_lab_results || [];
+    arRecords.value = (arRes as any).antibiotic_resistance_records || [];
   } catch (e) {
     console.error('Failed to load data', e);
   }

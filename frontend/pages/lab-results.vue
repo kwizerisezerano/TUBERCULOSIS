@@ -3,6 +3,9 @@
     <div class="space-y-6">
       <div class="flex flex-col sm:flex-row gap-4 justify-between items-center">
         <h2 class="text-xl font-bold text-white">Laboratory Results</h2>
+        <div class="flex items-center gap-2 text-sm text-gray-400">
+          Total: {{ totalResults }} results
+        </div>
       </div>
 
       <div class="bg-gray-800 rounded-2xl shadow-sm border border-gray-700 overflow-hidden">
@@ -32,6 +35,28 @@
             </tbody>
           </table>
         </div>
+        
+        <div class="px-6 py-4 border-t border-gray-700 flex items-center justify-between">
+          <div class="text-sm text-gray-400">
+            Page {{ currentPage }} of {{ totalPages }}
+          </div>
+          <div class="flex gap-2">
+            <button
+              @click="currentPage = Math.max(1, currentPage - 1)"
+              :disabled="currentPage <= 1"
+              class="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm text-white transition"
+            >
+              Previous
+            </button>
+            <button
+              @click="currentPage = Math.min(totalPages, currentPage + 1)"
+              :disabled="currentPage >= totalPages"
+              class="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm text-white transition"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </DashboardLayout>
@@ -42,9 +67,21 @@ import DashboardLayout from '~/components/DashboardLayout.vue';
 const { getDetailedLabResults } = useApi();
 
 const labResults = ref<any[]>([]);
+const currentPage = ref(1);
+const perPage = 20;
+const totalResults = ref(0);
+const totalPages = ref(1);
+
+const loadResults = async () => {
+  const res = await getDetailedLabResults(currentPage.value, perPage);
+  labResults.value = (res as any).detailed_lab_results || [];
+  totalResults.value = (res as any).total || 0;
+  totalPages.value = (res as any).pages || 1;
+};
+
+watch(currentPage, () => loadResults());
 
 onMounted(async () => {
-  const res = await getDetailedLabResults();
-  labResults.value = (res as any)['detailed-lab-results'] || [];
+  await loadResults();
 });
 </script>

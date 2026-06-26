@@ -3467,8 +3467,16 @@ def lab_test_detail(test_id):
 @jwt_required()
 def atc_drugs():
     if request.method == 'GET':
-        drugs = ATCDrug.query.all()
-        return jsonify({'atc_drugs': [d.to_dict() for d in drugs]})
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        pagination = ATCDrug.query.order_by(ATCDrug.drug_name).paginate(page=page, per_page=per_page, error_out=False)
+        drugs = [d.to_dict() for d in pagination.items]
+        return jsonify({
+            'atc_drugs': drugs,
+            'total': pagination.total,
+            'pages': pagination.pages,
+            'current_page': page
+        })
     
     if request.method == 'POST':
         data = request.get_json()
@@ -4204,6 +4212,8 @@ def diagnose():
         patient_id=patient.id,
         clinician_id=user.id,
         diagnosis_type=tb_analysis['who_category'],
+        risk_level=symptom_analysis["risk_level"],
+        confidence_percent=test_evaluation["confidence_percent"],
         details=json.dumps({
             'tb_types': tb_analysis['tb_types'],
             'symptoms_present': tb_analysis['symptoms_present'],
@@ -4356,7 +4366,12 @@ def get_diagnoses():
     per_page = request.args.get('per_page', 20, type=int)
     pagination = Diagnosis.query.order_by(Diagnosis.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     diagnoses = [d.to_dict() for d in pagination.items]
-    return jsonify({'diagnoses': diagnoses, 'total': pagination.total})
+    return jsonify({
+        'diagnoses': diagnoses, 
+        'total': pagination.total,
+        'pages': pagination.pages,
+        'current_page': page
+    })
 
 @app.route('/api/treatments', methods=['GET'])
 @jwt_required()

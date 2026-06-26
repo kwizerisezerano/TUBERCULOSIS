@@ -82,7 +82,8 @@ export const useApi = () => {
     getPrescriptions: () => request('/prescriptions'),
     getDashboardStats: () => request('/dashboard'),
     diagnose: (data: any) => request('/diagnose', { method: 'POST', body: data }),
-    getDiagnoses: () => request('/diagnoses'),
+    getDiagnoses: (page = 1, perPage = 20) => request(`/diagnoses?page=${page}&per_page=${perPage}`),
+    getAtcDrugs: (page = 1, perPage = 20) => request(`/atc-drugs?page=${page}&per_page=${perPage}`),
   };
 };
 
