@@ -3296,21 +3296,18 @@ def patients():
         pagination = query.order_by(order_clause).paginate(page=page, per_page=per_page, error_out=False)
         patients_list = [patient.to_dict() for patient in pagination.items]
         
-        # Calculate risk counts for ALL patients (or filtered patients if search is applied)
-        all_patients = query.all()
-        high_risk = 0
-        medium_risk = 0
-        low_risk = 0
-        
-        for patient in all_patients:
-            risk = calculate_risk_level(patient)
-            if risk == 'high':
-                high_risk += 1
-            elif risk == 'medium':
-                medium_risk += 1
-            else:
-                low_risk += 1
-        
+        high_risk = query.filter(
+            db.or_(Patient.tb_status_label == 'Yes', Patient.genexpert_test == 'Positive')
+        ).count()
+        medium_risk = query.filter(
+            db.and_(
+                Patient.tb_status_label != 'Yes',
+                Patient.genexpert_test != 'Positive',
+                db.or_(Patient.sputum_smear_test == 'Positive', Patient.chest_xray == 'Abnormal')
+            )
+        ).count()
+        low_risk = max(0, pagination.total - high_risk - medium_risk)
+
         return jsonify({
             'patients': patients_list,
             'total': pagination.total,
@@ -3763,20 +3760,26 @@ def dashboard():
     total_diagnoses = Diagnosis.query.count()
     total_treatments = Treatment.query.count()
     
-    # Calculate patient risk levels for ALL roles
+    # Calculate patient risk levels using DB counts (avoids loading all patients into memory)
     total_patients = Patient.query.count()
-    all_patients = Patient.query.all()
-    high_risk_patients = 0
-    medium_risk_patients = 0
-    low_risk_patients = 0
-    for patient in all_patients:
-        level = calculate_risk_level(patient)
-        if level == 'high':
-            high_risk_patients += 1
-        elif level == 'medium':
-            medium_risk_patients += 1
-        else:
-            low_risk_patients +=1
+    # High risk: tb_status_label=Yes OR genexpert=Positive OR (sputum=Positive AND chest_xray=Abnormal)
+    high_risk_patients = Patient.query.filter(
+        db.or_(
+            Patient.tb_status_label == 'Yes',
+            Patient.genexpert_test == 'Positive',
+        )
+    ).count()
+    medium_risk_patients = Patient.query.filter(
+        db.and_(
+            Patient.tb_status_label != 'Yes',
+            Patient.genexpert_test != 'Positive',
+            db.or_(
+                Patient.sputum_smear_test == 'Positive',
+                Patient.chest_xray == 'Abnormal',
+            )
+        )
+    ).count()
+    low_risk_patients = max(0, total_patients - high_risk_patients - medium_risk_patients)
     recent_patients = Patient.query.filter(
         Patient.created_at >= datetime.now() - timedelta(days=30)
     ).count()
@@ -3807,7 +3810,7 @@ def dashboard():
         recent_audits = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(20).all()
         
         model_info = {}
-        model_info_path = os.path.join(MODELS_DIR, 'model_info.json')
+        model_info_path = os.path.join(os.path.dirname(__file__), 'models', 'model_info.json')
         if os.path.exists(model_info_path):
             with open(model_info_path, 'r', encoding='utf-8') as f:
                 model_info = json.load(f)
@@ -3865,6 +3868,11 @@ def dashboard():
             'in_progress': in_progress_lab_tests,
             'completed_by_me': completed_lab_tests
         }
+        response['prescription_stats'] = {
+            'pending': Prescription.query.filter_by(status='pending').count(),
+            'approved': Prescription.query.filter_by(status='approved').count(),
+            'rejected': Prescription.query.filter_by(status='rejected').count()
+        }
         response['recent_activity'] = [audit.to_dict() for audit in recent_audits]
     
     elif role == 'pharmacist':
@@ -3876,8 +3884,8 @@ def dashboard():
         
         response['prescription_stats'] = {
             'pending': pending_prescriptions,
-            'approved_by_me': approved_prescriptions,
-            'rejected_by_me': rejected_prescriptions
+            'approved': Prescription.query.filter_by(status='approved').count(),
+            'rejected': Prescription.query.filter_by(status='rejected').count()
         }
         response['recent_activity'] = [audit.to_dict() for audit in recent_audits]
     
