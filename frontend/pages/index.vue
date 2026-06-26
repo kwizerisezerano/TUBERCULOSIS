@@ -38,22 +38,22 @@
 
           <!-- Features Grid -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div v-for="feature in features" :key="feature.title" class="flex items-start gap-4 p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
-              <div class="shrink-0 w-12 h-12 rounded-lg flex items-center justify-center" :class="feature.color">
-                <span class="w-6 h-6 text-white" v-html="feature.icon"></span>
+            <div v-for="feature in features" :key="feature.title" class="flex items-start gap-3 sm:gap-4 p-4 sm:p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
+              <div class="shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center" :class="feature.color">
+                <span class="w-5 h-5 sm:w-6 sm:h-6 text-white" v-html="feature.icon"></span>
               </div>
               <div>
-                <h3 class="font-semibold text-gray-900 dark:text-white text-base sm:text-lg">{{ feature.title }}</h3>
-                <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-2">{{ feature.desc }}</p>
+                <h3 class="font-semibold text-gray-900 dark:text-white text-sm sm:text-base lg:text-lg">{{ feature.title }}</h3>
+                <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 sm:mt-2">{{ feature.desc }}</p>
               </div>
             </div>
           </div>
 
           <!-- Stats -->
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-5">
-            <div v-for="stat in stats" :key="stat.label" class="text-center p-6 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex flex-col justify-center">
-              <p class="text-4xl sm:text-5xl font-bold text-primary-600">{{ stat.value }}</p>
-              <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-3">{{ stat.label }}</p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
+            <div v-for="stat in stats" :key="stat.label" class="text-center p-4 sm:p-6 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex flex-col justify-center">
+              <p class="text-2xl sm:text-4xl lg:text-5xl font-bold text-primary-600">{{ stat.value }}</p>
+              <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-2 sm:mt-3">{{ stat.label }}</p>
             </div>
           </div>
         </div>
@@ -129,13 +129,13 @@
           <!-- Quick Credentials -->
           <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-4 font-semibold uppercase tracking-wide">Demo Credentials</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button v-for="cred in credentials" :key="cred.role" @click="email = cred.email; password = cred.pwd; showPwd = true" class="flex items-start justify-between px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-xs sm:text-sm">
-                <div class="text-left min-w-0">
+            <div class="space-y-2">
+              <button v-for="cred in credentials" :key="cred.role" @click="email = cred.email; password = cred.pwd; showPwd = true" class="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm">
+                <div class="text-left min-w-0 flex-1">
                   <span class="font-semibold text-gray-700 dark:text-gray-300 block truncate">{{ cred.role }}</span>
-                  <span class="text-gray-400 dark:text-gray-500 text-[10px] sm:text-xs truncate block">{{ cred.email }}</span>
+                  <span class="text-gray-400 dark:text-gray-500 text-xs truncate block">{{ cred.email }}</span>
                 </div>
-                <span class="text-primary-600 dark:text-primary-400 font-mono text-[10px] sm:text-xs mt-0.5 sm:mt-1 ml-2 sm:ml-4 shrink-0">{{ cred.pwd }}</span>
+                <span class="text-primary-600 dark:text-primary-400 font-mono text-xs shrink-0">{{ cred.pwd }}</span>
               </button>
             </div>
           </div>
