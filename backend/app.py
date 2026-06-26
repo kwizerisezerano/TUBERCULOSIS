@@ -4453,6 +4453,171 @@ def import_data_endpoint():
         print(f"Data import failed: {e}")
         return jsonify({'error': tr('IMPORT_DATA_FAILED')}), 500
 
+
+@app.route('/api/dashboard/charts')
+@jwt_required()
+def dashboard_charts():
+    from sqlalchemy import func, case
+
+    # 1. Patient Risk Level distribution (bar)
+    high = Patient.query.filter(
+        db.or_(Patient.tb_status_label == 'Yes', Patient.genexpert_test == 'Positive')
+    ).count()
+    medium = Patient.query.filter(
+        db.and_(
+            Patient.tb_status_label != 'Yes', Patient.genexpert_test != 'Positive',
+            db.or_(Patient.sputum_smear_test == 'Positive', Patient.chest_xray == 'Abnormal')
+        )
+    ).count()
+    total = Patient.query.count()
+    low = max(0, total - high - medium)
+    risk_chart = {
+        'labels': ['High Risk', 'Medium Risk', 'Low Risk'],
+        'data': [high, medium, low],
+        'colors': ['#ef4444', '#f59e0b', '#10b981']
+    }
+
+    # 2. TB Status breakdown (doughnut)
+    tb_positive = Patient.query.filter(Patient.tb_status_label == 'Yes').count()
+    tb_negative = Patient.query.filter(Patient.tb_status_label == 'No').count()
+    tb_unknown = total - tb_positive - tb_negative
+    tb_status_chart = {
+        'labels': ['TB Positive', 'TB Negative', 'Unknown'],
+        'data': [tb_positive, tb_negative, tb_unknown],
+        'colors': ['#ef4444', '#10b981', '#6b7280']
+    }
+
+    # 3. Drug Resistance distribution (bar)
+    dr_yes = Patient.query.filter(Patient.drug_resistance == 'Yes').count()
+    dr_no = Patient.query.filter(Patient.drug_resistance == 'No').count()
+    dr_unknown = total - dr_yes - dr_no
+    resistance_chart = {
+        'labels': ['Resistant', 'Sensitive', 'Unknown'],
+        'data': [dr_yes, dr_no, dr_unknown],
+        'colors': ['#f97316', '#06b6d4', '#6b7280']
+    }
+
+    # 4. Antibiogram – resistance rates per antibiotic from AntibioticResistance table (bar)
+    ab_fields = [
+        ('amx_amp', 'AMX/AMP'), ('amc', 'AMC'), ('cz', 'CZ'), ('fox', 'FOX'),
+        ('ctx_cro', 'CTX/CRO'), ('ipm', 'IPM'), ('gen', 'GEN'), ('an', 'AN'),
+        ('ofx', 'OFX'), ('cip', 'CIP'), ('chloramphenicol', 'CHL'),
+        ('co_trimoxazole', 'SXT'), ('colistine', 'CST')
+    ]
+    ar_total = AntibioticResistance.query.count()
+    antibiogram_labels, antibiogram_data = [], []
+    if ar_total > 0:
+        for col_name, label in ab_fields:
+            col = getattr(AntibioticResistance, col_name)
+            r_count = AntibioticResistance.query.filter(col == 'R').count()
+            pct = round(r_count / ar_total * 100, 1)
+            antibiogram_labels.append(label)
+            antibiogram_data.append(pct)
+    antibiogram_chart = {
+        'labels': antibiogram_labels,
+        'data': antibiogram_data,
+        'title': 'Antibiotic Resistance Rate (%)'
+    }
+
+    # 5. Top bacterial species from AntibioticResistance (horizontal bar)
+    species_rows = db.session.query(
+        AntibioticResistance.bacterial_species,
+        func.count(AntibioticResistance.id).label('cnt')
+    ).filter(AntibioticResistance.bacterial_species.isnot(None)) \
+     .group_by(AntibioticResistance.bacterial_species) \
+     .order_by(func.count(AntibioticResistance.id).desc()) \
+     .limit(8).all()
+    species_chart = {
+        'labels': [r.bacterial_species for r in species_rows],
+        'data': [r.cnt for r in species_rows],
+        'colors': ['#8b5cf6', '#06b6d4', '#f59e0b', '#ef4444', '#10b981', '#f97316', '#3b82f6', '#ec4899']
+    }
+
+    # 6. Key symptom prevalence (horizontal bar)
+    symptom_fields = [
+        (Patient.has_fever, 'Fever'), (Patient.has_cough, 'Cough'),
+        (Patient.has_weight_loss, 'Weight Loss'), (Patient.has_night_sweats, 'Night Sweats'),
+        (Patient.has_chest_pain, 'Chest Pain'), (Patient.has_blood, 'Hemoptysis'),
+        (Patient.has_fatigue, 'Fatigue'), (Patient.has_shortness_of_breath, 'Shortness of Breath')
+    ]
+    symptom_labels, symptom_data = [], []
+    for col, label in symptom_fields:
+        cnt = Patient.query.filter(col == 'Yes').count()
+        pct = round(cnt / total * 100, 1) if total > 0 else 0
+        symptom_labels.append(label)
+        symptom_data.append(pct)
+    symptoms_chart = {
+        'labels': symptom_labels,
+        'data': symptom_data,
+        'title': 'Symptom Prevalence (% of patients)'
+    }
+
+    # 7. Test positivity rates (bar)
+    genexpert_pos = Patient.query.filter(Patient.genexpert_test == 'Positive').count()
+    sputum_pos = Patient.query.filter(Patient.sputum_smear_test == 'Positive').count()
+    xray_abn = Patient.query.filter(Patient.chest_xray == 'Abnormal').count()
+    culture_pos = Patient.query.filter(Patient.tb_culture == 'Positive').count()
+    tests_chart = {
+        'labels': ['GeneXpert+', 'Sputum+', 'X-ray Abnormal', 'Culture+'],
+        'data': [
+            round(genexpert_pos / total * 100, 1) if total > 0 else 0,
+            round(sputum_pos / total * 100, 1) if total > 0 else 0,
+            round(xray_abn / total * 100, 1) if total > 0 else 0,
+            round(culture_pos / total * 100, 1) if total > 0 else 0,
+        ],
+        'colors': ['#8b5cf6', '#06b6d4', '#f59e0b', '#10b981']
+    }
+
+    # 8. Gender distribution (doughnut)
+    gender_rows = db.session.query(
+        Patient.gender, func.count(Patient.id).label('cnt')
+    ).filter(Patient.gender.isnot(None)).group_by(Patient.gender).all()
+    gender_chart = {
+        'labels': [r.gender for r in gender_rows],
+        'data': [r.cnt for r in gender_rows],
+        'colors': ['#3b82f6', '#ec4899', '#6b7280']
+    }
+
+    # 9. Prescription status (doughnut)
+    p_pending = Prescription.query.filter_by(status='pending').count()
+    p_approved = Prescription.query.filter_by(status='approved').count()
+    p_rejected = Prescription.query.filter_by(status='rejected').count()
+    prescription_chart = {
+        'labels': ['Pending', 'Approved', 'Rejected'],
+        'data': [p_pending, p_approved, p_rejected],
+        'colors': ['#f59e0b', '#10b981', '#ef4444']
+    }
+
+    # 10. HIV & Comorbidities (bar)
+    hiv_yes = Patient.query.filter(Patient.hiv == 'Yes').count()
+    diabetes_yes = Patient.query.filter(Patient.diabetes == 'Yes').count()
+    smoking_current = Patient.query.filter(Patient.smoking_status == 'Current').count()
+    alcohol_reg = Patient.query.filter(Patient.alcohol_use == 'Regular').count()
+    comorbidity_chart = {
+        'labels': ['HIV+', 'Diabetes', 'Smoking', 'Alcohol Regular'],
+        'data': [
+            round(hiv_yes / total * 100, 1) if total > 0 else 0,
+            round(diabetes_yes / total * 100, 1) if total > 0 else 0,
+            round(smoking_current / total * 100, 1) if total > 0 else 0,
+            round(alcohol_reg / total * 100, 1) if total > 0 else 0,
+        ],
+        'colors': ['#ef4444', '#f97316', '#8b5cf6', '#06b6d4']
+    }
+
+    return jsonify({
+        'risk_distribution': risk_chart,
+        'tb_status': tb_status_chart,
+        'drug_resistance': resistance_chart,
+        'antibiogram': antibiogram_chart,
+        'bacterial_species': species_chart,
+        'symptom_prevalence': symptoms_chart,
+        'test_positivity': tests_chart,
+        'gender_distribution': gender_chart,
+        'prescription_status': prescription_chart,
+        'comorbidities': comorbidity_chart,
+    })
+
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

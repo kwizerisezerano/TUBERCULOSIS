@@ -90,6 +90,7 @@ export const useApi = () => {
       return request(url);
     },
     markAlertRead: (id: number) => request(`/alerts/${id}/read`, { method: 'PUT' }),
+    getDashboardCharts: () => request('/dashboard/charts'),
   };
 };
 

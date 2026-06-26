@@ -1,204 +1,264 @@
 <template>
   <DashboardLayout page-title="Dashboard">
     <div class="space-y-6">
-        <!-- First row of cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-700">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-400 text-sm">Total Patients</p>
-              <p class="text-3xl font-bold text-white mt-1">{{ dashboard.patient_stats?.total || 0 }}</p>
-            </div>
-            <div class="h-14 w-14 rounded-xl bg-emerald-900/30 text-emerald-400 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-          </div>
+
+      <!-- Summary Cards Row 1 -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-gray-400 text-sm">Total Patients</p>
+          <p class="text-3xl font-bold text-white mt-1">{{ dashboard.patient_stats?.total || 0 }}</p>
         </div>
-        <div class="bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-700">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-400 text-sm">Total Diagnoses</p>
-              <p class="text-3xl font-bold text-purple-400 mt-1">{{ dashboard.diagnosis_stats?.total || 0 }}</p>
-            </div>
-            <div class="h-14 w-14 rounded-xl bg-purple-900/30 text-purple-400 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3-7.5H18m-2.25 3H18m-2.25 3H18M4.5 4.5h15a2.25 2.25 0 012.25 2.25v10.5a2.25 2.25 0 01-2.25 2.25h-15A2.25 2.25 0 012.25 17.25V6.75A2.25 2.25 0 014.5 4.5z" />
-              </svg>
-            </div>
-          </div>
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-gray-400 text-sm">Total Diagnoses</p>
+          <p class="text-3xl font-bold text-purple-400 mt-1">{{ dashboard.diagnosis_stats?.total || 0 }}</p>
         </div>
-        <div class="bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-700">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-400 text-sm">Total Lab Results</p>
-              <p class="text-3xl font-bold text-blue-400 mt-1">{{ dashboard.detailed_lab_stats?.total || 0 }}</p>
-            </div>
-            <div class="h-14 w-14 rounded-xl bg-blue-900/30 text-blue-400 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 018.382 3.984M5 12H9a3 3 0 013 3V12a3 3 0 01-3 3H5z" />
-              </svg>
-            </div>
-          </div>
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-gray-400 text-sm">Total Lab Results</p>
+          <p class="text-3xl font-bold text-blue-400 mt-1">{{ dashboard.detailed_lab_stats?.total || 0 }}</p>
         </div>
-        <div class="bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-700">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-400 text-sm">Total Prescriptions</p>
-              <p class="text-3xl font-bold text-green-400 mt-1">{{ (dashboard.prescription_stats?.pending || 0) + (dashboard.prescription_stats?.approved || 0) + (dashboard.prescription_stats?.rejected || 0) }}</p>
-            </div>
-            <div class="h-14 w-14 rounded-xl bg-green-900/30 text-green-400 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-gray-400 text-sm">Total Prescriptions</p>
+          <p class="text-3xl font-bold text-green-400 mt-1">{{ (dashboard.prescription_stats?.pending || 0) + (dashboard.prescription_stats?.approved || 0) + (dashboard.prescription_stats?.rejected || 0) }}</p>
         </div>
       </div>
 
-      <!-- Second row of cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-700">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-400 text-sm">Antimicrobial Resistance</p>
-              <p class="text-3xl font-bold text-red-400 mt-1">{{ dashboard.antimicrobial_resistance_stats?.total || 0 }}</p>
-            </div>
-            <div class="h-14 w-14 rounded-xl bg-red-900/30 text-red-400 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
+      <!-- Summary Cards Row 2 -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-gray-400 text-sm">Antimicrobial Resistance</p>
+          <p class="text-3xl font-bold text-red-400 mt-1">{{ dashboard.antimicrobial_resistance_stats?.total || 0 }}</p>
         </div>
-        <div class="bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-700">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-400 text-sm">ATC Drugs</p>
-              <p class="text-3xl font-bold text-cyan-400 mt-1">{{ dashboard.atc_drug_stats?.total || 0 }}</p>
-            </div>
-            <div class="h-14 w-14 rounded-xl bg-cyan-900/30 text-cyan-400 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25l-1.875-1.875 1.875-1.875m-3.75 3.75l-1.875-1.875 1.875-1.875m3.75 3.75l-1.875-1.875 1.875-1.875M6 12a6 6 0 1012 0 6 6 0 00-12 0z" />
-              </svg>
-            </div>
-          </div>
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-gray-400 text-sm">ATC Drugs</p>
+          <p class="text-3xl font-bold text-cyan-400 mt-1">{{ dashboard.atc_drug_stats?.total || 0 }}</p>
         </div>
-        <div class="bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-700">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-400 text-sm">Treatments</p>
-              <p class="text-3xl font-bold text-orange-400 mt-1">{{ dashboard.treatment_stats?.total || 0 }}</p>
-            </div>
-            <div class="h-14 w-14 rounded-xl bg-orange-900/30 text-orange-400 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.5l8.25 8.25m0 0l8.25-8.25m-8.25 8.25v8.25" />
-              </svg>
-            </div>
-          </div>
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-gray-400 text-sm">Treatments</p>
+          <p class="text-3xl font-bold text-orange-400 mt-1">{{ dashboard.treatment_stats?.total || 0 }}</p>
         </div>
-        <div class="bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-700">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-400 text-sm">High Risk Patients</p>
-              <p class="text-3xl font-bold text-red-500 mt-1">{{ dashboard.patient_stats?.high_risk || 0 }}</p>
-            </div>
-            <div class="h-14 w-14 rounded-xl bg-red-900/40 text-red-500 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-          </div>
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-gray-400 text-sm">High Risk Patients</p>
+          <p class="text-3xl font-bold text-red-500 mt-1">{{ dashboard.patient_stats?.high_risk || 0 }}</p>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-700">
-          <h3 class="text-lg font-bold text-white mb-4">Recent Patients</h3>
-          <div v-if="patients.length" class="space-y-4">
-            <div v-for="patient in patients.slice(0, 5)" :key="patient.id" class="flex items-center gap-4 p-4 rounded-xl bg-gray-700/50 hover:bg-gray-700 transition">
-              <div class="h-12 w-12 rounded-full bg-emerald-900/30 text-emerald-400 flex items-center justify-center font-bold">
-                {{ patient.first_name ? patient.first_name.charAt(0).toUpperCase() : "P" }}
+      <!-- Charts Row 1: Risk + TB Status + Drug Resistance + Gender -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-sm font-semibold text-white mb-3">Patient Risk Levels</p>
+          <canvas ref="riskChart" height="200"></canvas>
+        </div>
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-sm font-semibold text-white mb-3">TB Status Distribution</p>
+          <canvas ref="tbStatusChart" height="200"></canvas>
+        </div>
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-sm font-semibold text-white mb-3">Drug Resistance</p>
+          <canvas ref="resistanceChart" height="200"></canvas>
+        </div>
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-sm font-semibold text-white mb-3">Gender Distribution</p>
+          <canvas ref="genderChart" height="200"></canvas>
+        </div>
+      </div>
+
+      <!-- Charts Row 2: Antibiogram (full width) -->
+      <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+        <p class="text-sm font-semibold text-white mb-3">Cumulative Antibiogram — Resistance Rate per Antibiotic (%)</p>
+        <canvas ref="antibiogramChart" height="90"></canvas>
+      </div>
+
+      <!-- Charts Row 3: Symptoms + Test Positivity -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-sm font-semibold text-white mb-3">Symptom Prevalence (% of patients)</p>
+          <canvas ref="symptomsChart" height="180"></canvas>
+        </div>
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-sm font-semibold text-white mb-3">Diagnostic Test Positivity (%)</p>
+          <canvas ref="testsChart" height="180"></canvas>
+        </div>
+      </div>
+
+      <!-- Charts Row 4: Bacterial Species + Comorbidities + Prescriptions -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-sm font-semibold text-white mb-3">Top Bacterial Species</p>
+          <canvas ref="speciesChart" height="220"></canvas>
+        </div>
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-sm font-semibold text-white mb-3">Comorbidities (% of patients)</p>
+          <canvas ref="comorbidityChart" height="220"></canvas>
+        </div>
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <p class="text-sm font-semibold text-white mb-3">Prescription Status</p>
+          <canvas ref="prescriptionChart" height="220"></canvas>
+        </div>
+      </div>
+
+      <!-- Recent Patients + Alerts -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <h3 class="text-base font-bold text-white mb-4">Recent Patients</h3>
+          <div v-if="patients.length" class="space-y-3">
+            <div v-for="patient in patients.slice(0, 5)" :key="patient.id" class="flex items-center gap-3 p-3 rounded-xl bg-gray-700/50">
+              <div class="h-10 w-10 rounded-full bg-emerald-900/30 text-emerald-400 flex items-center justify-center font-bold text-sm">
+                {{ patient.first_name?.charAt(0).toUpperCase() || 'P' }}
               </div>
-              <div class="flex-1">
-                <p class="font-medium text-white">{{ patient.first_name }} {{ patient.last_name }}</p>
-                <p class="text-sm text-gray-400">ID: {{ patient.patient_id }} · Age: {{ patient.age }}</p>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-white text-sm truncate">{{ patient.first_name }} {{ patient.last_name }}</p>
+                <p class="text-xs text-gray-400">{{ patient.patient_id }} · Age {{ patient.age }}</p>
               </div>
-              <div :class="['px-3 py-1 rounded-full text-xs font-semibold', getRiskInfo(patient).class]">
+              <span :class="['px-2 py-0.5 rounded-full text-xs font-semibold', getRiskInfo(patient).class]">
                 {{ getRiskInfo(patient).text }}
-              </div>
+              </span>
             </div>
           </div>
-          <div v-else class="text-center py-8 text-gray-400">
-            No patients yet
-          </div>
+          <p v-else class="text-center py-8 text-gray-400 text-sm">No patients yet</p>
         </div>
-        
-        <div class="bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-700">
-          <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.603V11a6 6 0 10-12 0v3.603a2.032 2.032 0 01-.595 1.405L4 17h5m7z" />
-            </svg>
-            Alerts
-            <span class="ml-auto bg-red-600 text-white text-xs px-2 py-1 rounded-full">{{ dashboard.alert_stats?.unread || 0 }} Unread</span>
+
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
+          <h3 class="text-base font-bold text-white mb-4">
+            Recent Alerts
+            <span class="ml-2 bg-red-600 text-white text-xs px-2 py-0.5 rounded-full">{{ dashboard.alert_stats?.unread || 0 }} Unread</span>
           </h3>
-          <div v-if="alerts.length" class="space-y-3 max-h-96 overflow-y-auto">
-            <div v-for="alert in alerts.slice(0, 5)" :key="alert.id" 
-                 @click="!alert.is_read && handleMarkAlertRead(alert.id)" 
-                 class="p-4 rounded-xl bg-gray-700/50 hover:bg-gray-700 transition border-l-4 cursor-pointer" 
+          <div v-if="alerts.length" class="space-y-3 max-h-72 overflow-y-auto">
+            <div v-for="alert in alerts.slice(0, 6)" :key="alert.id"
+                 @click="!alert.is_read && handleMarkAlertRead(alert.id)"
+                 class="p-3 rounded-xl bg-gray-700/50 border-l-4 cursor-pointer"
                  :class="getAlertBorderClass(alert.severity)">
-              <div class="flex justify-between items-start">
-                <div>
-                  <p class="font-medium text-white" :class="getAlertTextClass(alert.severity)">{{ alert.alert_type.replace('_', ' ') }}</p>
-                  <p class="text-sm text-gray-400">{{ alert.message }}</p>
-                </div>
-                <span v-if="!alert.is_read" class="h-2 w-2 rounded-full bg-red-500"></span>
-              </div>
+              <p class="text-sm font-medium" :class="getAlertTextClass(alert.severity)">{{ alert.alert_type.replace(/_/g, ' ') }}</p>
+              <p class="text-xs text-gray-400 mt-0.5 truncate">{{ alert.message }}</p>
             </div>
           </div>
-          <div v-else class="text-center py-8 text-gray-400">
-            No alerts yet
-          </div>
-        </div>
-        
-        <div class="bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-700">
-          <h3 class="text-lg font-bold text-white mb-4">Antimicrobial Resistance Records</h3>
-          <div v-if="arRecords.length" class="space-y-4 max-h-96 overflow-y-auto">
-            <div v-for="record in arRecords.slice(0, 5)" :key="record.id" class="p-4 rounded-xl bg-gray-700/50 hover:bg-gray-700 transition">
-              <div class="flex items-center justify-between mb-2">
-                <p class="font-semibold text-white">{{ record.sample_id }}</p>
-                <p class="text-xs text-gray-400">{{ record.bacterial_species || 'Unknown' }}</p>
-              </div>
-              <div class="flex flex-wrap gap-1">
-                <span v-if="record.amx_amp === 'R'" class="px-2 py-0.5 text-xs rounded bg-red-900/30 text-red-400">AMX/AMP R</span>
-                <span v-if="record.cip === 'R'" class="px-2 py-0.5 text-xs rounded bg-red-900/30 text-red-400">CIP R</span>
-                <span v-if="record.gen === 'R'" class="px-2 py-0.5 text-xs rounded bg-red-900/30 text-red-400">GEN R</span>
-              </div>
-            </div>
-          </div>
-          <div v-else class="text-center py-8 text-gray-400">
-            No resistance records yet
-          </div>
+          <p v-else class="text-center py-8 text-gray-400 text-sm">No alerts yet</p>
         </div>
       </div>
+
     </div>
   </DashboardLayout>
 </template>
 
 <script setup lang="ts">
+import { Chart, registerables } from 'chart.js';
+Chart.register(...registerables);
+
 import DashboardLayout from '~/components/DashboardLayout.vue';
-const { getPatients, getDetailedLabResults, getAntibioticResistanceRecords, getDashboardStats, getAlerts, markAlertRead } = useApi();
+
+const { getPatients, getDashboardStats, getAlerts, markAlertRead, getDashboardCharts } = useApi();
 
 const patients = ref<any[]>([]);
-const labResults = ref<any[]>([]);
-const arRecords = ref<any[]>([]);
 const alerts = ref<any[]>([]);
 const dashboard = ref<any>({});
+const charts = ref<any>({});
 
-function getRiskInfo(patient: any): { class: string; text: string } {
+// Canvas refs
+const riskChart = ref<HTMLCanvasElement | null>(null);
+const tbStatusChart = ref<HTMLCanvasElement | null>(null);
+const resistanceChart = ref<HTMLCanvasElement | null>(null);
+const genderChart = ref<HTMLCanvasElement | null>(null);
+const antibiogramChart = ref<HTMLCanvasElement | null>(null);
+const symptomsChart = ref<HTMLCanvasElement | null>(null);
+const testsChart = ref<HTMLCanvasElement | null>(null);
+const speciesChart = ref<HTMLCanvasElement | null>(null);
+const comorbidityChart = ref<HTMLCanvasElement | null>(null);
+const prescriptionChart = ref<HTMLCanvasElement | null>(null);
+
+const chartInstances: Chart[] = [];
+
+function destroyCharts() {
+  chartInstances.forEach(c => c.destroy());
+  chartInstances.length = 0;
+}
+
+function gridColor() { return 'rgba(255,255,255,0.06)'; }
+function tickColor() { return '#9ca3af'; }
+
+function makeBar(canvas: HTMLCanvasElement, labels: string[], data: number[], colors: string[], unit = '') {
+  const c = new Chart(canvas, {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6, borderSkipped: false }] },
+    options: {
+      responsive: true, plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: (ctx) => ` ${ctx.parsed.y}${unit}` } }
+      },
+      scales: {
+        x: { ticks: { color: tickColor(), font: { size: 11 } }, grid: { color: gridColor() } },
+        y: { ticks: { color: tickColor(), font: { size: 11 } }, grid: { color: gridColor() }, beginAtZero: true }
+      }
+    }
+  });
+  chartInstances.push(c);
+}
+
+function makeDoughnut(canvas: HTMLCanvasElement, labels: string[], data: number[], colors: string[]) {
+  const c = new Chart(canvas, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0, hoverOffset: 6 }] },
+    options: {
+      responsive: true, cutout: '65%',
+      plugins: { legend: { position: 'bottom', labels: { color: tickColor(), boxWidth: 12, font: { size: 11 } } } }
+    }
+  });
+  chartInstances.push(c);
+}
+
+function makeHorizontalBar(canvas: HTMLCanvasElement, labels: string[], data: number[], color: string, unit = '') {
+  const c = new Chart(canvas, {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: color, borderRadius: 4 }] },
+    options: {
+      indexAxis: 'y', responsive: true,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: (ctx) => ` ${ctx.parsed.x}${unit}` } }
+      },
+      scales: {
+        x: { ticks: { color: tickColor(), font: { size: 11 } }, grid: { color: gridColor() }, beginAtZero: true },
+        y: { ticks: { color: tickColor(), font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+  chartInstances.push(c);
+}
+
+function buildCharts(d: any) {
+  destroyCharts();
+  if (!d) return;
+
+  if (riskChart.value && d.risk_distribution)
+    makeBar(riskChart.value, d.risk_distribution.labels, d.risk_distribution.data, d.risk_distribution.colors);
+
+  if (tbStatusChart.value && d.tb_status)
+    makeDoughnut(tbStatusChart.value, d.tb_status.labels, d.tb_status.data, d.tb_status.colors);
+
+  if (resistanceChart.value && d.drug_resistance)
+    makeBar(resistanceChart.value, d.drug_resistance.labels, d.drug_resistance.data, d.drug_resistance.colors);
+
+  if (genderChart.value && d.gender_distribution)
+    makeDoughnut(genderChart.value, d.gender_distribution.labels, d.gender_distribution.data, d.gender_distribution.colors);
+
+  if (antibiogramChart.value && d.antibiogram?.labels?.length)
+    makeBar(antibiogramChart.value, d.antibiogram.labels, d.antibiogram.data,
+      d.antibiogram.labels.map((_: string, i: number) => `hsl(${(i * 28) % 360},70%,55%)`), '%');
+
+  if (symptomsChart.value && d.symptom_prevalence)
+    makeHorizontalBar(symptomsChart.value, d.symptom_prevalence.labels, d.symptom_prevalence.data, '#6366f1', '%');
+
+  if (testsChart.value && d.test_positivity)
+    makeBar(testsChart.value, d.test_positivity.labels, d.test_positivity.data, d.test_positivity.colors, '%');
+
+  if (speciesChart.value && d.bacterial_species?.labels?.length)
+    makeHorizontalBar(speciesChart.value, d.bacterial_species.labels, d.bacterial_species.data, '#8b5cf6');
+
+  if (comorbidityChart.value && d.comorbidities)
+    makeBar(comorbidityChart.value, d.comorbidities.labels, d.comorbidities.data, d.comorbidities.colors, '%');
+
+  if (prescriptionChart.value && d.prescription_status)
+    makeDoughnut(prescriptionChart.value, d.prescription_status.labels, d.prescription_status.data, d.prescription_status.colors);
+}
+
+function getRiskInfo(patient: any) {
   let score = 0;
-
   if (patient.tb_status_label === 'Yes') score += 10;
   if (patient.genexpert_test === 'Positive') score += 8;
   if (patient.sputum_smear_test === 'Positive') score += 6;
@@ -209,65 +269,39 @@ function getRiskInfo(patient: any): { class: string; text: string } {
   if (patient.has_night_sweats === 'Yes') score += 1;
   if (patient.has_chest_pain === 'Yes') score += 1;
   if (patient.has_blood === 'Yes') score += 2;
-
-  if (score >= 8) {
-    return { class: 'bg-red-900/30 text-red-400', text: 'High Risk' };
-  } else if (score >= 4) {
-    return { class: 'bg-yellow-900/30 text-yellow-400', text: 'Medium Risk' };
-  } else {
-    return { class: 'bg-green-900/30 text-green-400', text: 'Low Risk' };
-  }
+  if (score >= 8) return { class: 'bg-red-900/30 text-red-400', text: 'High' };
+  if (score >= 4) return { class: 'bg-yellow-900/30 text-yellow-400', text: 'Medium' };
+  return { class: 'bg-green-900/30 text-green-400', text: 'Low' };
 }
 
-function getAlertBorderClass(severity: string): string {
-  const classes: Record<string, string> = {
-    'high': 'border-red-500',
-    'medium': 'border-yellow-500',
-    'warning': 'border-yellow-500',
-    'info': 'border-blue-500'
-  };
-  return classes[severity] || 'border-gray-500';
+function getAlertBorderClass(s: string) {
+  return ({ high: 'border-red-500', medium: 'border-yellow-500', warning: 'border-yellow-500', info: 'border-blue-500' } as any)[s] || 'border-gray-500';
+}
+function getAlertTextClass(s: string) {
+  return ({ high: 'text-red-400', medium: 'text-yellow-400', warning: 'text-yellow-400', info: 'text-blue-400' } as any)[s] || 'text-gray-300';
 }
 
-function getAlertTextClass(severity: string): string {
-  const classes: Record<string, string> = {
-    'high': 'text-red-400',
-    'medium': 'text-yellow-400',
-    'warning': 'text-yellow-400',
-    'info': 'text-blue-400'
-  };
-  return classes[severity] || 'text-gray-400';
-}
-
-async function handleMarkAlertRead(alertId: number) {
-  try {
-    await markAlertRead(alertId);
-    // Update the local state
-    const alertIndex = alerts.value.findIndex(a => a.id === alertId);
-    if (alertIndex !== -1) {
-      alerts.value[alertIndex].is_read = true;
-    }
-  } catch (e) {
-    console.error('Failed to mark alert as read', e);
-  }
+async function handleMarkAlertRead(id: number) {
+  await markAlertRead(id);
+  const a = alerts.value.find(x => x.id === id);
+  if (a) a.is_read = true;
 }
 
 onMounted(async () => {
-  try {
-    const [dashRes, pRes, lRes, arRes, alertsRes] = await Promise.all([
-      getDashboardStats(),
-      getPatients(1, 100),
-      getDetailedLabResults(),
-      getAntibioticResistanceRecords(),
-      getAlerts(1, 50),
-    ]);
-    dashboard.value = dashRes;
-    patients.value = (pRes as any).patients || [];
-    labResults.value = (lRes as any).detailed_lab_results || [];
-    arRecords.value = (arRes as any).antibiotic_resistance_records || [];
-    alerts.value = (alertsRes as any).alerts || [];
-  } catch (e) {
-    console.error('Failed to load data', e);
-  }
+  const [dashRes, pRes, alertsRes, chartsRes] = await Promise.all([
+    getDashboardStats(),
+    getPatients(1, 20),
+    getAlerts(1, 20),
+    getDashboardCharts(),
+  ]);
+  dashboard.value = dashRes;
+  patients.value = (pRes as any).patients || [];
+  alerts.value = (alertsRes as any).alerts || [];
+  charts.value = chartsRes;
+
+  await nextTick();
+  buildCharts(chartsRes);
 });
+
+onUnmounted(() => destroyCharts());
 </script>
