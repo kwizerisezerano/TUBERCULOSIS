@@ -1,5 +1,9 @@
 <template>
-  <aside class="w-64 bg-white dark:bg-gray-900 text-gray-900 dark:text-white h-full flex flex-col border-r border-gray-200 dark:border-gray-800">
+  <aside :class="[
+    'w-64 bg-white dark:bg-gray-900 text-gray-900 dark:text-white h-full flex flex-col border-r border-gray-200 dark:border-gray-800',
+    'lg:flex',
+    isMobile ? 'fixed inset-y-0 left-0 z-50' : ''
+  ]">
     <!-- Header with Logo -->
     <div class="p-6 border-b border-gray-200 dark:border-gray-800">
       <div class="flex items-center gap-3">
@@ -21,6 +25,7 @@
       <template v-for="item in navItems" :key="item.path">
         <router-link
           :to="item.path"
+          @click="closeMobileMenu"
           class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200"
           :class="isActive(item.path)
             ? 'bg-primary-600 text-white shadow-sm'
@@ -52,7 +57,7 @@
       <!-- Theme Toggle -->
       <button @click="$colorMode.preference = $colorMode.preference === 'dark' ? 'light' : 'dark'" class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200">
         <svg v-if="$colorMode.preference === 'dark'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12 a4 4 0 11-8 0 4 4 0 018 0z"></path>
         </svg>
         <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
@@ -76,12 +81,26 @@
 <script setup lang="ts">
 import LogoutModal from './LogoutModal.vue';
 
+const props = defineProps<{
+  isMobile?: boolean;
+}>();
+
+const emit = defineEmits<{
+  close: [];
+}>();
+
 const { userRole, currentUser, logout } = useAuth();
 const route = useRoute();
 
 const showLogoutModal = ref(false);
 
 const isActive = (path: string) => route.path === path || route.path.startsWith(path + '/');
+
+const closeMobileMenu = () => {
+  if (props.isMobile) {
+    emit('close');
+  }
+};
 
 const handleLogout = () => {
   showLogoutModal.value = false;

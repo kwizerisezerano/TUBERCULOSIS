@@ -375,7 +375,12 @@ class AuditLog(db.Model):
             "entity_type": self.entity_type,
             "entity_id": self.entity_id,
             "details": self.details,
-            "created_at": self.created_at.isoformat() if self.created_at else None
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "user": {
+                "id": self.user.id if self.user else None,
+                "username": self.user.username if self.user else None,
+                "role": self.user.role if self.user else None
+            } if self.user else None
         }
 
 

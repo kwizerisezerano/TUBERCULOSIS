@@ -1,5 +1,5 @@
 <template>
-  <DashboardLayout page-title="Diagnose & Predict">
+  <DashboardLayout>
 
     <div class="space-y-6">
       <!-- Progress Steps -->
@@ -685,8 +685,17 @@ const canProceed = computed(() => {
     if (patientMode.value === 'existing') {
       return !!selectedPatientId.value;
     } else {
-      return !!(form.value.patient_id && form.value.first_name && form.value.last_name && form.value.age);
+      return !!(form.value.patient_id && form.value.first_name && form.value.last_name && form.value.age && form.value.gender);
     }
+  }
+  if (currentStep.value === 2) {
+    return form.value.symptoms !== '' || Object.keys(form.value).some(key => key.startsWith('has_') && form.value[key]);
+  }
+  if (currentStep.value === 3) {
+    return true;
+  }
+  if (currentStep.value === 4) {
+    return true;
   }
   return true;
 });

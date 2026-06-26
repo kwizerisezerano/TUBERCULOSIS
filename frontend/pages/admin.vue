@@ -1,5 +1,5 @@
 <template>
-  <DashboardLayout page-title="Admin">
+  <DashboardLayout>
     <div class="space-y-6">
       <h2 class="text-xl font-bold text-gray-900 dark:text-white">Administration Panel</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">

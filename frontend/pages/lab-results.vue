@@ -1,5 +1,5 @@
 <template>
-  <DashboardLayout page-title="Lab Results">
+  <DashboardLayout>
     <div class="space-y-6">
       <div class="flex flex-col sm:flex-row gap-4 justify-between items-center">
         <h2 class="text-xl font-bold text-gray-900 dark:text-white">Laboratory Results</h2>

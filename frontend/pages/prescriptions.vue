@@ -1,5 +1,5 @@
 <template>
-  <DashboardLayout page-title="Prescriptions">
+  <DashboardLayout>
     <div class="space-y-6">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">

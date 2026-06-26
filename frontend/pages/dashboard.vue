@@ -1,5 +1,5 @@
 <template>
-  <DashboardLayout page-title="Dashboard">
+  <DashboardLayout>
     <div class="space-y-6">
 
       <!-- Summary Cards Row 1 -->

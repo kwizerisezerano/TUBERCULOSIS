@@ -3149,6 +3149,19 @@ def login():
             'role': user.role
         }
     )
+
+    # Create audit log for login
+    audit = AuditLog(
+        user_id=user.id,
+        action='user_login',
+        entity_type='user',
+        entity_id=user.id,
+        details=f'User {user.username} logged in',
+        created_at=datetime.now()
+    )
+    db.session.add(audit)
+    db.session.commit()
+
     return jsonify({
         'access_token': access_token,
         'user': user.to_dict()
@@ -3322,6 +3335,8 @@ def patients():
         })
 
     if request.method == 'POST':
+        from flask_jwt_extended import get_jwt_identity
+        user_id = get_jwt_identity()
         data = request.get_json()
         patient = Patient(
             patient_id=data.get('patient_id'),
@@ -3360,6 +3375,19 @@ def patients():
         )
         db.session.add(patient)
         db.session.commit()
+
+        # Create audit log
+        audit = AuditLog(
+            user_id=user_id,
+            action='create_patient',
+            entity_type='patient',
+            entity_id=patient.id,
+            details=f'Created patient {patient.patient_id}: {patient.first_name} {patient.last_name}',
+            created_at=datetime.now()
+        )
+        db.session.add(audit)
+        db.session.commit()
+
         return jsonify(patient.to_dict()), 201
 
 # Lab Test Management
@@ -3936,12 +3964,19 @@ def antibiogram():
     return jsonify({'antibiogram': antibiogram_data})
 
 # Audit Logs
-@app.route('/api/audit-logs')
+@app.route('/api/audit-logs', methods=['GET'])
 @jwt_required()
 @role_required('system_admin', 'hospital_admin')
 def audit_logs():
-    logs = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(100).all()
-    return jsonify({'audit_logs': [log.to_dict() for log in logs]})
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    pagination = AuditLog.query.order_by(AuditLog.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    return jsonify({
+        'audit_logs': [log.to_dict() for log in pagination.items],
+        'total': pagination.total,
+        'pages': pagination.pages,
+        'current_page': page
+    })
 
 
 @app.route('/api/patients/<int:patient_id>', methods=['GET', 'PUT', 'DELETE'])  
@@ -3984,6 +4019,7 @@ def diagnose():
     patient_data = data.get('patient', {}) or {}
     user = get_current_user_from_jwt()
     lang = get_request_lang()
+    user_id = user.id
 
     def normalize_value(v):
         if v is None:
@@ -4356,6 +4392,18 @@ def diagnose():
             severity='high'
         )
 
+    db.session.commit()
+
+    # Create audit log for diagnosis
+    audit = AuditLog(
+        user_id=user_id,
+        action='create_diagnosis',
+        entity_type='diagnosis',
+        entity_id=diagnosis_record.id,
+        details=f'Diagnosis created for patient {patient.patient_id}: {localized_who_category}',
+        created_at=datetime.now()
+    )
+    db.session.add(audit)
     db.session.commit()
 
     return jsonify({
