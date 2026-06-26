@@ -362,7 +362,7 @@
                 Key Symptoms & Factors
               </h4>
               <div class="flex flex-wrap gap-2">
-                <span v-for="symptom in symptomsList.filter(s => form[s.key] === 'Yes')" :key="symptom.key" class="px-3 py-1 rounded-full text-xs font-medium bg-red-900/30 text-red-300 border border-red-800">
+                <span v-for="symptom in symptomsList.filter(s => form[s.key] === 'Yes')" :key="symptom.key" class="px-3 py-1 rounded-full text-xs font-medium bg-green-600 text-white border border-green-500">
                   {{ symptom.label }}
                 </span>
                 <span v-if="symptomsList.filter(s => form[s.key] === 'Yes').length === 0" class="text-gray-400 dark:text-gray-500 text-sm">No symptoms selected</span>
@@ -442,7 +442,7 @@
                 <div v-if="diagnosisResult.test_evaluation?.findings?.length">
                   <p class="font-medium text-gray-900 dark:text-white mb-1">Findings:</p>
                   <div class="flex flex-wrap gap-2">
-                    <span v-for="(f, i) in diagnosisResult.test_evaluation.findings" :key="i" class="px-3 py-1 rounded-full text-xs bg-blue-900/30 text-blue-300 border border-blue-700">
+                    <span v-for="(f, i) in diagnosisResult.test_evaluation.findings" :key="i" class="px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700 border border-blue-300">
                       {{ f }}
                     </span>
                   </div>
@@ -462,9 +462,9 @@
                   <li v-for="(rf, i) in diagnosisResult.symptom_analysis.red_flags" :key="i">{{ rf }}</li>
                 </ul>
               </div>
-              <div class="p-3 rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800/50">
-                <p class="font-medium text-primary-700 dark:text-primary-300 text-sm">Advice:</p>
-                <p class="text-primary-600 dark:text-primary-400 text-sm mt-1">{{ diagnosisResult.symptom_analysis?.clinical_advice }}</p>
+              <div class="p-3 rounded-xl bg-primary-100 dark:bg-primary-900/20 border border-primary-300 dark:border-primary-800/50">
+                <p class="font-medium text-primary-800 dark:text-primary-300 text-sm">Advice:</p>
+                <p class="text-primary-700 dark:text-primary-400 text-sm mt-1">{{ diagnosisResult.symptom_analysis?.clinical_advice }}</p>
               </div>
             </div>
             <div v-if="diagnosisResult.ml_prediction" class="p-5 rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
@@ -480,7 +480,7 @@
                     <span class="text-gray-700 dark:text-gray-300">TB Status</span>
                     <span class="font-semibold text-gray-900 dark:text-white">{{ diagnosisResult.ml_prediction.tb_status.prediction }}</span>
                   </div>
-                  <div class="w-full bg-gray-600 rounded-full h-2">
+                  <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                     <div class="bg-primary-600 h-2 rounded-full transition-all duration-300" :style="{ width: `${diagnosisResult.ml_prediction.tb_status.confidence * 100}%` }"></div>
                   </div>
                   <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 text-right">Confidence: {{ Math.round(diagnosisResult.ml_prediction.tb_status.confidence * 100) }}%</p>
@@ -490,7 +490,7 @@
                     <span class="text-gray-700 dark:text-gray-300">Drug Resistance</span>
                     <span class="font-semibold text-gray-900 dark:text-white">{{ diagnosisResult.ml_prediction.drug_resistance.prediction }}</span>
                   </div>
-                  <div class="w-full bg-gray-600 rounded-full h-2">
+                  <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                     <div class="bg-red-600 h-2 rounded-full transition-all duration-300" :style="{ width: `${diagnosisResult.ml_prediction.drug_resistance.confidence * 100}%` }"></div>
                   </div>
                   <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 text-right">Confidence: {{ Math.round(diagnosisResult.ml_prediction.drug_resistance.confidence * 100) }}%</p>
@@ -512,7 +512,7 @@
           </div>
 
           <!-- Treatment Plan -->
-          <div class="p-5 rounded-xl bg-gray-700/30 border border-gray-600">
+          <div class="p-5 rounded-xl bg-gray-100 dark:bg-gray-700/30 border border-gray-300 dark:border-gray-600">
             <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <svg class="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 018.382 3.984M5 12H9a3 3 0 013 3V12a3 3 0 01-3 3H5z"></path>
@@ -546,18 +546,18 @@
                 <p class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Dosage</p>
                 <p class="text-gray-700 dark:text-gray-300 text-sm">{{ diagnosisResult.treatment_recommendation?.dosage }}</p>
               </div>
-              <div class="p-3 rounded-xl bg-blue-900/20 border border-blue-700">
-                <p class="text-sm font-semibold text-blue-300 mb-2">How to Take</p>
-                <p class="text-blue-400 text-sm">{{ diagnosisResult.treatment_recommendation?.administration || 'Follow clinician instructions' }}</p>
+              <div class="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-700">
+                <p class="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-2">How to Take</p>
+                <p class="text-blue-700 dark:text-blue-400 text-sm">{{ diagnosisResult.treatment_recommendation?.administration || 'Follow clinician instructions' }}</p>
               </div>
-              <div class="p-3 rounded-xl bg-purple-900/20 border border-purple-700">
-                <p class="text-sm font-semibold text-purple-300 mb-2">Monitoring</p>
-                <p class="text-purple-400 text-sm">{{ diagnosisResult.treatment_recommendation?.monitoring || 'Regular check-ups required' }}</p>
+              <div class="p-3 rounded-xl bg-purple-100 dark:bg-purple-900/20 border border-purple-300 dark:border-purple-700">
+                <p class="text-sm font-semibold text-purple-800 dark:text-purple-300 mb-2">Monitoring</p>
+                <p class="text-purple-700 dark:text-purple-400 text-sm">{{ diagnosisResult.treatment_recommendation?.monitoring || 'Regular check-ups required' }}</p>
               </div>
             </div>
-            <div class="mt-4 p-3 rounded-xl bg-amber-900/20 border border-amber-700">
-              <p class="text-sm font-semibold text-amber-300 mb-1">Notes</p>
-              <p class="text-amber-400 text-sm">{{ diagnosisResult.treatment_recommendation?.notes }}</p>
+            <div class="mt-4 p-3 rounded-xl bg-amber-100 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700">
+              <p class="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">Notes</p>
+              <p class="text-amber-700 dark:text-amber-400 text-sm">{{ diagnosisResult.treatment_recommendation?.notes }}</p>
             </div>
           </div>
         </div>
@@ -584,8 +584,8 @@
             </svg>
             {{ isLoading ? 'Analyzing...' : 'Run Diagnosis & Predict' }}
           </button>
-          <button v-if="currentStep === 5" @click="resetDiagnosis" class="flex-1 py-3 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button v-if="currentStep === 5" @click="resetDiagnosis" class="flex-1 py-3 px-6 rounded-xl bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-semibold text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-green-500/30">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.575-7.027M17 17v5h-5m10-3a7.004.004 0 00-7.027-4.576"></path>
             </svg>
             Start New Diagnosis
@@ -620,11 +620,11 @@ const steps = [
 ];
 
 const currentStep = ref(1);
-const totalSteps = steps.length;
+const totalSteps = computed(() => steps.length);
 const patientMode = ref('new');
 const patientsList = ref<any[]>([]);
 const patientSearch = ref('');
-const selectedPatientId = ref<number | null>(null);
+const selectedPatientId = ref<string | number | null>(null);
 const selectedPatient = ref<any>(null);
 const diagnoses = ref<any[]>([]);
 const isLoading = ref(false);
@@ -683,13 +683,14 @@ const form = ref({
 const canProceed = computed(() => {
   if (currentStep.value === 1) {
     if (patientMode.value === 'existing') {
-      return !!selectedPatientId.value;
+      const isValid = selectedPatientId.value !== null && selectedPatientId.value !== '';
+      return isValid;
     } else {
       return !!(form.value.patient_id && form.value.first_name && form.value.last_name && form.value.age && form.value.gender);
     }
   }
   if (currentStep.value === 2) {
-    return form.value.symptoms !== '' || Object.keys(form.value).some(key => key.startsWith('has_') && form.value[key]);
+    return true;
   }
   if (currentStep.value === 3) {
     return true;
@@ -711,7 +712,7 @@ const goToStep = (step: number) => {
 };
 
 const nextStep = () => {
-  if (currentStep.value < totalSteps.value && canProceed.value) {
+  if (currentStep.value < totalSteps.value) {
     currentStep.value++;
   }
 };
@@ -739,7 +740,7 @@ const loadPatientsList = async () => {
 
 const loadPatient = async () => {
   if (!selectedPatientId.value) return;
-  const patient = patientsList.value.find(p => p.id === selectedPatientId.value);
+  const patient = patientsList.value.find(p => p.id === Number(selectedPatientId.value));
   if (!patient) return;
   selectedPatient.value = patient;
   Object.keys(form.value).forEach((key) => {
