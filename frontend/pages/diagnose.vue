@@ -112,15 +112,6 @@
           <div v-else class="space-y-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Patient ID</label>
-                <input
-                  v-model="form.patient_id"
-                  type="text"
-                  class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 outline-none"
-                  placeholder="e.g., TB-001"
-                />
-              </div>
-              <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">First Name</label>
                 <input
                   v-model="form.first_name"
@@ -686,7 +677,7 @@ const canProceed = computed(() => {
       const isValid = selectedPatientId.value !== null && selectedPatientId.value !== '';
       return isValid;
     } else {
-      return !!(form.value.patient_id && form.value.first_name && form.value.last_name && form.value.age && form.value.gender);
+      return !!(form.value.first_name && form.value.last_name && form.value.age && form.value.gender);
     }
   }
   if (currentStep.value === 2) {
