@@ -3168,7 +3168,7 @@ def login():
     })
 
 @app.route('/api/auth/register', methods=['POST'])
-@role_required('system_admin', 'hospital_admin')
+@role_required('admin', 'hospital_admin')
 def register_user():
     data = request.get_json()
 
@@ -3402,7 +3402,7 @@ def lab_tests():
         if user.role == 'lab_technician':
             # Lab techs can see all requested lab tests
             tests = LabTest.query.all()
-        elif user.role in ['doctor', 'system_admin', 'hospital_admin']:
+        elif user.role in ['doctor', 'admin', 'hospital_admin']:
             # Doctors and admins can see all lab tests
             tests = LabTest.query.all()
         elif user.role == 'pharmacist':
@@ -3414,7 +3414,7 @@ def lab_tests():
         return jsonify({'lab_tests': [test.to_dict() for test in tests]})
     
     if request.method == 'POST':
-        if user.role not in ['doctor', 'system_admin', 'hospital_admin']:
+        if user.role not in ['doctor', 'admin', 'hospital_admin']:
             lang = get_request_lang()
             return jsonify({"msg": I18N["ACCESS_DENIED"][lang]}), 403
         
@@ -3451,7 +3451,7 @@ def lab_test_detail(test_id):
     
     if request.method == 'GET':
         # Check if user can access
-        if user.role == 'lab_technician' or user.role in ['doctor', 'system_admin', 'hospital_admin']:
+        if user.role == 'lab_technician' or user.role in ['doctor', 'admin', 'hospital_admin']:
             return jsonify(test.to_dict())
         else:
             lang = get_request_lang()
@@ -3459,7 +3459,7 @@ def lab_test_detail(test_id):
     
     if request.method == 'PUT':
         # Only lab techs, doctors, or admins can update
-        if user.role not in ['lab_technician', 'doctor', 'system_admin', 'hospital_admin']:
+        if user.role not in ['lab_technician', 'doctor', 'admin', 'hospital_admin']:
             lang = get_request_lang()
             return jsonify({"msg": I18N["ACCESS_DENIED"][lang]}), 403
         
@@ -3620,7 +3620,7 @@ def prescriptions():
         if user.role == 'pharmacist':
             # Pharmacists see all pending and their approved/rejected
             prescs = Prescription.query.all()
-        elif user.role in ['doctor', 'system_admin', 'hospital_admin']:
+        elif user.role in ['doctor', 'admin', 'hospital_admin']:
             # Doctors and admins see all
             prescs = Prescription.query.all()
         elif user.role == 'lab_technician':
@@ -3632,7 +3632,7 @@ def prescriptions():
         return jsonify({'prescriptions': [p.to_dict() for p in prescs]})
     
     if request.method == 'POST':
-        if user.role not in ['doctor', 'system_admin', 'hospital_admin']:
+        if user.role not in ['doctor', 'admin', 'hospital_admin']:
             lang = get_request_lang()
             return jsonify({"msg": I18N["ACCESS_DENIED"][lang]}), 403
         
@@ -3707,7 +3707,7 @@ def prescription_detail(presc_id):
     
     if request.method == 'GET':
         # Check if user can access
-        if user.role in ['doctor', 'pharmacist', 'system_admin', 'hospital_admin']:
+        if user.role in ['doctor', 'pharmacist', 'admin', 'hospital_admin']:
             return jsonify(presc.to_dict())
         else:
             lang = get_request_lang()
@@ -3738,7 +3738,7 @@ def prescription_detail(presc_id):
             
             db.session.commit()
             return jsonify(presc.to_dict())
-        elif user.role in ['doctor', 'system_admin', 'hospital_admin']:
+        elif user.role in ['doctor', 'admin', 'hospital_admin']:
             # Doctor or admin can update other fields
             for key, value in data.items():
                 if hasattr(presc, key):
@@ -3825,7 +3825,7 @@ def dashboard():
     response['diagnosis_stats'] = { 'total': total_diagnoses }
     response['treatment_stats'] = { 'total': total_treatments }
     
-    if role in ['system_admin', 'hospital_admin']:
+    if role in ['admin', 'hospital_admin']:
         # Admin dashboard: Full stats
         total_alerts = Alert.query.count()
         unread_alerts = Alert.query.filter_by(is_read=False).count()
@@ -3966,7 +3966,7 @@ def antibiogram():
 # Audit Logs
 @app.route('/api/audit-logs', methods=['GET'])
 @jwt_required()
-@role_required('system_admin', 'hospital_admin')
+@role_required('admin', 'hospital_admin')
 def audit_logs():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
@@ -4004,7 +4004,7 @@ def patient_detail(patient_id):
 
     if request.method == 'DELETE':
         user = get_current_user_from_jwt()
-        if user.role not in ['system_admin', 'hospital_admin']:
+        if user.role not in ['admin', 'hospital_admin']:
             return jsonify({'msg': tr('ACCESS_DENIED')}), 403
 
         db.session.delete(patient)
@@ -4480,7 +4480,7 @@ def mark_alert_read(alert_id):
     return jsonify(alert.to_dict())
 
 @app.route('/api/train-model', methods=['POST'])
-@role_required('system_admin')
+@role_required('admin')
 def train_model_endpoint():
     try:
         result = train_models_from_database()
@@ -4491,7 +4491,7 @@ def train_model_endpoint():
         return jsonify({'error': tr('TRAIN_MODEL_FAILED')}), 500
 
 @app.route('/api/import-data', methods=['POST'])
-@role_required('system_admin')
+@role_required('admin')
 def import_data_endpoint():
     try:
         from import_data import main

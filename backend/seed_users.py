@@ -12,7 +12,7 @@ users = [
         "username": "divinekageruka",
         "email": "divinekageruka@gmail.com",
         "password": "Admin123!",
-        "role": "system_admin"
+        "role": "admin"
     },
     {
         "username": "igiranezac459",
