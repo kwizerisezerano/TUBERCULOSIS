@@ -16,22 +16,21 @@ git clone https://github.com/kwizerisezerano/TUBERCULOSIS.git
 cd TUBERCULOSIS
 ```
 
-## 3. Set Up Datasets (IMPORTANT!)
-Datasets are not stored in Git due to GitHub's size limits.
+## 3. Set Up the Large Dataset (IMPORTANT!)
+Only the Tuberculosis_Dataset.csv file is too big for GitHub (131MB). All other datasets are included in the repo!
 
 ### Option A: Use the setup script (recommended)
-1. First, edit `setup_datasets.py` and replace the example URL with your actual dataset download link.
-2. Run the script:
-   ```bash
-   python setup_datasets.py
-   ```
+First, edit `setup_datasets.py` and replace the example URL with your actual dataset download link.
+Then run the script:
+```bash
+python setup_datasets.py
+```
 
 ### Option B: Manual setup
-1. Copy your `Tuberculosis_Dataset.csv` into:
-   ```
-   backend/data/raw/Tuberculosis_Dataset.csv
-   ```
-2. Copy any other required datasets into the same folder.
+Copy your `Tuberculosis_Dataset.csv` file into:
+```
+backend/data/raw/Tuberculosis_Dataset.csv
+```
 
 ## 4. Backend Setup
 ```bash
@@ -60,8 +59,9 @@ npm run dev
 - Backend API: http://localhost:5000
 
 ## Notes on Datasets
-- **Why datasets aren't in Git:** GitHub doesn't allow files > 100 MB.
-- **Storage options:**
-  - Use Git LFS (Large File Storage) if you want Git tracking
+- **Why one dataset is not in Git**: GitHub doesn't allow files > 100 MB, so `Tuberculosis_Dataset.csv` is excluded.
+- **All other datasets are included**: All other smaller datasets are in Git!
+- **Storage options for large dataset**:
   - Use cloud storage (Google Drive, Dropbox, etc.)
   - Use a data repository like Zenodo or Figshare
+  - Use Git LFS (Large File Storage) if needed

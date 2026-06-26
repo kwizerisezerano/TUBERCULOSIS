@@ -1,5 +1,6 @@
 <template>
   <DashboardLayout page-title="Diagnose & Predict">
+
     <div class="space-y-6">
       <!-- Progress Steps -->
       <div class="bg-gray-800 rounded-2xl border border-gray-700 p-6">

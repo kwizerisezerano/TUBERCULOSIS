@@ -76,17 +76,17 @@ frontend/.output/
 *.tar.gz
 *.rar
 
-# Dataset files
-*.csv
+# Dataset files - only exclude files larger than 50 MB or specific huge files
 *.json
 *.xlsx
 *.xls
 *.pdf
-# Ignore all raw datasets (too big for Git)
-backend/data/raw/
-# Except small synthetic files if needed (uncomment if needed)
-# !backend/data/raw/synthetic_tb_patients.csv
 
+# Ignore the huge dataset file (131MB)
+backend/data/raw/Tuberculosis_Dataset.csv
+
+# Ignore backup folder
+DATA_BACKUP/
 # Models and local artifacts
 backend/models/*.pkl
 backend/models/*.joblib

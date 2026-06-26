@@ -2,6 +2,7 @@
 """
 Setup script to download required datasets for the project.
 Run this script when setting up the project on a new machine.
+Only needed for Tuberculosis_Dataset.csv - all other datasets are included in Git!
 """
 
 import os
@@ -20,24 +21,15 @@ DATA_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 # --------------------------
 # Dataset Configuration
 # --------------------------
-# Add your dataset download links here!
-# Since I don't have your actual dataset source, you'll need to fill this in.
-# Examples of sources:
-# - Google Drive (direct download link)
-# - Dropbox
-# - Zenodo
-# - Figshare
-# - Your own cloud storage
-
+# Only Tuberculosis_Dataset.csv needs to be downloaded!
 DATASETS = [
     {
         "name": "Tuberculosis Dataset",
         "filename": "Tuberculosis_Dataset.csv",
-        # Replace this with your actual dataset download URL
-        "url": "https://example.com/path/to/Tuberculosis_Dataset.csv",
-        "description": "Main tuberculosis dataset for analysis",
+        # Replace this with your actual dataset download URL!
+        "url": "",
+        "description": "Main tuberculosis dataset for analysis (131MB - too big for GitHub)",
     }
-    # Add more datasets here if needed
 ]
 
 def download_file(url: str, dest_path: Path) -> bool:
@@ -57,6 +49,8 @@ def setup_datasets():
     print("=" * 60)
     print("Predictive EHR Analytics Dashboard - Dataset Setup")
     print("=" * 60)
+    print()
+    print("Note: All datasets except Tuberculosis_Dataset.csv are already in the repo!")
     print()
 
     for dataset in DATASETS:
