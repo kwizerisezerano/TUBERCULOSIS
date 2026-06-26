@@ -25,7 +25,7 @@
     <main class="flex-1 px-4 sm:px-6 md:px-10 py-6 sm:py-10 lg:py-16">
       <div class="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-16 items-start lg:items-stretch">
         <!-- Left: Info Section -->
-        <div class="space-y-6 sm:space-y-8 flex flex-col lg:flex-col">
+        <div class="space-y-6 sm:space-y-8 flex flex-col lg:flex-col lg:h-full">
           <div>
             <h1 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold text-gray-900 dark:text-white leading-tight">
               Predictive EHR Analytics
@@ -37,7 +37,7 @@
           </div>
 
           <!-- Features Grid -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 flex-1">
             <div v-for="feature in features" :key="feature.title" class="group p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
               <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center mb-4 shrink-0" :class="feature.color">
                 <span class="w-6 h-6 sm:w-7 sm:h-7 text-white" v-html="feature.icon"></span>
@@ -196,6 +196,7 @@ const stats = [
 
 const credentials = [
   { role: 'System Admin', email: 'divinekageruka@gmail.com', pwd: 'Admin123!' },
+  { role: 'Hospital Admin', email: 'igiclarisse10@gmail.com', pwd: 'Admin123!' },
   { role: 'Doctor', email: 'igiranezac459@gmail.com', pwd: 'Doctor123!' },
   { role: 'Lab Technician', email: 'clarisseigiraneza56@gmail.com', pwd: 'LabTech123!' },
   { role: 'Pharmacist', email: 'clarisseigiraneza915@gmail.com', pwd: 'Pharm123!' }
