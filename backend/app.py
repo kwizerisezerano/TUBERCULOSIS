@@ -3235,6 +3235,38 @@ def health():
             }
         })
 
+def calculate_risk_level(patient):
+    """Calculate risk level for a patient (same logic as frontend)."""
+    score = 0
+    if patient.tb_status_label == 'Yes':
+        score += 10
+    if patient.genexpert_test == 'Positive':
+        score += 8
+    if patient.sputum_smear_test == 'Positive':
+        score += 6
+    if patient.chest_xray == 'Abnormal':
+        score += 4
+    if patient.has_fever == 'Yes':
+        score += 1
+    if patient.has_cough == 'Yes':
+        score += 1
+    if patient.has_weight_loss == 'Yes':
+        score += 1
+    if patient.has_night_sweats == 'Yes':
+        score += 1
+    if patient.has_chest_pain == 'Yes':
+        score += 1
+    if patient.has_blood == 'Yes':
+        score += 2
+    
+    if score >= 8:
+        return 'high'
+    elif score >= 4:
+        return 'medium'
+    else:
+        return 'low'
+
+
 # Patient Management
 @app.route('/api/patients', methods=['GET', 'POST'])
 @jwt_required()
@@ -3264,12 +3296,32 @@ def patients():
         pagination = query.order_by(order_clause).paginate(page=page, per_page=per_page, error_out=False)
         patients_list = [patient.to_dict() for patient in pagination.items]
         
+        # Calculate risk counts for ALL patients (or filtered patients if search is applied)
+        all_patients = query.all()
+        high_risk = 0
+        medium_risk = 0
+        low_risk = 0
+        
+        for patient in all_patients:
+            risk = calculate_risk_level(patient)
+            if risk == 'high':
+                high_risk += 1
+            elif risk == 'medium':
+                medium_risk += 1
+            else:
+                low_risk += 1
+        
         return jsonify({
             'patients': patients_list,
             'total': pagination.total,
             'pages': pagination.pages,
             'current_page': page,
-            'sort': sort
+            'sort': sort,
+            'risk_counts': {
+                'high': high_risk,
+                'medium': medium_risk,
+                'low': low_risk
+            }
         })
 
     if request.method == 'POST':
@@ -3699,7 +3751,14 @@ def dashboard():
     if role in ['system_admin', 'hospital_admin']:
         # Admin dashboard: Full stats
         total_patients = Patient.query.count()
+        
+        # Calculate high risk patients
+        all_patients = Patient.query.all()
         high_risk_patients = 0
+        for patient in all_patients:
+            if calculate_risk_level(patient) == 'high':
+                high_risk_patients += 1
+        
         recent_patients = Patient.query.filter(
             Patient.created_at >= datetime.now() - timedelta(days=30)
         ).count()

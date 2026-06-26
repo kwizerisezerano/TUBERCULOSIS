@@ -130,6 +130,9 @@ const currentPage = ref(1);
 const perPage = 20;
 const totalPatients = ref(0);
 const totalPages = ref(1);
+const highRiskPatients = ref(0);
+const mediumRiskPatients = ref(0);
+const lowRiskPatients = ref(0);
 
 function getRiskInfo(patient: any): { class: string; text: string } {
   let score = 0;
@@ -152,10 +155,6 @@ function getRiskInfo(patient: any): { class: string; text: string } {
     return { class: 'bg-green-900/30 text-green-400', text: 'Low Risk' };
   }
 }
-
-const highRiskPatients = computed(() => patients.value.filter(p => getRiskInfo(p).text === 'High Risk').length);
-const mediumRiskPatients = computed(() => patients.value.filter(p => getRiskInfo(p).text === 'Medium Risk').length);
-const lowRiskPatients = computed(() => patients.value.filter(p => getRiskInfo(p).text === 'Low Risk').length);
 
 const visiblePages = computed(() => {
   const pages = [];
@@ -181,6 +180,13 @@ const loadPatients = async () => {
   patients.value = (res as any).patients || [];
   totalPatients.value = (res as any).total || patients.value.length;
   totalPages.value = (res as any).pages || Math.ceil(totalPatients.value / perPage);
+  
+  // Use risk counts from API if available
+  if ((res as any).risk_counts) {
+    highRiskPatients.value = (res as any).risk_counts.high || 0;
+    mediumRiskPatients.value = (res as any).risk_counts.medium || 0;
+    lowRiskPatients.value = (res as any).risk_counts.low || 0;
+  }
 };
 
 watch(currentPage, () => loadPatients());
