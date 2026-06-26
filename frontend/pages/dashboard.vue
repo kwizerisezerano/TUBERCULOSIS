@@ -4,134 +4,134 @@
 
       <!-- Summary Cards Row 1 -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-gray-400 text-sm">Total Patients</p>
-          <p class="text-3xl font-bold text-white mt-1">{{ dashboard.patient_stats?.total || 0 }}</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-gray-500 dark:text-gray-400 text-sm">Total Patients</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-white mt-1">{{ dashboard.patient_stats?.total || 0 }}</p>
         </div>
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-gray-400 text-sm">Total Diagnoses</p>
-          <p class="text-3xl font-bold text-purple-400 mt-1">{{ dashboard.diagnosis_stats?.total || 0 }}</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-gray-500 dark:text-gray-400 text-sm">Total Diagnoses</p>
+          <p class="text-3xl font-bold text-purple-600 dark:text-purple-400 mt-1">{{ dashboard.diagnosis_stats?.total || 0 }}</p>
         </div>
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-gray-400 text-sm">Total Lab Results</p>
-          <p class="text-3xl font-bold text-blue-400 mt-1">{{ dashboard.detailed_lab_stats?.total || 0 }}</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-gray-500 dark:text-gray-400 text-sm">Total Lab Results</p>
+          <p class="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1">{{ dashboard.detailed_lab_stats?.total || 0 }}</p>
         </div>
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-gray-400 text-sm">Total Prescriptions</p>
-          <p class="text-3xl font-bold text-green-400 mt-1">{{ (dashboard.prescription_stats?.pending || 0) + (dashboard.prescription_stats?.approved || 0) + (dashboard.prescription_stats?.rejected || 0) }}</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-gray-500 dark:text-gray-400 text-sm">Total Prescriptions</p>
+          <p class="text-3xl font-bold text-green-600 dark:text-green-400 mt-1">{{ (dashboard.prescription_stats?.pending || 0) + (dashboard.prescription_stats?.approved || 0) + (dashboard.prescription_stats?.rejected || 0) }}</p>
         </div>
       </div>
 
       <!-- Summary Cards Row 2 -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-gray-400 text-sm">Antimicrobial Resistance</p>
-          <p class="text-3xl font-bold text-red-400 mt-1">{{ dashboard.antimicrobial_resistance_stats?.total || 0 }}</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-gray-500 dark:text-gray-400 text-sm">Antimicrobial Resistance</p>
+          <p class="text-3xl font-bold text-red-600 dark:text-red-400 mt-1">{{ dashboard.antimicrobial_resistance_stats?.total || 0 }}</p>
         </div>
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-gray-400 text-sm">ATC Drugs</p>
-          <p class="text-3xl font-bold text-cyan-400 mt-1">{{ dashboard.atc_drug_stats?.total || 0 }}</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-gray-500 dark:text-gray-400 text-sm">ATC Drugs</p>
+          <p class="text-3xl font-bold text-cyan-600 dark:text-cyan-400 mt-1">{{ dashboard.atc_drug_stats?.total || 0 }}</p>
         </div>
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-gray-400 text-sm">Treatments</p>
-          <p class="text-3xl font-bold text-orange-400 mt-1">{{ dashboard.treatment_stats?.total || 0 }}</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-gray-500 dark:text-gray-400 text-sm">Treatments</p>
+          <p class="text-3xl font-bold text-orange-600 dark:text-orange-400 mt-1">{{ dashboard.treatment_stats?.total || 0 }}</p>
         </div>
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-gray-400 text-sm">High Risk Patients</p>
-          <p class="text-3xl font-bold text-red-500 mt-1">{{ dashboard.patient_stats?.high_risk || 0 }}</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-gray-500 dark:text-gray-400 text-sm">High Risk Patients</p>
+          <p class="text-3xl font-bold text-red-600 dark:text-red-500 mt-1">{{ dashboard.patient_stats?.high_risk || 0 }}</p>
         </div>
       </div>
 
       <!-- Charts Row 1: Risk + TB Status + Drug Resistance + Gender -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-sm font-semibold text-white mb-3">Patient Risk Levels</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Patient Risk Levels</p>
           <canvas ref="riskChart" height="200"></canvas>
         </div>
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-sm font-semibold text-white mb-3">TB Status Distribution</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">TB Status Distribution</p>
           <canvas ref="tbStatusChart" height="200"></canvas>
         </div>
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-sm font-semibold text-white mb-3">Drug Resistance</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Drug Resistance</p>
           <canvas ref="resistanceChart" height="200"></canvas>
         </div>
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-sm font-semibold text-white mb-3">Gender Distribution</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Gender Distribution</p>
           <canvas ref="genderChart" height="200"></canvas>
         </div>
       </div>
 
       <!-- Charts Row 2: Antibiogram (full width) -->
-      <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-        <p class="text-sm font-semibold text-white mb-3">Cumulative Antibiogram — Resistance Rate per Antibiotic (%)</p>
+      <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+        <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Cumulative Antibiogram — Resistance Rate per Antibiotic (%)</p>
         <canvas ref="antibiogramChart" height="90"></canvas>
       </div>
 
       <!-- Charts Row 3: Symptoms + Test Positivity -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-sm font-semibold text-white mb-3">Symptom Prevalence (% of patients)</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Symptom Prevalence (% of patients)</p>
           <canvas ref="symptomsChart" height="180"></canvas>
         </div>
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-sm font-semibold text-white mb-3">Diagnostic Test Positivity (%)</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Diagnostic Test Positivity (%)</p>
           <canvas ref="testsChart" height="180"></canvas>
         </div>
       </div>
 
       <!-- Charts Row 4: Bacterial Species + Comorbidities + Prescriptions -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-sm font-semibold text-white mb-3">Top Bacterial Species</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Top Bacterial Species</p>
           <canvas ref="speciesChart" height="220"></canvas>
         </div>
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-sm font-semibold text-white mb-3">Comorbidities (% of patients)</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Comorbidities (% of patients)</p>
           <canvas ref="comorbidityChart" height="220"></canvas>
         </div>
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <p class="text-sm font-semibold text-white mb-3">Prescription Status</p>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Prescription Status</p>
           <canvas ref="prescriptionChart" height="220"></canvas>
         </div>
       </div>
 
       <!-- Recent Patients + Alerts -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <h3 class="text-base font-bold text-white mb-4">Recent Patients</h3>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <h3 class="text-base font-bold text-gray-900 dark:text-white mb-4">Recent Patients</h3>
           <div v-if="patients.length" class="space-y-3">
-            <div v-for="patient in patients.slice(0, 5)" :key="patient.id" class="flex items-center gap-3 p-3 rounded-xl bg-gray-700/50">
-              <div class="h-10 w-10 rounded-full bg-emerald-900/30 text-emerald-400 flex items-center justify-center font-bold text-sm">
+            <div v-for="patient in patients.slice(0, 5)" :key="patient.id" class="flex items-center gap-3 p-3 rounded-xl bg-gray-100 dark:bg-gray-700/50">
+              <div class="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
                 {{ patient.first_name?.charAt(0).toUpperCase() || 'P' }}
               </div>
               <div class="flex-1 min-w-0">
-                <p class="font-medium text-white text-sm truncate">{{ patient.first_name }} {{ patient.last_name }}</p>
-                <p class="text-xs text-gray-400">{{ patient.patient_id }} · Age {{ patient.age }}</p>
+                <p class="font-medium text-gray-900 dark:text-white text-sm truncate">{{ patient.first_name }} {{ patient.last_name }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ patient.patient_id }} · Age {{ patient.age }}</p>
               </div>
               <span :class="['px-2 py-0.5 rounded-full text-xs font-semibold', getRiskInfo(patient).class]">
                 {{ getRiskInfo(patient).text }}
               </span>
             </div>
           </div>
-          <p v-else class="text-center py-8 text-gray-400 text-sm">No patients yet</p>
+          <p v-else class="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">No patients yet</p>
         </div>
 
-        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700">
-          <h3 class="text-base font-bold text-white mb-4">
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <h3 class="text-base font-bold text-gray-900 dark:text-white mb-4">
             Recent Alerts
             <span class="ml-2 bg-red-600 text-white text-xs px-2 py-0.5 rounded-full">{{ dashboard.alert_stats?.unread || 0 }} Unread</span>
           </h3>
           <div v-if="alerts.length" class="space-y-3 max-h-72 overflow-y-auto">
             <div v-for="alert in alerts.slice(0, 6)" :key="alert.id"
                  @click="!alert.is_read && handleMarkAlertRead(alert.id)"
-                 class="p-3 rounded-xl bg-gray-700/50 border-l-4 cursor-pointer"
+                 class="p-3 rounded-xl bg-gray-100 dark:bg-gray-700/50 border-l-4 cursor-pointer"
                  :class="getAlertBorderClass(alert.severity)">
               <p class="text-sm font-medium" :class="getAlertTextClass(alert.severity)">{{ alert.alert_type.replace(/_/g, ' ') }}</p>
-              <p class="text-xs text-gray-400 mt-0.5 truncate">{{ alert.message }}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{{ alert.message }}</p>
             </div>
           </div>
-          <p v-else class="text-center py-8 text-gray-400 text-sm">No alerts yet</p>
+          <p v-else class="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">No alerts yet</p>
         </div>
       </div>
 
@@ -171,8 +171,14 @@ function destroyCharts() {
   chartInstances.length = 0;
 }
 
-function gridColor() { return 'rgba(255,255,255,0.06)'; }
-function tickColor() { return '#9ca3af'; }
+function gridColor() {
+  const isDark = document.documentElement.classList.contains('dark');
+  return isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+}
+function tickColor() {
+  const isDark = document.documentElement.classList.contains('dark');
+  return isDark ? '#9ca3af' : '#4b5563';
+}
 
 function makeBar(canvas: HTMLCanvasElement, labels: string[], data: number[], colors: string[], unit = '') {
   const c = new Chart(canvas, {
@@ -269,16 +275,20 @@ function getRiskInfo(patient: any) {
   if (patient.has_night_sweats === 'Yes') score += 1;
   if (patient.has_chest_pain === 'Yes') score += 1;
   if (patient.has_blood === 'Yes') score += 2;
-  if (score >= 8) return { class: 'bg-red-900/30 text-red-400', text: 'High' };
-  if (score >= 4) return { class: 'bg-yellow-900/30 text-yellow-400', text: 'Medium' };
-  return { class: 'bg-green-900/30 text-green-400', text: 'Low' };
+  if (score >= 8) return { class: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400', text: 'High' };
+  if (score >= 4) return { class: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400', text: 'Medium' };
+  return { class: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400', text: 'Low' };
 }
 
 function getAlertBorderClass(s: string) {
   return ({ high: 'border-red-500', medium: 'border-yellow-500', warning: 'border-yellow-500', info: 'border-blue-500' } as any)[s] || 'border-gray-500';
 }
 function getAlertTextClass(s: string) {
-  return ({ high: 'text-red-400', medium: 'text-yellow-400', warning: 'text-yellow-400', info: 'text-blue-400' } as any)[s] || 'text-gray-300';
+  const isDark = document.documentElement.classList.contains('dark');
+  if (isDark) {
+    return ({ high: 'text-red-400', medium: 'text-yellow-400', warning: 'text-yellow-400', info: 'text-blue-400' } as any)[s] || 'text-gray-300';
+  }
+  return ({ high: 'text-red-700', medium: 'text-yellow-700', warning: 'text-yellow-700', info: 'text-blue-700' } as any)[s] || 'text-gray-700';
 }
 
 async function handleMarkAlertRead(id: number) {

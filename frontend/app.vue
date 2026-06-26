@@ -6,9 +6,9 @@
 
 <script setup lang="ts">
 useHead({
-  title: 'Predictive EHR Analytics Dashboard - TB',
+  title: 'Predictive EHR Analytics Dashboard',
   meta: [
-    { name: 'description', content: 'Tuberculosis risk prediction and antimicrobial stewardship system' },
+    { name: 'description', content: 'Comprehensive clinical decision support system for tuberculosis care' },
   ],
 });
 </script>

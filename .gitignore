@@ -82,8 +82,10 @@ frontend/.output/
 *.xlsx
 *.xls
 *.pdf
-!backend/data/raw/*.csv
-backend/data/raw/synthetic_tb_patients.csv
+# Ignore all raw datasets (too big for Git)
+backend/data/raw/
+# Except small synthetic files if needed (uncomment if needed)
+# !backend/data/raw/synthetic_tb_patients.csv
 
 # Models and local artifacts
 backend/models/*.pkl
