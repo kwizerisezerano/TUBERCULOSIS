@@ -23,9 +23,9 @@
 
     <!-- Main content -->
     <main class="flex-1 px-6 sm:px-10 py-10 sm:py-16">
-      <div class="w-full grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+      <div class="w-full grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start lg:items-stretch">
         <!-- Left: Info Section -->
-        <div class="space-y-8">
+        <div class="space-y-8 flex flex-col lg:flex-col">
           <div>
             <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 dark:text-white leading-tight">
               Predictive EHR Analytics
@@ -59,7 +59,7 @@
         </div>
 
         <!-- Right: Login Card -->
-        <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-xl p-6 sm:p-8 lg:p-10">
+        <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-xl p-6 sm:p-8 lg:p-10 flex flex-col lg:h-full">
           <div class="flex items-center gap-4 mb-8">
             <div class="h-12 w-12 rounded-xl bg-primary-600 flex items-center justify-center shadow-sm shrink-0">
               <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -129,13 +129,13 @@
           <!-- Quick Credentials -->
           <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-4 font-semibold uppercase tracking-wide">Demo Credentials</p>
-            <div class="space-y-2">
-              <button v-for="cred in credentials" :key="cred.role" @click="email = cred.email; password = cred.pwd; showPwd = true" class="w-full flex items-start justify-between px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm">
-                <div class="text-left">
-                  <span class="font-semibold text-gray-700 dark:text-gray-300 block">{{ cred.role }}</span>
-                  <span class="text-gray-400 dark:text-gray-500 text-xs">{{ cred.email }}</span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button v-for="cred in credentials" :key="cred.role" @click="email = cred.email; password = cred.pwd; showPwd = true" class="flex items-start justify-between px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-xs sm:text-sm">
+                <div class="text-left min-w-0">
+                  <span class="font-semibold text-gray-700 dark:text-gray-300 block truncate">{{ cred.role }}</span>
+                  <span class="text-gray-400 dark:text-gray-500 text-[10px] sm:text-xs truncate block">{{ cred.email }}</span>
                 </div>
-                <span class="text-primary-600 dark:text-primary-400 font-mono text-xs mt-1 ml-4 shrink-0">{{ cred.pwd }}</span>
+                <span class="text-primary-600 dark:text-primary-400 font-mono text-[10px] sm:text-xs mt-0.5 sm:mt-1 ml-2 sm:ml-4 shrink-0">{{ cred.pwd }}</span>
               </button>
             </div>
           </div>
