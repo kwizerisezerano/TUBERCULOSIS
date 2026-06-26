@@ -51,9 +51,9 @@
 
           <!-- Stats -->
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-5">
-            <div v-for="stat in stats" :key="stat.label" class="text-center p-5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-              <p class="text-3xl sm:text-4xl font-bold text-primary-600">{{ stat.value }}</p>
-              <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-2">{{ stat.label }}</p>
+            <div v-for="stat in stats" :key="stat.label" class="text-center p-6 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex flex-col justify-center">
+              <p class="text-4xl sm:text-5xl font-bold text-primary-600">{{ stat.value }}</p>
+              <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-3">{{ stat.label }}</p>
             </div>
           </div>
         </div>
