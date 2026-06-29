@@ -500,8 +500,8 @@ const rejectPrescription = (presc) => {
   showRejectionModal.value = true
 }
 
-const confirmRejectPrescription = async () => {
-  if (!rejectionReason.value) return
+const confirmRejectPrescription = async (reason) => {
+  if (!reason) return
   
   try {
     const token = authToken.value
@@ -511,7 +511,7 @@ const confirmRejectPrescription = async () => {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ status: 'rejected', rejection_reason: rejectionReason.value })
+      body: JSON.stringify({ status: 'rejected', rejection_reason: reason })
     })
     if (response.ok) {
       selectedPrescription.value.status = 'rejected'

@@ -3192,18 +3192,44 @@ def register_user():
     return jsonify(user.to_dict()), 201
 
 # User Management
-@app.route('/api/users', methods=['GET'])
+@app.route('/api/users', methods=['GET', 'POST'])
 @jwt_required()
 def get_users():
     user = get_current_user_from_jwt()
     if user.role not in ['admin', 'hospital_admin']:
         return jsonify({'msg': tr('ACCESS_DENIED')}), 403
     
-    users = User.query.all()
-    return jsonify({
-        'users': [u.to_dict() for u in users],
-        'total': len(users)
-    })
+    if request.method == 'GET':
+        users = User.query.order_by(User.created_at.desc()).all()
+        return jsonify({
+            'users': [u.to_dict() for u in users],
+            'total': len(users)
+        })
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        
+        # Check if username or email already exists
+        if User.query.filter_by(username=data.get('username')).first():
+            return jsonify({'msg': 'Username already exists'}), 400
+        if User.query.filter_by(email=data.get('email')).first():
+            return jsonify({'msg': 'Email already exists'}), 400
+        
+        # Hash the password
+        from utils.security import hash_password
+        hashed_password = hash_password(data.get('password'))
+        
+        new_user = User(
+            username=data.get('username'),
+            email=data.get('email'),
+            password=hashed_password,
+            role=data.get('role', 'doctor'),
+            is_active=data.get('is_active', True)
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        
+        return jsonify(new_user.to_dict()), 201
 
 @app.route('/api/users/<int:user_id>', methods=['PUT', 'DELETE'])
 @jwt_required()
@@ -3216,10 +3242,32 @@ def manage_user(user_id):
     
     if request.method == 'PUT':
         data = request.get_json()
-        if 'is_active' in data:
-            target_user.is_active = data['is_active']
+        
+        # Update fields if provided
+        if 'username' in data:
+            # Check if username already exists for another user
+            existing = User.query.filter_by(username=data['username']).first()
+            if existing and existing.id != user_id:
+                return jsonify({'msg': 'Username already exists'}), 400
+            target_user.username = data['username']
+        
+        if 'email' in data:
+            # Check if email already exists for another user
+            existing = User.query.filter_by(email=data['email']).first()
+            if existing and existing.id != user_id:
+                return jsonify({'msg': 'Email already exists'}), 400
+            target_user.email = data['email']
+        
         if 'role' in data:
             target_user.role = data['role']
+        
+        if 'is_active' in data:
+            target_user.is_active = data['is_active']
+        
+        if 'password' in data and data['password']:
+            from utils.security import hash_password
+            target_user.password = hash_password(data['password'])
+        
         db.session.commit()
         return jsonify(target_user.to_dict())
     
@@ -3629,7 +3677,7 @@ def atc_drugs():
     if request.method == 'GET':
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
-        pagination = ATCDrug.query.order_by(ATCDrug.drug_name).paginate(page=page, per_page=per_page, error_out=False)
+        pagination = ATCDrug.query.order_by(ATCDrug.drug_name.desc()).paginate(page=page, per_page=per_page, error_out=False)
         drugs = [d.to_dict() for d in pagination.items]
         return jsonify({
             'atc_drugs': drugs,
@@ -3754,10 +3802,10 @@ def prescriptions():
     if request.method == 'GET':
         if user.role == 'pharmacist':
             # Pharmacists see all pending and their approved/rejected
-            prescs = Prescription.query.all()
+            prescs = Prescription.query.order_by(Prescription.created_at.desc()).all()
         elif user.role in ['doctor', 'admin', 'hospital_admin']:
             # Doctors and admins see all
-            prescs = Prescription.query.all()
+            prescs = Prescription.query.order_by(Prescription.created_at.desc()).all()
         elif user.role == 'lab_technician':
             # Lab techs don't see prescriptions
             prescs = []
@@ -4164,7 +4212,7 @@ def patient_detail(patient_id):
 @jwt_required()
 def hospitals():
     if request.method == 'GET':
-        hospitals = Hospital.query.all()
+        hospitals = Hospital.query.order_by(Hospital.created_at.desc()).all()
         return jsonify({
             'hospitals': [h.to_dict() for h in hospitals],
             'total': len(hospitals)
@@ -4176,8 +4224,20 @@ def hospitals():
             return jsonify({'msg': tr('ACCESS_DENIED')}), 403
         
         data = request.get_json()
+        
+        # Auto-generate hospital_id if not provided
+        hospital_id = data.get('hospital_id')
+        if not hospital_id:
+            # Generate a unique hospital_id based on name and timestamp
+            import time
+            import hashlib
+            name = data.get('name', '')
+            timestamp = str(int(time.time()))
+            hash_input = f"{name}_{timestamp}".encode()
+            hospital_id = hashlib.md5(hash_input).hexdigest()[:12].upper()
+        
         hospital = Hospital(
-            hospital_id=data.get('hospital_id'),
+            hospital_id=hospital_id,
             name=data.get('name'),
             facility_type=data.get('facility_type', 'Hospital'),
             address=data.get('address'),
@@ -4278,7 +4338,7 @@ def pharmacy_inventory():
         if hospital_id:
             query = query.filter_by(hospital_id=hospital_id)
         
-        inventory = query.all()
+        inventory = query.order_by(PharmacyInventory.created_at.desc()).all()
         return jsonify({
             'inventory': [inv.to_dict() for inv in inventory],
             'total': len(inventory)
