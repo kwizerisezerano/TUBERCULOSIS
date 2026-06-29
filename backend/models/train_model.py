@@ -443,6 +443,7 @@ def _train_classifier(df, model_filename, encoder_filename):
     print("\n=== Model Information ===")
     print(f"Model: Random Forest Classifier")
     print(f"Parameters: n_estimators=300, max_depth=14, min_samples_split=5, min_samples_leaf=2, class_weight='balanced', random_state=42")
+    print(f"\nModel Accuracy: {accuracy:.2%}")
     print(f"\nFeature Importances (%):")
     for feat, imp in sorted(feature_importances.items(), key=lambda x: x[1], reverse=True):
         print(f"  - {feat}: {imp}%")
