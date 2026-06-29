@@ -4,6 +4,42 @@ from utils.security import encrypt_data, decrypt_data, hash_password, verify_pas
 
 db = SQLAlchemy()
 
+class Hospital(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    hospital_id = db.Column(db.String(100), unique=True, nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    facility_type = db.Column(db.String(50))  # Hospital, Health Center, Laboratory, Pharmacy
+    address = db.Column(db.Text)
+    city = db.Column(db.String(100))
+    region = db.Column(db.String(100))
+    country = db.Column(db.String(100), default='Rwanda')
+    phone = db.Column(db.String(50))
+    email = db.Column(db.String(200))
+    bed_capacity = db.Column(db.Integer)
+    icu_beds = db.Column(db.Integer)
+    source_dataset = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "hospital_id": self.hospital_id,
+            "name": self.name,
+            "facility_type": self.facility_type,
+            "address": self.address,
+            "city": self.city,
+            "region": self.region,
+            "country": self.country,
+            "phone": self.phone,
+            "email": self.email,
+            "bed_capacity": self.bed_capacity,
+            "icu_beds": self.icu_beds,
+            "source_dataset": self.source_dataset,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
+        }
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     # Encrypted fields
@@ -11,7 +47,10 @@ class User(db.Model):
     _email = db.Column('email', db.String(200), nullable=False, unique=True)  # encrypted
     password = db.Column(db.String(200), nullable=False)  # hashed
     role = db.Column(db.String(50), default='doctor')
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'))
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    hospital = db.relationship('Hospital', backref=db.backref('users', lazy=True))
 
     @property
     def username(self):
@@ -47,6 +86,7 @@ class User(db.Model):
 class Patient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.String(100), unique=True, nullable=False)
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'))
     first_name = db.Column(db.String(100))
     last_name = db.Column(db.String(100))
     age = db.Column(db.Integer)
@@ -58,6 +98,8 @@ class Patient(db.Model):
     region = db.Column(db.String(100))
     occupation = db.Column(db.String(100))
     date_of_diagnosis = db.Column(db.Integer)
+
+    hospital = db.relationship('Hospital', backref=db.backref('patients', lazy=True))
     symptoms = db.Column(db.Text)
     exposure_history = db.Column(db.Text)
     persistent_cough_duration_weeks = db.Column(db.Integer)
@@ -98,6 +140,8 @@ class Patient(db.Model):
     has_blood = db.Column(db.String(10))
     has_fatigue = db.Column(db.String(10))
     has_shortness_of_breath = db.Column(db.String(10))
+    risk_score = db.Column(db.Float, default=0.0)  # 0-100 continuous risk score
+    last_risk_calculation = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
 
@@ -105,6 +149,8 @@ class Patient(db.Model):
         return {
             "id": self.id,
             "patient_id": self.patient_id,
+            "hospital_id": self.hospital_id,
+            "hospital": self.hospital.to_dict() if self.hospital else None,
             "first_name": self.first_name,
             "last_name": self.last_name,
             "age": self.age,
@@ -145,6 +191,8 @@ class Patient(db.Model):
             "has_blood": self.has_blood,
             "has_fatigue": self.has_fatigue,
             "has_shortness_of_breath": self.has_shortness_of_breath,
+            "risk_score": self.risk_score,
+            "last_risk_calculation": self.last_risk_calculation.isoformat() if self.last_risk_calculation else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }
@@ -302,6 +350,41 @@ class ATCDrug(db.Model):
         }
 
 
+class PharmacyInventory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'))
+    atc_drug_id = db.Column(db.Integer, db.ForeignKey('atc_drug.id'), nullable=False)
+    stock_quantity = db.Column(db.Integer, default=0)  # Number of units in stock
+    unit_type = db.Column(db.String(50))  # e.g., tablets, vials, bottles
+    batch_number = db.Column(db.String(100))
+    expiry_date = db.Column(db.Date)
+    location = db.Column(db.String(100))  # Shelf/Storage location
+    minimum_stock_level = db.Column(db.Integer, default=10)  # Alert threshold
+    last_restocked = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+    hospital = db.relationship('Hospital', backref=db.backref('pharmacy_inventory', lazy=True))
+    atc_drug = db.relationship('ATCDrug', backref=db.backref('inventory_records', lazy=True))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "hospital_id": self.hospital_id,
+            "atc_drug_id": self.atc_drug_id,
+            "atc_drug": self.atc_drug.to_dict() if self.atc_drug else None,
+            "stock_quantity": self.stock_quantity,
+            "unit_type": self.unit_type,
+            "batch_number": self.batch_number,
+            "expiry_date": self.expiry_date.isoformat() if self.expiry_date else None,
+            "location": self.location,
+            "minimum_stock_level": self.minimum_stock_level,
+            "last_restocked": self.last_restocked.isoformat() if self.last_restocked else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
 class Prescription(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
@@ -317,10 +400,13 @@ class Prescription(db.Model):
     duration = db.Column(db.String(100))
     risk_level = db.Column(db.String(50))
     ml_recommended = db.Column(db.Boolean, default=False)
-    status = db.Column(db.String(50), default='pending')  # pending, approved, rejected
+    status = db.Column(db.String(50), default='pending')  # pending, approved, rejected, dispensed
     rejection_reason = db.Column(db.Text)
     approved_by = db.Column(db.Integer, db.ForeignKey('user.id'))
     approved_at = db.Column(db.DateTime)
+    dispensed_by = db.Column(db.Integer, db.ForeignKey('user.id'))  # Pharmacist who dispensed
+    dispensed_at = db.Column(db.DateTime)  # When medication was dispensed
+    stock_updated = db.Column(db.Boolean, default=False)  # Whether stock was updated
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
 
@@ -328,6 +414,7 @@ class Prescription(db.Model):
     diagnosis = db.relationship('Diagnosis', backref=db.backref('prescriptions', lazy=True))
     creator = db.relationship('User', foreign_keys=[created_by], backref=db.backref('created_prescriptions', lazy=True))
     approver = db.relationship('User', foreign_keys=[approved_by], backref=db.backref('approved_prescriptions', lazy=True))
+    dispenser = db.relationship('User', foreign_keys=[dispensed_by], backref=db.backref('dispensed_prescriptions', lazy=True))
     atc_drug = db.relationship('ATCDrug', backref=db.backref('prescriptions', lazy=True))
 
     def to_dict(self):
@@ -351,6 +438,9 @@ class Prescription(db.Model):
             "rejection_reason": self.rejection_reason,
             "approved_by": self.approved_by,
             "approved_at": self.approved_at.isoformat() if self.approved_at else None,
+            "dispensed_by": self.dispensed_by,
+            "dispensed_at": self.dispensed_at.isoformat() if self.dispensed_at else None,
+            "stock_updated": self.stock_updated,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }

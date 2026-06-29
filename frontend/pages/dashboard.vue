@@ -2,6 +2,118 @@
   <DashboardLayout>
     <div class="space-y-6">
 
+      <!-- Pharmacist Dashboard -->
+      <div v-if="userRole === 'pharmacist'">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Pharmacy Dashboard</h1>
+        
+        <!-- Pharmacist Stats -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+            <p class="text-gray-500 dark:text-gray-400 text-sm">Pending Prescriptions</p>
+            <p class="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">{{ dashboard.prescription_stats?.pending || 0 }}</p>
+          </div>
+          <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+            <p class="text-gray-500 dark:text-gray-400 text-sm">Approved Today</p>
+            <p class="text-3xl font-bold text-green-600 dark:text-green-400 mt-1">{{ dashboard.prescription_stats?.approved || 0 }}</p>
+          </div>
+          <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+            <p class="text-gray-500 dark:text-gray-400 text-sm">Dispensed Today</p>
+            <p class="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1">{{ dashboard.prescription_stats?.dispensed || 0 }}</p>
+          </div>
+          <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+            <p class="text-gray-500 dark:text-gray-400 text-sm">Low Stock Alerts</p>
+            <p class="text-3xl font-bold text-red-600 dark:text-red-400 mt-1">{{ dashboard.inventory_stats?.low_stock || 0 }}</p>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
+            <div class="space-y-3">
+              <router-link to="/pharmacist" class="block w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-center font-medium transition">
+                Manage Prescriptions
+              </router-link>
+              <router-link to="/prescriptions" class="block w-full py-3 px-4 bg-gray-600 hover:bg-gray-700 text-white rounded-xl text-center font-medium transition">
+                View All Prescriptions
+              </router-link>
+            </div>
+          </div>
+          <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Inventory Summary</h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-500 dark:text-gray-400">Total Drugs in Stock</span>
+                <span class="text-gray-900 dark:text-white font-medium">{{ dashboard.inventory_stats?.total_drugs || 0 }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-500 dark:text-gray-400">Below Minimum Stock</span>
+                <span class="text-red-600 font-medium">{{ dashboard.inventory_stats?.low_stock || 0 }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lab Technician Dashboard -->
+      <div v-else-if="userRole === 'lab_technician'">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Laboratory Dashboard</h1>
+        
+        <!-- Lab Tech Stats -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+            <p class="text-gray-500 dark:text-gray-400 text-sm">Pending Tests</p>
+            <p class="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">{{ dashboard.lab_stats?.pending || 0 }}</p>
+          </div>
+          <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+            <p class="text-gray-500 dark:text-gray-400 text-sm">Completed Today</p>
+            <p class="text-3xl font-bold text-green-600 dark:text-green-400 mt-1">{{ dashboard.lab_stats?.completed_today || 0 }}</p>
+          </div>
+          <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+            <p class="text-gray-500 dark:text-gray-400 text-sm">In Progress</p>
+            <p class="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1">{{ dashboard.lab_stats?.in_progress || 0 }}</p>
+          </div>
+          <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+            <p class="text-gray-500 dark:text-gray-400 text-sm">Total This Week</p>
+            <p class="text-3xl font-bold text-purple-600 dark:text-purple-400 mt-1">{{ dashboard.lab_stats?.total_week || 0 }}</p>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
+            <div class="space-y-3">
+              <router-link to="/lab-technician" class="block w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-center font-medium transition">
+                Manage Lab Tests
+              </router-link>
+              <router-link to="/lab-results" class="block w-full py-3 px-4 bg-gray-600 hover:bg-gray-700 text-white rounded-xl text-center font-medium transition">
+                View All Results
+              </router-link>
+            </div>
+          </div>
+          <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Test Types Summary</h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-500 dark:text-gray-400">Sputum Smear</span>
+                <span class="text-gray-900 dark:text-white font-medium">{{ dashboard.lab_stats?.sputum_tests || 0 }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-500 dark:text-gray-400">GeneXpert</span>
+                <span class="text-gray-900 dark:text-white font-medium">{{ dashboard.lab_stats?.genexpert_tests || 0 }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-500 dark:text-gray-400">Chest X-ray</span>
+                <span class="text-gray-900 dark:text-white font-medium">{{ dashboard.lab_stats?.xray_tests || 0 }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Admin/Doctor/Hospital Admin Dashboard -->
+      <div v-else>
       <!-- Summary Cards Row 1 -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
@@ -9,8 +121,8 @@
           <p class="text-3xl font-bold text-gray-900 dark:text-white mt-1">{{ dashboard.patient_stats?.total || 0 }}</p>
         </div>
         <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
-          <p class="text-gray-500 dark:text-gray-400 text-sm">Total Diagnoses</p>
-          <p class="text-3xl font-bold text-purple-600 dark:text-purple-400 mt-1">{{ dashboard.diagnosis_stats?.total || 0 }}</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm">Healthcare Facilities</p>
+          <p class="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">{{ dashboard.hospital_stats?.total || 0 }}</p>
         </div>
         <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
           <p class="text-gray-500 dark:text-gray-400 text-sm">Total Lab Results</p>
@@ -25,16 +137,16 @@
       <!-- Summary Cards Row 2 -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-gray-500 dark:text-gray-400 text-sm">Total Diagnoses</p>
+          <p class="text-3xl font-bold text-purple-600 dark:text-purple-400 mt-1">{{ dashboard.diagnosis_stats?.total || 0 }}</p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
           <p class="text-gray-500 dark:text-gray-400 text-sm">Antimicrobial Resistance</p>
           <p class="text-3xl font-bold text-red-600 dark:text-red-400 mt-1">{{ dashboard.antimicrobial_resistance_stats?.total || 0 }}</p>
         </div>
         <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
           <p class="text-gray-500 dark:text-gray-400 text-sm">ATC Drugs</p>
           <p class="text-3xl font-bold text-cyan-600 dark:text-cyan-400 mt-1">{{ dashboard.atc_drug_stats?.total || 0 }}</p>
-        </div>
-        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
-          <p class="text-gray-500 dark:text-gray-400 text-sm">Treatments</p>
-          <p class="text-3xl font-bold text-orange-600 dark:text-orange-400 mt-1">{{ dashboard.treatment_stats?.total || 0 }}</p>
         </div>
         <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
           <p class="text-gray-500 dark:text-gray-400 text-sm">High Risk Patients</p>
@@ -95,9 +207,10 @@
           <canvas ref="prescriptionChart" height="220"></canvas>
         </div>
       </div>
+      </div>
 
       <!-- Recent Patients + Alerts -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div v-if="userRole !== 'pharmacist' && userRole !== 'lab_technician'" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
           <h3 class="text-base font-bold text-gray-900 dark:text-white mb-4">Recent Patients</h3>
           <div v-if="patients.length" class="space-y-3">
@@ -146,6 +259,7 @@ Chart.register(...registerables);
 import DashboardLayout from '~/components/DashboardLayout.vue';
 
 const { getPatients, getDashboardStats, getAlerts, markAlertRead, getDashboardCharts } = useApi();
+const { userRole } = useAuth();
 
 const patients = ref<any[]>([]);
 const alerts = ref<any[]>([]);

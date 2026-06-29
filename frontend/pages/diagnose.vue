@@ -278,41 +278,78 @@
             </div>
             <div>
               <h3 class="text-lg font-bold text-gray-900 dark:text-white">Lab Test Results</h3>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Enter available lab test findings</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">View lab results submitted by technicians</p>
             </div>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sputum Smear</label>
-              <select v-model="form.sputum_smear_test" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none">
-                <option value="Unknown">Unknown</option>
-                <option value="Positive">Positive</option>
-                <option value="Negative">Negative</option>
-              </select>
+
+          <!-- Completed Lab Tests from Technicians -->
+          <div v-if="patientLabTests.length > 0" class="space-y-4">
+            <div v-for="test in patientLabTests" :key="test.id" class="p-4 rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
+              <div class="flex justify-between items-start mb-2">
+                <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ test.test_type }}</h4>
+                <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                  Completed
+                </span>
+              </div>
+              <div class="space-y-2 text-sm">
+                <p class="text-gray-500 dark:text-gray-400">Result: <span :class="['font-medium', getResultColor(test.results)]">{{ test.results || 'Pending' }}</span></p>
+                <p v-if="test.notes" class="text-gray-500 dark:text-gray-400">Notes: <span class="text-gray-900 dark:text-white">{{ test.notes }}</span></p>
+                <p class="text-gray-500 dark:text-gray-400">Completed by: <span class="text-gray-900 dark:text-white">Tech #{{ test.completed_by }}</span></p>
+                <p class="text-gray-500 dark:text-gray-400">Completed at: <span class="text-gray-900 dark:text-white">{{ formatDate(test.completed_at) }}</span></p>
+              </div>
+              <button
+                @click="useLabResult(test)"
+                class="mt-3 px-3 py-1 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
+              >
+                Use This Result
+              </button>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">GeneXpert</label>
-              <select v-model="form.genexpert_test" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none">
-                <option value="Unknown">Unknown</option>
-                <option value="Positive">Positive</option>
-                <option value="Negative">Negative</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Chest X-ray</label>
-              <select v-model="form.chest_xray" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none">
-                <option value="Unknown">Unknown</option>
-                <option value="Normal">Normal</option>
-                <option value="Abnormal">Abnormal</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Drug Resistance</label>
-              <select v-model="form.drug_resistance" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none">
-                <option value="">Unknown</option>
-                <option value="Yes">Yes</option>
-                <option value="No">No</option>
-              </select>
+          </div>
+
+          <div v-else class="p-6 text-center text-gray-500 dark:text-gray-400 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl">
+            <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <p>No completed lab tests found for this patient</p>
+            <p class="text-xs mt-1">Lab technician needs to submit test results first</p>
+          </div>
+
+          <!-- Manual Entry Fallback -->
+          <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Or manually enter lab findings:</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sputum Smear</label>
+                <select v-model="form.sputum_smear_test" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none">
+                  <option value="Unknown">Unknown</option>
+                  <option value="Positive">Positive</option>
+                  <option value="Negative">Negative</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">GeneXpert</label>
+                <select v-model="form.genexpert_test" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none">
+                  <option value="Unknown">Unknown</option>
+                  <option value="Positive">Positive</option>
+                  <option value="Negative">Negative</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Chest X-ray</label>
+                <select v-model="form.chest_xray" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none">
+                  <option value="Unknown">Unknown</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Abnormal">Abnormal</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Drug Resistance</label>
+                <select v-model="form.drug_resistance" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none">
+                  <option value="">Unknown</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -330,6 +367,12 @@
               <p class="text-xs text-gray-500 dark:text-gray-400">Review patient data and run diagnosis</p>
             </div>
           </div>
+          
+          <!-- Error Message -->
+          <div v-if="diagnosisError" class="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+            <p class="text-sm text-red-600 dark:text-red-400">{{ diagnosisError }}</p>
+          </div>
+          
           <div class="space-y-4">
             <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
               <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
@@ -620,6 +663,9 @@ const selectedPatient = ref<any>(null);
 const diagnoses = ref<any[]>([]);
 const isLoading = ref(false);
 const diagnosisResult = ref<any>(null);
+const API_BASE = 'http://127.0.0.1:5000/api';
+
+const patientLabTests = ref<any[]>([]);
 
 const form = ref({
   patient_id: '',
@@ -739,18 +785,67 @@ const loadPatient = async () => {
       form.value[key as keyof typeof form.value] = patient[key];
     }
   });
+  // Load lab tests for this patient
+  await fetchPatientLabTests();
 };
+
+const fetchPatientLabTests = async () => {
+  if (!selectedPatientId.value) return;
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE}/lab-tests?patient_id=${selectedPatientId.value}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    patientLabTests.value = (data.lab_tests || []).filter(t => t.status === 'completed');
+  } catch (error) {
+    console.error('Error fetching lab tests:', error);
+  }
+};
+
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return 'N/A';
+  return new Date(dateStr).toLocaleDateString();
+};
+
+const getResultColor = (result: string) => {
+  if (!result) return 'text-gray-500';
+  const colors: Record<string, string> = {
+    'Positive': 'text-red-600 font-bold',
+    'Negative': 'text-green-600',
+    'Abnormal': 'text-yellow-600',
+    'Normal': 'text-blue-600',
+    'Inconclusive': 'text-gray-600'
+  };
+  return colors[result] || 'text-gray-600';
+};
+
+const useLabResult = (test: any) => {
+  // Map lab test results to form fields
+  if (test.test_type.toLowerCase().includes('sputum')) {
+    form.value.sputum_smear_test = test.results === 'Positive' ? 'Positive' : test.results === 'Negative' ? 'Negative' : 'Unknown';
+  }
+  if (test.test_type.toLowerCase().includes('genexpert')) {
+    form.value.genexpert_test = test.results === 'Positive' ? 'Positive' : test.results === 'Negative' ? 'Negative' : 'Unknown';
+  }
+  if (test.test_type.toLowerCase().includes('xray') || test.test_type.toLowerCase().includes('chest')) {
+    form.value.chest_xray = test.results === 'Abnormal' ? 'Abnormal' : test.results === 'Normal' ? 'Normal' : 'Unknown';
+  }
+};
+
+const diagnosisError = ref('');
 
 const handleDiagnose = async () => {
   try {
     isLoading.value = true;
+    diagnosisError.value = '';
     const res = await diagnose({ patient: form.value });
     diagnosisResult.value = res;
     currentStep.value = 5;
     await loadDiagnoses();
   } catch (e) {
     console.error('Diagnosis failed:', e);
-    alert('Failed to get diagnosis. Please try again.');
+    diagnosisError.value = 'Failed to get diagnosis. Please try again.';
   } finally {
     isLoading.value = false;
   }

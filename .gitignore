@@ -76,14 +76,15 @@ frontend/.output/
 *.tar.gz
 *.rar
 
-# Dataset files - only exclude files larger than 50 MB or specific huge files
+# Dataset files - exclude all CSV and data files
+backend/data/
+NEWDATASETS/
+datasets/
+*.csv
 *.json
 *.xlsx
 *.xls
 *.pdf
-
-# Ignore the huge dataset file (131MB)
-backend/data/raw/Tuberculosis_Dataset.csv
 
 # Ignore backup folder
 DATA_BACKUP/

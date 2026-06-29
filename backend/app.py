@@ -50,8 +50,9 @@ from flask_jwt_extended import (
     get_jwt
 )
 from dotenv import load_dotenv
-from models.models import db, User, Patient, Diagnosis, Treatment, Alert, LabTest, Prescription, AuditLog, ATCDrug, DetailedLabResult, AntibioticResistance
+from models.models import db, User, Patient, Diagnosis, Treatment, Alert, LabTest, Prescription, AuditLog, ATCDrug, DetailedLabResult, AntibioticResistance, Hospital, PharmacyInventory
 from models.train_model import preprocess_symptoms, get_patient_features, train_models_from_database
+from risk_scoring import recalculate_risk_on_lab_result, recalculate_risk_on_prescription, recalculate_risk_on_diagnosis
 from utils.security import encrypt_data, decrypt_data, hash_password, verify_password
 
 load_dotenv()
@@ -3472,6 +3473,12 @@ def lab_test_detail(test_id):
         if data.get('status') == 'completed' and user.role == 'lab_technician':
             test.completed_by = user_id
             test.completed_at = datetime.now()
+            
+            # Recalculate risk score when lab result is completed
+            try:
+                recalculate_risk_on_lab_result(test.patient_id)
+            except Exception as e:
+                print(f"Error recalculating risk score: {e}")
         
         # Create audit log
         audit = AuditLog(
@@ -3485,6 +3492,64 @@ def lab_test_detail(test_id):
         
         db.session.commit()
         return jsonify(test.to_dict())
+
+@app.route('/api/lab-tests/<int:test_id>/submit-result', methods=['POST'])
+@jwt_required()
+def submit_lab_result(test_id):
+    user = get_current_user_from_jwt()
+    if user.role != 'lab_technician':
+        return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+    
+    test = LabTest.query.get_or_404(test_id)
+    
+    if test.status == 'completed':
+        return jsonify({'error': 'Test already completed'}), 400
+    
+    data = request.get_json()
+    
+    # Validate required fields
+    if not data.get('results'):
+        return jsonify({'error': 'Results are required'}), 400
+    
+    # Update test with results
+    test.status = 'completed'
+    test.results = data.get('results')
+    test.notes = data.get('notes')
+    test.completed_by = user.id
+    test.completed_at = datetime.now()
+    
+    # Recalculate risk score when lab result is completed
+    try:
+        recalculate_risk_on_lab_result(test.patient_id)
+    except Exception as e:
+        print(f"Error recalculating risk score: {e}")
+    
+    # Create audit log
+    audit = AuditLog(
+        user_id=user.id,
+        action='submit_lab_result',
+        entity_type='lab_test',
+        entity_id=test.id,
+        details=f"Submitted results for {test.test_type} for patient {test.patient_id}"
+    )
+    db.session.add(audit)
+    db.session.commit()
+    
+    return jsonify(test.to_dict())
+
+@app.route('/api/lab-tests/pending', methods=['GET'])
+@jwt_required()
+def get_pending_lab_tests():
+    user = get_current_user_from_jwt()
+    if user.role != 'lab_technician':
+        return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+    
+    pending_tests = LabTest.query.filter_by(status='requested').order_by(LabTest.created_at).all()
+    
+    return jsonify({
+        'pending_tests': [test.to_dict() for test in pending_tests],
+        'total': len(pending_tests)
+    })
 
 
 # ATC Drug Management
@@ -3683,6 +3748,12 @@ def prescriptions():
             )
             db.session.add(alert)
         
+        # Recalculate risk score when prescription is created
+        try:
+            recalculate_risk_on_prescription(presc.patient_id)
+        except Exception as e:
+            print(f"Error recalculating risk score: {e}")
+        
         # Create audit log
         audit = AuditLog(
             user_id=user_id,
@@ -3717,7 +3788,7 @@ def prescription_detail(presc_id):
         data = request.get_json()
         
         if user.role == 'pharmacist' and ('status' in data):
-            # Pharmacist can only update status to approved/rejected
+            # Pharmacist can only update status to approved/rejected/dispensed
             if data['status'] == 'approved':
                 presc.status = 'approved'
                 presc.approved_by = user_id
@@ -3725,6 +3796,11 @@ def prescription_detail(presc_id):
             elif data['status'] == 'rejected':
                 presc.status = 'rejected'
                 presc.rejection_reason = data.get('rejection_reason')
+            elif data['status'] == 'dispensed':
+                presc.status = 'dispensed'
+                presc.dispensed_by = user_id
+                presc.dispensed_at = datetime.now()
+                presc.stock_updated = data.get('stock_updated', False)
             
             # Create audit log
             audit = AuditLog(
@@ -3787,6 +3863,7 @@ def dashboard():
     total_atc_drugs = ATCDrug.query.count()
     total_diagnoses = Diagnosis.query.count()
     total_treatments = Treatment.query.count()
+    total_hospitals = Hospital.query.count()
     
     # Calculate patient risk levels using DB counts (avoids loading all patients into memory)
     total_patients = Patient.query.count()
@@ -3819,6 +3896,7 @@ def dashboard():
         'low_risk': low_risk_patients,
         'recent': recent_patients
     }
+    response['hospital_stats'] = { 'total': total_hospitals }
     response['detailed_lab_stats'] = { 'total': total_detailed_lab_results }
     response['antimicrobial_resistance_stats'] = { 'total': total_antibiotic_resistance_records }
     response['atc_drug_stats'] = { 'total': total_atc_drugs }
@@ -4010,6 +4088,311 @@ def patient_detail(patient_id):
         db.session.delete(patient)
         db.session.commit()
         return jsonify({'message': tr('PATIENT_DELETED')})
+
+# Hospital Management
+@app.route('/api/hospitals', methods=['GET', 'POST'])
+@jwt_required()
+def hospitals():
+    if request.method == 'GET':
+        hospitals = Hospital.query.all()
+        return jsonify({
+            'hospitals': [h.to_dict() for h in hospitals],
+            'total': len(hospitals)
+        })
+    
+    if request.method == 'POST':
+        user = get_current_user_from_jwt()
+        if user.role not in ['admin', 'hospital_admin']:
+            return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+        
+        data = request.get_json()
+        hospital = Hospital(
+            hospital_id=data.get('hospital_id'),
+            name=data.get('name'),
+            facility_type=data.get('facility_type', 'Hospital'),
+            address=data.get('address'),
+            city=data.get('city'),
+            region=data.get('region'),
+            country=data.get('country', 'Rwanda'),
+            phone=data.get('phone'),
+            email=data.get('email'),
+            bed_capacity=data.get('bed_capacity'),
+            icu_beds=data.get('icu_beds'),
+            source_dataset='manual_entry'
+        )
+        db.session.add(hospital)
+        db.session.commit()
+        
+        # Log the action
+        audit = AuditLog(
+            user_id=user.id,
+            action='create_hospital',
+            entity_type='hospital',
+            entity_id=hospital.id,
+            details=f"Created hospital: {hospital.name}"
+        )
+        db.session.add(audit)
+        db.session.commit()
+        
+        return jsonify(hospital.to_dict()), 201
+
+@app.route('/api/hospitals/<int:hospital_id>', methods=['GET', 'PUT', 'DELETE'])
+@jwt_required()
+def hospital_detail(hospital_id):
+    hospital = Hospital.query.get_or_404(hospital_id)
+    
+    if request.method == 'GET':
+        return jsonify({
+            'hospital': hospital.to_dict(),
+            'patients': [p.to_dict() for p in hospital.patients],
+            'users': [u.to_dict() for u in hospital.users]
+        })
+    
+    if request.method == 'PUT':
+        user = get_current_user_from_jwt()
+        if user.role not in ['admin', 'hospital_admin']:
+            return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+        
+        data = request.get_json()
+        for key, value in data.items():
+            if hasattr(hospital, key):
+                setattr(hospital, key, value)
+        db.session.commit()
+        
+        # Log the action
+        audit = AuditLog(
+            user_id=user.id,
+            action='update_hospital',
+            entity_type='hospital',
+            entity_id=hospital.id,
+            details=f"Updated hospital: {hospital.name}"
+        )
+        db.session.add(audit)
+        db.session.commit()
+        
+        return jsonify(hospital.to_dict())
+    
+    if request.method == 'DELETE':
+        user = get_current_user_from_jwt()
+        if user.role not in ['admin', 'hospital_admin']:
+            return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+        
+        db.session.delete(hospital)
+        db.session.commit()
+        
+        # Log the action
+        audit = AuditLog(
+            user_id=user.id,
+            action='delete_hospital',
+            entity_type='hospital',
+            entity_id=hospital_id,
+            details=f"Deleted hospital: {hospital.name}"
+        )
+        db.session.add(audit)
+        db.session.commit()
+        
+        return jsonify({'message': 'Hospital deleted successfully'})
+
+# Pharmacy Inventory Management
+@app.route('/api/pharmacy-inventory', methods=['GET', 'POST'])
+@jwt_required()
+def pharmacy_inventory():
+    user = get_current_user_from_jwt()
+    if user.role not in ['pharmacist', 'admin', 'hospital_admin']:
+        return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+    
+    if request.method == 'GET':
+        hospital_id = request.args.get('hospital_id', type=int)
+        query = PharmacyInventory.query
+        
+        if hospital_id:
+            query = query.filter_by(hospital_id=hospital_id)
+        
+        inventory = query.all()
+        return jsonify({
+            'inventory': [inv.to_dict() for inv in inventory],
+            'total': len(inventory)
+        })
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        inventory = PharmacyInventory(
+            hospital_id=data.get('hospital_id'),
+            atc_drug_id=data.get('atc_drug_id'),
+            stock_quantity=data.get('stock_quantity', 0),
+            unit_type=data.get('unit_type', 'tablets'),
+            batch_number=data.get('batch_number'),
+            expiry_date=pd.to_datetime(data.get('expiry_date')) if data.get('expiry_date') else None,
+            location=data.get('location'),
+            minimum_stock_level=data.get('minimum_stock_level', 10),
+            last_restocked=datetime.now()
+        )
+        db.session.add(inventory)
+        
+        audit = AuditLog(
+            user_id=user.id,
+            action='create_inventory',
+            entity_type='pharmacy_inventory',
+            entity_id=inventory.id,
+            details=f"Added inventory for drug ID {data.get('atc_drug_id')}"
+        )
+        db.session.add(audit)
+        db.session.commit()
+        
+        return jsonify(inventory.to_dict()), 201
+
+@app.route('/api/pharmacy-inventory/<int:inventory_id>', methods=['GET', 'PUT', 'DELETE'])
+@jwt_required()
+def inventory_detail(inventory_id):
+    user = get_current_user_from_jwt()
+    if user.role not in ['pharmacist', 'admin', 'hospital_admin']:
+        return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+    
+    inventory = PharmacyInventory.query.get_or_404(inventory_id)
+    
+    if request.method == 'GET':
+        return jsonify(inventory.to_dict())
+    
+    if request.method == 'PUT':
+        data = request.get_json()
+        
+        # Update stock quantity and log restock
+        if 'stock_quantity' in data:
+            old_quantity = inventory.stock_quantity
+            inventory.stock_quantity = data['stock_quantity']
+            if data['stock_quantity'] > old_quantity:
+                inventory.last_restocked = datetime.now()
+        
+        for key, value in data.items():
+            if hasattr(inventory, key) and key != 'stock_quantity':
+                setattr(inventory, key, value)
+        
+        db.session.commit()
+        
+        audit = AuditLog(
+            user_id=user.id,
+            action='update_inventory',
+            entity_type='pharmacy_inventory',
+            entity_id=inventory.id,
+            details=f"Updated inventory for {inventory.atc_drug.drug_name if inventory.atc_drug else 'unknown'}"
+        )
+        db.session.add(audit)
+        db.session.commit()
+        
+        return jsonify(inventory.to_dict())
+    
+    if request.method == 'DELETE':
+        if user.role != 'admin':
+            return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+        
+        db.session.delete(inventory)
+        db.session.commit()
+        
+        return jsonify({'message': 'Inventory item deleted'})
+
+@app.route('/api/prescriptions/<int:presc_id>/check-stock', methods=['GET'])
+@jwt_required()
+def check_prescription_stock(presc_id):
+    user = get_current_user_from_jwt()
+    if user.role not in ['pharmacist', 'admin', 'hospital_admin']:
+        return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+    
+    presc = Prescription.query.get_or_404(presc_id)
+    
+    if not presc.atc_drug_id:
+        return jsonify({
+            'available': False,
+            'message': 'No ATC drug linked to this prescription'
+        })
+    
+    # Get patient's hospital
+    patient = Patient.query.get(presc.patient_id)
+    if not patient or not patient.hospital_id:
+        return jsonify({
+            'available': False,
+            'message': 'Patient hospital not found'
+        })
+    
+    # Check inventory
+    inventory = PharmacyInventory.query.filter_by(
+        hospital_id=patient.hospital_id,
+        atc_drug_id=presc.atc_drug_id
+    ).first()
+    
+    if not inventory:
+        return jsonify({
+            'available': False,
+            'message': 'Drug not in inventory',
+            'stock_quantity': 0
+        })
+    
+    required_quantity = presc.duration_days if presc.duration_days else 30  # Default 30 days
+    available = inventory.stock_quantity >= required_quantity
+    
+    return jsonify({
+        'available': available,
+        'stock_quantity': inventory.stock_quantity,
+        'required_quantity': required_quantity,
+        'drug_name': inventory.atc_drug.drug_name if inventory.atc_drug else 'Unknown',
+        'below_minimum': inventory.stock_quantity <= inventory.minimum_stock_level
+    })
+
+@app.route('/api/prescriptions/<int:presc_id>/dispense', methods=['POST'])
+@jwt_required()
+def dispense_prescription(presc_id):
+    user = get_current_user_from_jwt()
+    if user.role != 'pharmacist':
+        return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+    
+    presc = Prescription.query.get_or_404(presc_id)
+    
+    if presc.status != 'approved':
+        return jsonify({
+            'error': 'Prescription must be approved before dispensing'
+        }), 400
+    
+    # Get patient's hospital
+    patient = Patient.query.get(presc.patient_id)
+    if not patient or not patient.hospital_id:
+        return jsonify({'error': 'Patient hospital not found'}), 400
+    
+    # Check and update inventory
+    if presc.atc_drug_id:
+        inventory = PharmacyInventory.query.filter_by(
+            hospital_id=patient.hospital_id,
+            atc_drug_id=presc.atc_drug_id
+        ).first()
+        
+        if inventory:
+            required_quantity = presc.duration_days if presc.duration_days else 30
+            if inventory.stock_quantity < required_quantity:
+                return jsonify({
+                    'error': 'Insufficient stock',
+                    'stock_quantity': inventory.stock_quantity,
+                    'required_quantity': required_quantity
+                }), 400
+            
+            # Update stock
+            inventory.stock_quantity -= required_quantity
+            presc.stock_updated = True
+    
+    # Update prescription
+    presc.status = 'dispensed'
+    presc.dispensed_by = user.id
+    presc.dispensed_at = datetime.now()
+    
+    # Create audit log
+    audit = AuditLog(
+        user_id=user.id,
+        action='dispense_prescription',
+        entity_type='prescription',
+        entity_id=presc.id,
+        details=f"Dispensed {presc.medication} to patient {presc.patient_id}"
+    )
+    db.session.add(audit)
+    db.session.commit()
+    
+    return jsonify(presc.to_dict())
 
 # Comprehensive Diagnosis with WHO Standards
 @app.route('/api/diagnose', methods=['POST'])
@@ -4428,6 +4811,12 @@ def diagnose():
         "saved_prescription": prescription.to_dict(),
         "alert_created": alert_created.id if alert_created else None,
     })
+    
+    # Recalculate risk score when diagnosis is made
+    try:
+        recalculate_risk_on_diagnosis(patient.id)
+    except Exception as e:
+        print(f"Error recalculating risk score: {e}")
 
 @app.route('/api/diagnoses', methods=['GET'])
 @jwt_required()
