@@ -282,6 +282,22 @@
             </div>
           </div>
 
+          <!-- Current Form Values Display -->
+          <div class="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
+            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Current Lab Result Values</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+              <div>
+                <p class="text-gray-500 dark:text-gray-400">Sputum Smear: <span :class="['font-medium', form.sputum_smear_test === 'Positive' ? 'text-red-600 dark:text-red-400' : form.sputum_smear_test === 'Negative' ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-gray-300']">{{ form.sputum_smear_test }}</span></p>
+              </div>
+              <div>
+                <p class="text-gray-500 dark:text-gray-400">GeneXpert: <span :class="['font-medium', form.genexpert_test === 'Positive' ? 'text-red-600 dark:text-red-400' : form.genexpert_test === 'Negative' ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-gray-300']">{{ form.genexpert_test }}</span></p>
+              </div>
+              <div>
+                <p class="text-gray-500 dark:text-gray-400">Chest X-ray: <span :class="['font-medium', form.chest_xray === 'Abnormal' ? 'text-red-600 dark:text-red-400' : form.chest_xray === 'Normal' ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-gray-300']">{{ form.chest_xray }}</span></p>
+              </div>
+            </div>
+          </div>
+
           <!-- Completed Lab Tests from Technicians -->
           <div v-if="patientLabTests.length > 0" class="space-y-4">
             <div v-for="test in patientLabTests" :key="test.id" class="p-4 rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
@@ -956,6 +972,7 @@ const getResultColor = (result: string) => {
 };
 
 const useLabResult = (test: any) => {
+  console.log('Using lab result:', test);
   // Map lab test results to form fields
   if (test.test_type.toLowerCase().includes('sputum')) {
     form.value.sputum_smear_test = test.results === 'Positive' ? 'Positive' : test.results === 'Negative' ? 'Negative' : 'Unknown';
@@ -964,8 +981,16 @@ const useLabResult = (test: any) => {
     form.value.genexpert_test = test.results === 'Positive' ? 'Positive' : test.results === 'Negative' ? 'Negative' : 'Unknown';
   }
   if (test.test_type.toLowerCase().includes('xray') || test.test_type.toLowerCase().includes('chest')) {
-    form.value.chest_xray = test.results === 'Abnormal' ? 'Abnormal' : test.results === 'Normal' ? 'Normal' : 'Unknown';
+    // Handle both Normal/Abnormal and Positive/Negative for X-ray
+    if (test.results === 'Normal' || test.results === 'Negative') {
+      form.value.chest_xray = 'Normal';
+    } else if (test.results === 'Abnormal' || test.results === 'Positive') {
+      form.value.chest_xray = 'Abnormal';
+    } else {
+      form.value.chest_xray = 'Unknown';
+    }
   }
+  console.log('Form after using lab result:', form.value);
 };
 
 const diagnosisError = ref('');

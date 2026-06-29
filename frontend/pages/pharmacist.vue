@@ -279,12 +279,22 @@
       <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Add Inventory</h3>
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hospital ID</label>
-          <input v-model.number="newInventoryForm.hospital_id" type="number" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hospital <span class="text-red-500">*</span></label>
+          <select v-model="newInventoryForm.hospital_id" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            <option value="">Select hospital</option>
+            <option v-for="hospital in hospitals" :key="hospital.id" :value="hospital.id">
+              {{ hospital.name }}
+            </option>
+          </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ATC Drug ID</label>
-          <input v-model.number="newInventoryForm.atc_drug_id" type="number" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ATC Drug <span class="text-red-500">*</span></label>
+          <select v-model="newInventoryForm.atc_drug_id" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            <option value="">Select drug</option>
+            <option v-for="drug in atcDrugs" :key="drug.id" :value="drug.id">
+              {{ drug.drug_name }}
+            </option>
+          </select>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stock Quantity</label>
@@ -320,7 +330,11 @@
         <button @click="showAddInventoryModal = false" class="flex-1 py-3 px-4 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold transition-colors">
           Cancel
         </button>
-        <button @click="addInventory" class="flex-1 py-3 px-4 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold transition-colors">
+        <button 
+          @click="addInventory" 
+          :disabled="!newInventoryForm.hospital_id || !newInventoryForm.atc_drug_id"
+          class="flex-1 py-3 px-4 rounded-xl bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold transition-colors"
+        >
           Add
         </button>
       </div>
@@ -347,6 +361,8 @@ const rejectionReason = ref('')
 const editInventoryQuantity = ref('')
 const editingInventoryItem = ref(null)
 const selectedPrescription = ref(null)
+const hospitals = ref([])
+const atcDrugs = ref([])
 const newInventoryForm = ref({
   hospital_id: null,
   atc_drug_id: null,
@@ -567,9 +583,37 @@ const addInventory = async () => {
   }
 }
 
+const fetchHospitals = async () => {
+  try {
+    const token = authToken.value
+    const response = await fetch(`${API_BASE}/hospitals`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    const data = await response.json()
+    hospitals.value = data.hospitals || []
+  } catch (error) {
+    console.error('Error fetching hospitals:', error)
+  }
+}
+
+const fetchATCDrugs = async () => {
+  try {
+    const token = authToken.value
+    const response = await fetch(`${API_BASE}/atc-drugs`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    const data = await response.json()
+    atcDrugs.value = data.atc_drugs || []
+  } catch (error) {
+    console.error('Error fetching ATC drugs:', error)
+  }
+}
+
 onMounted(() => {
   fetchPendingPrescriptions()
   fetchInventory()
   fetchDispensedHistory()
+  fetchHospitals()
+  fetchATCDrugs()
 })
 </script>
