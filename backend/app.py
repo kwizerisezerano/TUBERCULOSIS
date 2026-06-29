@@ -3437,19 +3437,39 @@ def lab_tests():
     user = User.query.get(user_id)
     
     if request.method == 'GET':
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        
+        print(f"Fetching lab tests: page={page}, per_page={per_page}, user_role={user.role}")
+        
         if user.role == 'lab_technician':
             # Lab techs can see all requested lab tests
-            tests = LabTest.query.all()
+            pagination = LabTest.query.order_by(LabTest.completed_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+            tests = pagination.items
         elif user.role in ['doctor', 'admin', 'hospital_admin']:
             # Doctors and admins can see all lab tests
-            tests = LabTest.query.all()
+            pagination = LabTest.query.order_by(LabTest.completed_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+            tests = pagination.items
         elif user.role == 'pharmacist':
             # Pharmacists don't see lab tests
             tests = []
+            pagination = None
         else:
             tests = []
+            pagination = None
         
-        return jsonify({'lab_tests': [test.to_dict() for test in tests]})
+        print(f"Found {len(tests)} lab tests total")
+        print(f"Test statuses: {[t.status for t in tests]}")
+        
+        if pagination:
+            return jsonify({
+                'lab_tests': [test.to_dict() for test in tests],
+                'total': pagination.total,
+                'pages': pagination.pages,
+                'current_page': pagination.page
+            })
+        else:
+            return jsonify({'lab_tests': [], 'total': 0, 'pages': 1, 'current_page': 1})
     
     if request.method == 'POST':
         if user.role not in ['doctor', 'admin', 'hospital_admin']:

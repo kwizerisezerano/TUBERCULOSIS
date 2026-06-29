@@ -2,7 +2,7 @@
   <DashboardLayout>
     <div class="space-y-6">
       <div class="flex flex-col sm:flex-row gap-4 justify-between items-center">
-        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Laboratory Results</h2>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Laboratory Test Results</h2>
         <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
           Total: {{ totalResults }} results
         </div>
@@ -13,20 +13,26 @@
           <table class="w-full">
             <thead class="bg-gray-50 dark:bg-gray-700/50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Test Name</th>
-                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Value</th>
-                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Reference Range</th>
-                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Hospital</th>
-                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Date</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Test Type</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Result</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Patient ID</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Completed By</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Completed At</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
               <tr v-for="result in labResults" :key="result.id" class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
-                <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{{ result.test_name }}</td>
-                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ result.test_value }} {{ result.unit }}</td>
-                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ result.reference_range }}</td>
-                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ result.hospital }}</td>
-                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{{ result.collection_date ? new Date(result.collection_date).toLocaleDateString() : 'Unknown' }}</td>
+                <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{{ result.test_type }}</td>
+                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ result.results || 'Pending' }}</td>
+                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ result.patient_id }}</td>
+                <td class="px-6 py-4">
+                  <span :class="['px-2 py-1 text-xs font-medium rounded-full', getStatusClass(result.status)]">
+                    {{ result.status }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ result.completed_by || 'N/A' }}</td>
+                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{{ result.completed_at ? new Date(result.completed_at).toLocaleString() : 'N/A' }}</td>
               </tr>
             </tbody>
           </table>
@@ -60,19 +66,43 @@
 
 <script setup lang="ts">
 import DashboardLayout from '~/components/DashboardLayout.vue';
-const { getDetailedLabResults } = useApi();
+import { useAuth } from '~/composables/useAuth';
+
+const { authToken } = useAuth();
 
 const labResults = ref<any[]>([]);
 const currentPage = ref(1);
 const perPage = 20;
 const totalResults = ref(0);
 const totalPages = ref(1);
+const API_BASE = 'http://127.0.0.1:5000/api';
+
+const getStatusClass = (status: string) => {
+  const classes: Record<string, string> = {
+    'requested': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+    'in_progress': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+    'completed': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+    'cancelled': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+  };
+  return classes[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+};
 
 const loadResults = async () => {
-  const res = await getDetailedLabResults(currentPage.value, perPage);
-  labResults.value = (res as any).detailed_lab_results || [];
-  totalResults.value = (res as any).total || 0;
-  totalPages.value = (res as any).pages || 1;
+  try {
+    const response = await fetch(`${API_BASE}/lab-tests?page=${currentPage.value}&per_page=${perPage}`, {
+      headers: { 'Authorization': `Bearer ${authToken.value}` }
+    });
+    const data = await response.json();
+    console.log('Lab tests response:', data);
+    console.log('All lab tests:', data.lab_tests);
+    console.log('Filtering for completed tests...');
+    labResults.value = (data.lab_tests || []).filter(t => t.status === 'completed');
+    console.log('Completed lab tests:', labResults.value);
+    totalResults.value = data.total || 0;
+    totalPages.value = data.pages || 1;
+  } catch (error) {
+    console.error('Error loading lab results:', error);
+  }
 };
 
 watch(currentPage, () => loadResults());

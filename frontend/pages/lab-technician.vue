@@ -321,14 +321,18 @@ const fetchPendingTests = async () => {
 const fetchAllTests = async () => {
   try {
     const token = authToken.value
+    console.log('Fetching all tests with token:', token ? 'present' : 'missing')
     const response = await fetch('http://127.0.0.1:5000/api/lab-tests', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
+    console.log('Response status:', response.status)
     const data = await response.json()
+    console.log('All tests response:', data)
     const allTests = data.lab_tests || []
     
     inProgressTests.value = allTests.filter(t => t.status === 'in_progress')
     completedTests.value = allTests.filter(t => t.status === 'completed')
+    console.log('In progress:', inProgressTests.value.length, 'Completed:', completedTests.value.length)
   } catch (error) {
     console.error('Error fetching tests:', error)
   }
