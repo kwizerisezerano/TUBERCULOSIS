@@ -271,6 +271,61 @@
     @close="showEditInventoryModal = false"
     @confirm="confirmEditInventory"
   />
+
+  <!-- Add Inventory Modal -->
+  <div v-if="showAddInventoryModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showAddInventoryModal = false"></div>
+    <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-md border border-gray-200 dark:border-gray-700">
+      <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Add Inventory</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hospital ID</label>
+          <input v-model.number="newInventoryForm.hospital_id" type="number" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ATC Drug ID</label>
+          <input v-model.number="newInventoryForm.atc_drug_id" type="number" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stock Quantity</label>
+          <input v-model.number="newInventoryForm.stock_quantity" type="number" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Unit Type</label>
+          <select v-model="newInventoryForm.unit_type" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            <option value="tablets">Tablets</option>
+            <option value="capsules">Capsules</option>
+            <option value="ml">ML</option>
+            <option value="vials">Vials</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Batch Number</label>
+          <input v-model="newInventoryForm.batch_number" type="text" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Expiry Date</label>
+          <input v-model="newInventoryForm.expiry_date" type="date" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Location</label>
+          <input v-model="newInventoryForm.location" type="text" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Minimum Stock Level</label>
+          <input v-model.number="newInventoryForm.minimum_stock_level" type="number" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+        </div>
+      </div>
+      <div class="flex gap-3 mt-6">
+        <button @click="showAddInventoryModal = false" class="flex-1 py-3 px-4 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold transition-colors">
+          Cancel
+        </button>
+        <button @click="addInventory" class="flex-1 py-3 px-4 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold transition-colors">
+          Add
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -289,8 +344,19 @@ const showAddInventoryModal = ref(false)
 const showRejectionModal = ref(false)
 const showEditInventoryModal = ref(false)
 const rejectionReason = ref('')
+const editInventoryQuantity = ref('')
 const editingInventoryItem = ref(null)
 const selectedPrescription = ref(null)
+const newInventoryForm = ref({
+  hospital_id: null,
+  atc_drug_id: null,
+  stock_quantity: 0,
+  unit_type: 'tablets',
+  batch_number: '',
+  expiry_date: '',
+  location: '',
+  minimum_stock_level: 10
+})
 
 const API_BASE = 'http://127.0.0.1:5000/api'
 
@@ -447,7 +513,7 @@ const editInventory = (item) => {
   showEditInventoryModal.value = true
 }
 
-const confirmEditInventory = async () => {
+const confirmEditInventory = async (value) => {
   if (!editingInventoryItem.value) return
   
   try {
@@ -458,16 +524,46 @@ const confirmEditInventory = async () => {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ stock_quantity: parseInt(rejectionReason.value) })
+      body: JSON.stringify({ stock_quantity: parseInt(value) })
     })
     if (response.ok) {
-      editingInventoryItem.value.stock_quantity = parseInt(rejectionReason.value)
+      editingInventoryItem.value.stock_quantity = parseInt(value)
       showEditInventoryModal.value = false
-      rejectionReason.value = ''
+      editInventoryQuantity.value = ''
       fetchInventory()
     }
   } catch (error) {
     console.error('Error updating inventory:', error)
+  }
+}
+
+const addInventory = async () => {
+  try {
+    const token = authToken.value
+    const response = await fetch(`${API_BASE}/pharmacy-inventory`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(newInventoryForm.value)
+    })
+    if (response.ok) {
+      showAddInventoryModal.value = false
+      newInventoryForm.value = {
+        hospital_id: null,
+        atc_drug_id: null,
+        stock_quantity: 0,
+        unit_type: 'tablets',
+        batch_number: '',
+        expiry_date: '',
+        location: '',
+        minimum_stock_level: 10
+      }
+      fetchInventory()
+    }
+  } catch (error) {
+    console.error('Error adding inventory:', error)
   }
 }
 

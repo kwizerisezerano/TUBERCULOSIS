@@ -312,7 +312,7 @@ const getTypeColor = (type) => {
 const fetchHospitals = async () => {
   try {
     const token = authToken.value
-    const response = await fetch('http://127.0.0.1:5000/api/hospitals', {
+    const response = await fetch(`${API_BASE}/hospitals`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -328,10 +328,12 @@ const saveHospital = async () => {
   try {
     const token = authToken.value
     const url = showEditModal.value 
-      ? `http://127.0.0.1:5000/api/hospitals/${editingHospital.value.id}`
-      : 'http://127.0.0.1:5000/api/hospitals'
+      ? `${API_BASE}/hospitals/${editingHospital.value.id}`
+      : `${API_BASE}/hospitals`
     
     const method = showEditModal.value ? 'PUT' : 'POST'
+    
+    console.log('Saving hospital:', { url, method, formData: formData.value })
     
     const response = await fetch(url, {
       method,
@@ -342,12 +344,19 @@ const saveHospital = async () => {
       body: JSON.stringify(formData.value)
     })
     
+    console.log('Response status:', response.status)
+    
     if (response.ok) {
       closeModal()
       fetchHospitals()
+    } else {
+      const errorData = await response.json()
+      console.error('Error response:', errorData)
+      alert(`Error: ${errorData.msg || 'Failed to save hospital'}`)
     }
   } catch (error) {
     console.error('Error saving hospital:', error)
+    alert(`Network error: ${error.message}`)
   }
 }
 
@@ -372,7 +381,7 @@ const deleteHospital = async (hospital) => {
   
   try {
     const token = authToken.value
-    const response = await fetch(`http://127.0.0.1:5000/api/hospitals/${hospital.id}`, {
+    const response = await fetch(`${API_BASE}/hospitals/${hospital.id}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`

@@ -306,10 +306,12 @@ const getResultColor = (result) => {
 const fetchPendingTests = async () => {
   try {
     const token = authToken.value
+    console.log('Fetching pending tests with token:', token ? 'present' : 'missing')
     const response = await fetch('http://127.0.0.1:5000/api/lab-tests/pending', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     const data = await response.json()
+    console.log('Pending tests response:', data)
     pendingTests.value = data.pending_tests || []
   } catch (error) {
     console.error('Error fetching pending tests:', error)

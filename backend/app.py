@@ -3191,6 +3191,43 @@ def register_user():
 
     return jsonify(user.to_dict()), 201
 
+# User Management
+@app.route('/api/users', methods=['GET'])
+@jwt_required()
+def get_users():
+    user = get_current_user_from_jwt()
+    if user.role not in ['admin', 'hospital_admin']:
+        return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+    
+    users = User.query.all()
+    return jsonify({
+        'users': [u.to_dict() for u in users],
+        'total': len(users)
+    })
+
+@app.route('/api/users/<int:user_id>', methods=['PUT', 'DELETE'])
+@jwt_required()
+def manage_user(user_id):
+    user = get_current_user_from_jwt()
+    if user.role not in ['admin', 'hospital_admin']:
+        return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+    
+    target_user = User.query.get_or_404(user_id)
+    
+    if request.method == 'PUT':
+        data = request.get_json()
+        if 'is_active' in data:
+            target_user.is_active = data['is_active']
+        if 'role' in data:
+            target_user.role = data['role']
+        db.session.commit()
+        return jsonify(target_user.to_dict())
+    
+    if request.method == 'DELETE':
+        db.session.delete(target_user)
+        db.session.commit()
+        return jsonify({'message': 'User deleted successfully'})
+
 @app.route('/api/auth/me', methods=['GET'])
 @jwt_required()
 def get_current_user():
@@ -3420,15 +3457,21 @@ def lab_tests():
             return jsonify({"msg": I18N["ACCESS_DENIED"][lang]}), 403
         
         data = request.get_json()
+        print(f"Creating lab test: patient_id={data.get('patient_id')}, test_type={data.get('test_type')}, user_id={user_id}")
+        
         test = LabTest(
             patient_id=data.get('patient_id'),
             requested_by=user_id,
             test_type=data.get('test_type'),
-            notes=data.get('notes')
+            notes=data.get('notes'),
+            status='requested'
         )
         db.session.add(test)
+        db.session.commit()
         
-        # Create audit log
+        print(f"Lab test created with ID: {test.id}, status: {test.status}")
+        
+        # Create audit log after test is committed (so test.id exists)
         audit = AuditLog(
             user_id=user_id,
             action='request_lab_test',
@@ -3437,8 +3480,11 @@ def lab_tests():
             details=f"Requested {test.test_type} for patient {test.patient_id}"
         )
         db.session.add(audit)
-        
         db.session.commit()
+        
+        print(f"Total lab tests in database: {LabTest.query.count()}")
+        print(f"Pending lab tests (status='requested'): {LabTest.query.filter_by(status='requested').count()}")
+        
         return jsonify(test.to_dict()), 201
 
 
@@ -3497,7 +3543,7 @@ def lab_test_detail(test_id):
 @jwt_required()
 def submit_lab_result(test_id):
     user = get_current_user_from_jwt()
-    if user.role != 'lab_technician':
+    if user.role not in ['lab_technician', 'admin', 'hospital_admin']:
         return jsonify({'msg': tr('ACCESS_DENIED')}), 403
     
     test = LabTest.query.get_or_404(test_id)
@@ -3541,10 +3587,14 @@ def submit_lab_result(test_id):
 @jwt_required()
 def get_pending_lab_tests():
     user = get_current_user_from_jwt()
-    if user.role != 'lab_technician':
+    print(f"Fetching pending tests for user: {user.username}, role: {user.role}")
+    
+    if user.role not in ['lab_technician', 'admin', 'hospital_admin']:
+        print(f"Access denied: user role is {user.role}")
         return jsonify({'msg': tr('ACCESS_DENIED')}), 403
     
     pending_tests = LabTest.query.filter_by(status='requested').order_by(LabTest.created_at).all()
+    print(f"Found {len(pending_tests)} pending tests")
     
     return jsonify({
         'pending_tests': [test.to_dict() for test in pending_tests],

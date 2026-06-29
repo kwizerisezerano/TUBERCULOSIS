@@ -311,7 +311,66 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
             <p>No completed lab tests found for this patient</p>
-            <p class="text-xs mt-1">Lab technician needs to submit test results first</p>
+            <p class="text-xs mt-1">Request a new lab test below</p>
+          </div>
+
+          <!-- Request New Lab Test -->
+          <div class="mt-6 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-200 dark:border-indigo-700">
+            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Request Lab Tests (Select Multiple)</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+              <label class="flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600">
+                <input type="checkbox" v-model="labTestRequest.test_types" value="Sputum Smear" class="rounded text-indigo-600">
+                <span class="text-sm text-gray-900 dark:text-white">Sputum Smear</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600">
+                <input type="checkbox" v-model="labTestRequest.test_types" value="GeneXpert" class="rounded text-indigo-600">
+                <span class="text-sm text-gray-900 dark:text-white">GeneXpert MTB/RIF</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600">
+                <input type="checkbox" v-model="labTestRequest.test_types" value="Chest X-ray" class="rounded text-indigo-600">
+                <span class="text-sm text-gray-900 dark:text-white">Chest X-ray</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600">
+                <input type="checkbox" v-model="labTestRequest.test_types" value="TB Culture" class="rounded text-indigo-600">
+                <span class="text-sm text-gray-900 dark:text-white">TB Culture</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600">
+                <input type="checkbox" v-model="labTestRequest.test_types" value="TST" class="rounded text-indigo-600">
+                <span class="text-sm text-gray-900 dark:text-white">Tuberculin Skin Test (TST)</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600">
+                <input type="checkbox" v-model="labTestRequest.test_types" value="IGRA" class="rounded text-indigo-600">
+                <span class="text-sm text-gray-900 dark:text-white">IGRA</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600">
+                <input type="checkbox" v-model="labTestRequest.test_types" value="Drug Susceptibility" class="rounded text-indigo-600">
+                <span class="text-sm text-gray-900 dark:text-white">Drug Susceptibility Test</span>
+              </label>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
+                <select v-model="labTestRequest.priority" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                  <option value="routine">Routine</option>
+                  <option value="urgent">Urgent</option>
+                  <option value="emergency">Emergency</option>
+                </select>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Notes (optional)</label>
+              <textarea v-model="labTestRequest.notes" rows="2" placeholder="Additional instructions or clinical context..." class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"></textarea>
+            </div>
+            <button
+              @click="requestLabTest"
+              :disabled="labTestRequest.test_types.length === 0 || !selectedPatientId"
+              class="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              Request {{ labTestRequest.test_types.length }} Lab Test{{ labTestRequest.test_types.length !== 1 ? 's' : '' }}
+            </button>
+            <p v-if="labTestRequestMessage" class="mt-2 text-xs" :class="labTestRequestSuccess ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+              {{ labTestRequestMessage }}
+            </p>
           </div>
 
           <!-- Manual Entry Fallback -->
@@ -632,7 +691,9 @@
 
 <script setup lang="ts">
 import DashboardLayout from '~/components/DashboardLayout.vue';
+import { useAuth } from '~/composables/useAuth';
 const { getPatients, diagnose, getDiagnoses } = useApi();
+const { authToken } = useAuth();
 
 const symptomsList = [
   { key: 'has_fever', label: 'Fever' },
@@ -666,6 +727,14 @@ const diagnosisResult = ref<any>(null);
 const API_BASE = 'http://127.0.0.1:5000/api';
 
 const patientLabTests = ref<any[]>([]);
+
+const labTestRequest = ref({
+  test_types: [],
+  priority: 'routine',
+  notes: ''
+});
+const labTestRequestMessage = ref('');
+const labTestRequestSuccess = ref(false);
 
 const form = ref({
   patient_id: '',
@@ -792,14 +861,80 @@ const loadPatient = async () => {
 const fetchPatientLabTests = async () => {
   if (!selectedPatientId.value) return;
   try {
-    const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE}/lab-tests?patient_id=${selectedPatientId.value}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { 'Authorization': `Bearer ${authToken.value}` }
     });
     const data = await response.json();
     patientLabTests.value = (data.lab_tests || []).filter(t => t.status === 'completed');
   } catch (error) {
     console.error('Error fetching lab tests:', error);
+  }
+};
+
+const requestLabTest = async () => {
+  if (!selectedPatientId.value || labTestRequest.value.test_types.length === 0) {
+    labTestRequestMessage.value = 'Please select a patient and at least one test type';
+    labTestRequestSuccess.value = false;
+    return;
+  }
+
+  const patientIdNum = parseInt(selectedPatientId.value);
+  if (isNaN(patientIdNum)) {
+    labTestRequestMessage.value = 'Invalid patient ID';
+    labTestRequestSuccess.value = false;
+    return;
+  }
+
+  try {
+    console.log('Requesting lab tests for patient:', patientIdNum, 'tests:', labTestRequest.value.test_types);
+    console.log('Auth token:', authToken.value);
+    
+    const requests = labTestRequest.value.test_types.map(testType => 
+      fetch(`${API_BASE}/lab-tests`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken.value}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          patient_id: patientIdNum,
+          test_type: testType,
+          notes: labTestRequest.value.notes
+        })
+      }).then(async response => {
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Lab test request failed:', response.status, errorData);
+          return { ok: false, error: errorData, testType };
+        }
+        return { ok: true, testType };
+      })
+    );
+
+    const results = await Promise.all(requests);
+    const allSuccessful = results.every(r => r.ok);
+    const failedTests = results.filter(r => !r.ok);
+
+    if (allSuccessful) {
+      labTestRequestMessage.value = `${labTestRequest.value.test_types.length} lab test(s) requested successfully`;
+      labTestRequestSuccess.value = true;
+      labTestRequest.value = {
+        test_types: [],
+        priority: 'routine',
+        notes: ''
+      };
+      setTimeout(() => {
+        labTestRequestMessage.value = '';
+      }, 3000);
+    } else {
+      const errorDetails = failedTests.map(f => `${f.testType}: ${f.error.msg || f.error.message || 'Unknown error'}`).join(', ');
+      labTestRequestMessage.value = `Failed: ${errorDetails}`;
+      labTestRequestSuccess.value = false;
+    }
+  } catch (error) {
+    console.error('Error requesting lab tests:', error);
+    labTestRequestMessage.value = `Network error: ${error.message}`;
+    labTestRequestSuccess.value = false;
   }
 };
 
