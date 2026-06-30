@@ -77,7 +77,7 @@
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total Tablets</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Stock</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                  <th v-if="!isAdmin" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -128,7 +128,7 @@
                       {{ presc.status }}
                     </span>
                   </td>
-                  <td class="px-6 py-4 text-sm space-x-2">
+                  <td v-if="!isAdmin" class="px-6 py-4 text-sm space-x-2">
                     <button
                       v-if="presc.status === 'pending' && presc.stockCheck && presc.stockCheck.stock_quantity >= presc.total_tablets && presc.stockCheck.inventory_exists"
                       @click="approvePrescription(presc)"
@@ -186,7 +186,7 @@
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Duration</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total Tablets</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Rejection Reason</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                  <th v-if="!isAdmin" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -216,7 +216,7 @@
                   <td class="px-6 py-4 text-sm text-red-600">
                     {{ presc.rejection_reason }}
                   </td>
-                  <td class="px-6 py-4 text-sm space-x-2">
+                  <td v-if="!isAdmin" class="px-6 py-4 text-sm space-x-2">
                     <button
                       @click="revisitRejectedPrescription(presc)"
                       class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 font-semibold"
@@ -243,6 +243,7 @@
               class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
             <button
+              v-if="!isAdmin"
               @click="showAddInventoryModal = true"
               class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg"
             >
@@ -259,7 +260,7 @@
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Batch</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Expiry</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Location</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                  <th v-if="!isAdmin" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -284,7 +285,7 @@
                   <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {{ item.location || 'N/A' }}
                   </td>
-                  <td class="px-6 py-4 text-sm">
+                  <td v-if="!isAdmin" class="px-6 py-4 text-sm">
                     <button
                       @click="editInventory(item)"
                       class="text-blue-600 hover:text-blue-900 dark:text-blue-400 mr-3"
@@ -468,7 +469,8 @@ import { useAuth } from '~/composables/useAuth'
 import { useApi } from '~/composables/useApi'
 import InputModal from '~/components/InputModal.vue'
 
-const { authToken, currentUser } = useAuth()
+const { authToken, currentUser, userRole } = useAuth()
+const isAdmin = computed(() => ['admin', 'hospital_admin'].includes(userRole.value))
 const api = useApi()
 const config = useRuntimeConfig()
 const API_BASE = config.public.apiBase

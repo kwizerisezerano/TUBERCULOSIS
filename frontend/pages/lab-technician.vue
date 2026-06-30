@@ -68,7 +68,7 @@
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Requested By</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Requested At</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Priority</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                  <th v-if="!isAdmin" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -90,7 +90,7 @@
                       Normal
                     </span>
                   </td>
-                  <td class="px-6 py-4 text-sm space-x-2">
+                  <td v-if="!isAdmin" class="px-6 py-4 text-sm space-x-2">
                     <button
                       @click="startTest(test)"
                       class="text-blue-600 hover:text-blue-900 dark:text-blue-400"
@@ -122,7 +122,7 @@
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Patient</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Test Type</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Started At</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                  <th v-if="!isAdmin" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -136,7 +136,7 @@
                   <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {{ formatDate(test.updated_at) }}
                   </td>
-                  <td class="px-6 py-4 text-sm space-x-2">
+                  <td v-if="!isAdmin" class="px-6 py-4 text-sm space-x-2">
                     <button
                       @click="submitResult(test)"
                       class="text-green-600 hover:text-green-900 dark:text-green-400"
@@ -257,7 +257,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 
-const { authToken, currentUser } = useAuth()
+const { authToken, currentUser, userRole } = useAuth()
+const isAdmin = computed(() => ['admin', 'hospital_admin'].includes(userRole.value))
 
 const API_BASE = 'http://127.0.0.1:5000/api'
 
