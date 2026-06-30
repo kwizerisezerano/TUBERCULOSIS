@@ -3574,16 +3574,22 @@ def lab_tests():
     if request.method == 'GET':
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
+        patient_id = request.args.get('patient_id', type=int)
         
-        print(f"Fetching lab tests: page={page}, per_page={per_page}, user_role={user.role}")
+        print(f"Fetching lab tests: page={page}, per_page={per_page}, user_role={user.role}, patient_id={patient_id}")
+        
+        # Build query with patient_id filter if provided
+        query = LabTest.query
+        if patient_id:
+            query = query.filter_by(patient_id=patient_id)
         
         if user.role == 'lab_technician':
-            # Lab techs can see all requested lab tests
-            pagination = LabTest.query.order_by(LabTest.completed_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+            # Lab techs can see all requested lab tests (or filtered by patient)
+            pagination = query.order_by(LabTest.completed_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
             tests = pagination.items
         elif user.role in ['doctor', 'admin', 'hospital_admin']:
-            # Doctors and admins can see all lab tests
-            pagination = LabTest.query.order_by(LabTest.completed_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+            # Doctors and admins can see all lab tests (or filtered by patient)
+            pagination = query.order_by(LabTest.completed_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
             tests = pagination.items
         elif user.role == 'pharmacist':
             # Pharmacists don't see lab tests
@@ -4823,10 +4829,13 @@ def diagnose():
             "clinical_advice": clinical_advice,
         }
 
-    def evaluate_tests(sputum, genexpert, chest_xray):
+    def evaluate_tests(sputum, genexpert, chest_xray, tb_culture=None, tst=None, igra=None):
         sputum = sputum or "Unknown"
         genexpert = genexpert or "Unknown"
         chest_xray = chest_xray or "Unknown"
+        tb_culture = tb_culture or "Unknown"
+        tst = tst or "Unknown"
+        igra = igra or "Unknown"
 
         findings = []
         confidence = 40
@@ -4840,10 +4849,24 @@ def diagnose():
             findings.append(tr("FINDING_SPUTUM_POS", lang=lang))
             classification = tr("TEST_CLASS_CONFIRMED_LIKELY", lang=lang)
             confidence = max(confidence, 85)
+        if tb_culture == "Positive":
+            findings.append("TB Culture positive (gold standard confirmation)")
+            classification = tr("TEST_CLASS_CONFIRMED", lang=lang)
+            confidence = 98  # Culture is gold standard
         if chest_xray == "Abnormal":
             findings.append(tr("FINDING_CXR_ABNORMAL", lang=lang))
             confidence = max(confidence, 60)
-        if genexpert == "Negative" and sputum == "Negative" and chest_xray == "Normal":
+        if tst == "Positive":
+            findings.append("Tuberculin Skin Test (TST) positive")
+            if classification == tr("TEST_CLASS_INSUFFICIENT", lang=lang):
+                classification = "Possible latent TB infection"
+                confidence = 50
+        if igra == "Positive":
+            findings.append("IGRA positive")
+            if classification == tr("TEST_CLASS_INSUFFICIENT", lang=lang):
+                classification = "Possible latent TB infection"
+                confidence = 55
+        if genexpert == "Negative" and sputum == "Negative" and chest_xray == "Normal" and tb_culture in ["Negative", "Unknown"]:
             findings.append(tr("FINDING_ALL_NEGATIVE", lang=lang))
             classification = tr("TEST_CLASS_LESS_LIKELY", lang=lang)
             confidence = 70
@@ -4976,12 +4999,12 @@ def diagnose():
     # Determine if alert should be created
     alert_created = None
     symptom_analysis = compute_symptom_analysis(patient.symptoms or "")
-    test_evaluation = evaluate_tests(patient.sputum_smear_test, patient.genexpert_test, patient.chest_xray)
-    if tb_culture:
+    test_evaluation = evaluate_tests(patient.sputum_smear_test, patient.genexpert_test, patient.chest_xray, tb_culture, tst, igra)
+    if tb_culture and tb_culture != 'Unknown':
         test_evaluation["findings"].append(f"{tr('LABEL_TB_CULTURE', lang=lang)}: {tb_culture}")
-    if tst:
+    if tst and tst != 'Unknown':
         test_evaluation["findings"].append(f"{tr('LABEL_TST', lang=lang)}: {tst}")
-    if igra:
+    if igra and igra != 'Unknown':
         test_evaluation["findings"].append(f"{tr('LABEL_IGRA', lang=lang)}: {igra}")
     if resistance_profile["antibiogram_result"] != "Not provided":
         test_evaluation["findings"].append(f"{tr('LABEL_DST', lang=lang)}: {resistance_profile['antibiogram_result']}")

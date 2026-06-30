@@ -285,7 +285,7 @@
           <!-- Patient's Lab Results from Database -->
           <div v-if="patientLabTests.length > 0" class="space-y-4">
             <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Patient's Lab Results</h4>
-            <div v-for="test in patientLabTests" :key="test.id" class="p-4 rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
+            <div v-for="test in patientLabTests" :key="test.id" class="p-4 rounded-xl border relative z-10 transition-all" :class="selectedLabTests.some(t => t.id === test.id) ? 'bg-indigo-100 dark:bg-indigo-900/30 border-indigo-500 dark:border-indigo-400 ring-2 ring-indigo-300 dark:ring-indigo-600' : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-600'">
               <div class="flex justify-between items-start mb-2">
                 <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ test.test_type }}</h4>
                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
@@ -299,10 +299,12 @@
                 <p class="text-gray-500 dark:text-gray-400">Completed at: <span class="text-gray-900 dark:text-white">{{ formatDate(test.completed_at) }}</span></p>
               </div>
               <button
-                @click="useLabResult(test)"
-                class="mt-3 px-3 py-1 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
+                @click.stop="useLabResult(test)"
+                class="mt-3 px-3 py-1 text-xs font-medium rounded-lg cursor-pointer pointer-events-auto"
+                :class="selectedLabTests.some(t => t.id === test.id) ? 'bg-indigo-700 hover:bg-indigo-800 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'"
+                type="button"
               >
-                Use This Result
+                {{ selectedLabTests.some(t => t.id === test.id) ? 'Selected' : 'Use This Result' }}
               </button>
             </div>
           </div>
@@ -386,6 +388,25 @@
             </p>
           </div>
 
+          <!-- Selected Lab Tests Display -->
+          <div v-if="selectedLabTests.length > 0" class="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-300 dark:border-indigo-700 mb-4">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <h4 class="text-sm font-bold text-indigo-800 dark:text-indigo-300">Using {{ selectedLabTests.length }} Lab Result{{ selectedLabTests.length !== 1 ? 's' : '' }}</h4>
+            </div>
+            <div class="space-y-2">
+              <div v-for="test in selectedLabTests" :key="test.id" class="text-sm p-2 rounded bg-white dark:bg-gray-800/50">
+                <p class="font-semibold text-gray-900 dark:text-white">{{ test.test_type }}</p>
+                <p class="text-gray-600 dark:text-gray-400">Result: <span :class="['font-medium', getResultColor(test.results)]">{{ test.results }}</span></p>
+                <p class="text-xs text-gray-500 dark:text-gray-500">Completed: {{ formatDate(test.completed_at) }}</p>
+              </div>
+            </div>
+          </div>
+
           <!-- Manual Entry Fallback -->
           <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
             <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Or manually enter lab findings:</p>
@@ -412,6 +433,31 @@
                   <option value="Unknown">Unknown</option>
                   <option value="Normal">Normal</option>
                   <option value="Abnormal">Abnormal</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">TB Culture</label>
+                <select v-model="form.tb_culture" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none">
+                  <option value="">Unknown</option>
+                  <option value="Positive">Positive</option>
+                  <option value="Negative">Negative</option>
+                  <option value="Inconclusive">Inconclusive</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">TST (Tuberculin Skin Test)</label>
+                <select v-model="form.tst" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none">
+                  <option value="">Unknown</option>
+                  <option value="Positive">Positive</option>
+                  <option value="Negative">Negative</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">IGRA</label>
+                <select v-model="form.igra" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none">
+                  <option value="">Unknown</option>
+                  <option value="Positive">Positive</option>
+                  <option value="Negative">Negative</option>
                 </select>
               </div>
               <div>
@@ -467,11 +513,24 @@
                 </svg>
                 Key Symptoms & Factors
               </h4>
-              <div class="flex flex-wrap gap-2">
-                <span v-for="symptom in symptomsList.filter(s => form[s.key] === 'Yes')" :key="symptom.key" class="px-3 py-1 rounded-full text-xs font-medium bg-green-600 text-white border border-green-500">
-                  {{ symptom.label }}
-                </span>
-                <span v-if="symptomsList.filter(s => form[s.key] === 'Yes').length === 0" class="text-gray-400 dark:text-gray-500 text-sm">No symptoms selected</span>
+              <div class="space-y-2 text-sm">
+                <div class="flex flex-wrap gap-2">
+                  <span v-for="symptom in symptomsList.filter(s => form[s.key] === 'Yes')" :key="symptom.key" class="px-3 py-1 rounded-full text-xs font-medium bg-green-600 text-white border border-green-500">
+                    {{ symptom.label }}
+                  </span>
+                  <span v-if="symptomsList.filter(s => form[s.key] === 'Yes').length === 0" class="text-gray-400 dark:text-gray-500 text-sm">No symptoms selected</span>
+                </div>
+                <div v-if="form.symptoms" class="mt-2">
+                  <p class="text-gray-500 dark:text-gray-400">Additional symptoms: <span class="text-gray-900 dark:text-white font-medium">{{ form.symptoms }}</span></p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                  <p v-if="form.hiv" class="text-gray-500 dark:text-gray-400">HIV: <span :class="['font-medium', form.hiv === 'Yes' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400']">{{ form.hiv }}</span></p>
+                  <p v-if="form.diabetes" class="text-gray-500 dark:text-gray-400">Diabetes: <span :class="['font-medium', form.diabetes === 'Yes' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400']">{{ form.diabetes }}</span></p>
+                  <p v-if="form.contact_with_tb_patient" class="text-gray-500 dark:text-gray-400">TB Contact: <span :class="['font-medium', form.contact_with_tb_patient === 'Yes' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400']">{{ form.contact_with_tb_patient }}</span></p>
+                  <p v-if="form.previous_tb_treatment" class="text-gray-500 dark:text-gray-400">Previous TB Treatment: <span class="text-gray-900 dark:text-white font-medium">{{ form.previous_tb_treatment }}</span></p>
+                  <p v-if="form.smoking_status" class="text-gray-500 dark:text-gray-400">Smoking: <span class="text-gray-900 dark:text-white font-medium">{{ form.smoking_status }}</span></p>
+                  <p v-if="form.alcohol_use" class="text-gray-500 dark:text-gray-400">Alcohol Use: <span class="text-gray-900 dark:text-white font-medium">{{ form.alcohol_use }}</span></p>
+                </div>
               </div>
             </div>
             <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
@@ -482,10 +541,14 @@
                 Lab Results
               </h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                <p class="text-gray-500 dark:text-gray-400">Sputum Smear: <span :class="['font-medium', form.sputum_smear_test === 'Positive' ? 'text-red-600 dark:text-red-400' : form.sputum_smear_test === 'Negative' ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-gray-300']">{{ form.sputum_smear_test }}</span></p>
-                <p class="text-gray-500 dark:text-gray-400">GeneXpert: <span :class="['font-medium', form.genexpert_test === 'Positive' ? 'text-red-600 dark:text-red-400' : form.genexpert_test === 'Negative' ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-gray-300']">{{ form.genexpert_test }}</span></p>
-                <p class="text-gray-500 dark:text-gray-400">Chest X-ray: <span :class="['font-medium', form.chest_xray === 'Abnormal' ? 'text-red-600 dark:text-red-400' : form.chest_xray === 'Normal' ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-gray-300']">{{ form.chest_xray }}</span></p>
-                <p class="text-gray-500 dark:text-gray-400">Drug Resistance: <span :class="['font-medium', form.drug_resistance === 'Yes' ? 'text-red-600 dark:text-red-400' : form.drug_resistance === 'No' ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-gray-300']">{{ form.drug_resistance }}</span></p>
+                <p v-if="form.sputum_smear_test && form.sputum_smear_test !== 'Unknown'" class="text-gray-500 dark:text-gray-400">Sputum Smear: <span :class="['font-medium', form.sputum_smear_test === 'Positive' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400']">{{ form.sputum_smear_test }}</span></p>
+                <p v-if="form.genexpert_test && form.genexpert_test !== 'Unknown'" class="text-gray-500 dark:text-gray-400">GeneXpert: <span :class="['font-medium', form.genexpert_test === 'Positive' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400']">{{ form.genexpert_test }}</span></p>
+                <p v-if="form.chest_xray && form.chest_xray !== 'Unknown'" class="text-gray-500 dark:text-gray-400">Chest X-ray: <span :class="['font-medium', form.chest_xray === 'Abnormal' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400']">{{ form.chest_xray }}</span></p>
+                <p v-if="form.tb_culture && form.tb_culture !== '' && form.tb_culture !== 'Unknown'" class="text-gray-500 dark:text-gray-400">TB Culture: <span :class="['font-medium', form.tb_culture === 'Positive' ? 'text-red-600 dark:text-red-400' : form.tb_culture === 'Negative' ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-gray-300']">{{ form.tb_culture }}</span></p>
+                <p v-if="form.tst && form.tst !== '' && form.tst !== 'Unknown'" class="text-gray-500 dark:text-gray-400">TST: <span :class="['font-medium', form.tst === 'Positive' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400']">{{ form.tst }}</span></p>
+                <p v-if="form.igra && form.igra !== '' && form.igra !== 'Unknown'" class="text-gray-500 dark:text-gray-400">IGRA: <span :class="['font-medium', form.igra === 'Positive' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400']">{{ form.igra }}</span></p>
+                <p v-if="form.drug_resistance && form.drug_resistance !== ''" class="text-gray-500 dark:text-gray-400">Drug Resistance: <span :class="['font-medium', form.drug_resistance === 'Yes' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400']">{{ form.drug_resistance }}</span></p>
+                <p v-if="!form.sputum_smear_test || form.sputum_smear_test === 'Unknown'" class="text-gray-400 dark:text-gray-500 text-sm col-span-2">No lab results entered</p>
               </div>
             </div>
           </div>
@@ -1009,6 +1072,7 @@ const labTestRequest = ref({
 });
 const labTestRequestMessage = ref('');
 const labTestRequestSuccess = ref(false);
+const selectedLabTests = ref<any[]>([]);
 
 const form = ref({
   patient_id: '',
@@ -1162,9 +1226,59 @@ const fetchPatientLabTests = async () => {
     });
     const data = await response.json();
     patientLabTests.value = (data.lab_tests || []).filter(t => t.status === 'completed');
+    
+    // Auto-populate form with most recent completed lab results
+    autoPopulateLabResults();
   } catch (error) {
     console.error('Error fetching lab tests:', error);
   }
+};
+
+const autoPopulateLabResults = () => {
+  if (!patientLabTests.value || patientLabTests.value.length === 0) return;
+  
+  // Group tests by type and get the most recent completed one for each type
+  const latestTests = {};
+  patientLabTests.value.forEach(test => {
+    const testType = test.test_type.toLowerCase();
+    if (!latestTests[testType] || new Date(test.completed_at) > new Date(latestTests[testType].completed_at)) {
+      latestTests[testType] = test;
+    }
+  });
+  
+  // Auto-populate form fields with latest results
+  Object.values(latestTests).forEach(test => {
+    const result = test.results?.toString().toLowerCase().trim();
+    const testType = test.test_type.toLowerCase();
+    
+    if (testType.includes('sputum')) {
+      if (result?.includes('positive')) form.value.sputum_smear_test = 'Positive';
+      else if (result?.includes('negative')) form.value.sputum_smear_test = 'Negative';
+    }
+    if (testType.includes('genexpert')) {
+      if (result?.includes('positive')) form.value.genexpert_test = 'Positive';
+      else if (result?.includes('negative')) form.value.genexpert_test = 'Negative';
+    }
+    if (testType.includes('xray') || testType.includes('chest')) {
+      if (result?.includes('normal') || result?.includes('negative')) form.value.chest_xray = 'Normal';
+      else if (result?.includes('abnormal') || result?.includes('positive')) form.value.chest_xray = 'Abnormal';
+    }
+    if (testType.includes('culture')) {
+      if (result?.includes('positive')) form.value.tb_culture = 'Positive';
+      else if (result?.includes('negative')) form.value.tb_culture = 'Negative';
+      else if (result?.includes('inconclusive')) form.value.tb_culture = 'Inconclusive';
+    }
+    if (testType.includes('tst')) {
+      if (result?.includes('positive')) form.value.tst = 'Positive';
+      else if (result?.includes('negative')) form.value.tst = 'Negative';
+    }
+    if (testType.includes('igra')) {
+      if (result?.includes('positive')) form.value.igra = 'Positive';
+      else if (result?.includes('negative')) form.value.igra = 'Negative';
+    }
+  });
+  
+  console.log('Auto-populated lab results from', Object.keys(latestTests).length, 'test types');
 };
 
 const requestLabTest = async () => {
@@ -1253,22 +1367,96 @@ const getResultColor = (result: string) => {
 
 const useLabResult = (test: any) => {
   console.log('Using lab result:', test);
+  console.log('Test type:', test.test_type);
+  console.log('Test results:', test.results);
+  
+  // Toggle selection (allow multiple)
+  const index = selectedLabTests.value.findIndex(t => t.id === test.id);
+  if (index >= 0) {
+    // Deselect if already selected
+    selectedLabTests.value.splice(index, 1);
+  } else {
+    // Add to selection
+    selectedLabTests.value.push(test);
+  }
+  
+  if (!test || !test.results) {
+    console.log('Invalid test data or no results');
+    return;
+  }
+  
+  const result = test.results.toString().toLowerCase().trim();
+  const testType = test.test_type.toLowerCase();
+  
+  console.log('Processed result:', result);
+  console.log('Processed test type:', testType);
+  
   // Map lab test results to form fields
-  if (test.test_type.toLowerCase().includes('sputum')) {
-    form.value.sputum_smear_test = test.results === 'Positive' ? 'Positive' : test.results === 'Negative' ? 'Negative' : 'Unknown';
+  if (testType.includes('sputum')) {
+    console.log('Processing sputum test');
+    if (result.includes('positive')) {
+      form.value.sputum_smear_test = 'Positive';
+    } else if (result.includes('negative')) {
+      form.value.sputum_smear_test = 'Negative';
+    } else {
+      form.value.sputum_smear_test = 'Unknown';
+    }
+    console.log('Updated sputum_smear_test:', form.value.sputum_smear_test);
   }
-  if (test.test_type.toLowerCase().includes('genexpert')) {
-    form.value.genexpert_test = test.results === 'Positive' ? 'Positive' : test.results === 'Negative' ? 'Negative' : 'Unknown';
+  if (testType.includes('genexpert')) {
+    console.log('Processing genexpert test');
+    if (result.includes('positive')) {
+      form.value.genexpert_test = 'Positive';
+    } else if (result.includes('negative')) {
+      form.value.genexpert_test = 'Negative';
+    } else {
+      form.value.genexpert_test = 'Unknown';
+    }
+    console.log('Updated genexpert_test:', form.value.genexpert_test);
   }
-  if (test.test_type.toLowerCase().includes('xray') || test.test_type.toLowerCase().includes('chest')) {
-    // Handle both Normal/Abnormal and Positive/Negative for X-ray
-    if (test.results === 'Normal' || test.results === 'Negative') {
+  if (testType.includes('xray') || testType.includes('chest')) {
+    console.log('Processing xray test');
+    if (result.includes('normal') || result.includes('negative')) {
       form.value.chest_xray = 'Normal';
-    } else if (test.results === 'Abnormal' || test.results === 'Positive') {
+    } else if (result.includes('abnormal') || result.includes('positive')) {
       form.value.chest_xray = 'Abnormal';
     } else {
       form.value.chest_xray = 'Unknown';
     }
+    console.log('Updated chest_xray:', form.value.chest_xray);
+  }
+  if (testType.includes('culture')) {
+    console.log('Processing culture test');
+    if (result.includes('positive')) {
+      form.value.tb_culture = 'Positive';
+    } else if (result.includes('negative')) {
+      form.value.tb_culture = 'Negative';
+    } else {
+      form.value.tb_culture = 'Inconclusive';
+    }
+    console.log('Updated tb_culture:', form.value.tb_culture);
+  }
+  if (testType.includes('tst')) {
+    console.log('Processing TST test');
+    if (result.includes('positive')) {
+      form.value.tst = 'Positive';
+    } else if (result.includes('negative')) {
+      form.value.tst = 'Negative';
+    } else {
+      form.value.tst = 'Unknown';
+    }
+    console.log('Updated tst:', form.value.tst);
+  }
+  if (testType.includes('igra')) {
+    console.log('Processing IGRA test');
+    if (result.includes('positive')) {
+      form.value.igra = 'Positive';
+    } else if (result.includes('negative')) {
+      form.value.igra = 'Negative';
+    } else {
+      form.value.igra = 'Unknown';
+    }
+    console.log('Updated igra:', form.value.igra);
   }
   console.log('Form after using lab result:', form.value);
 };
