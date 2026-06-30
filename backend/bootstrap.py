@@ -51,6 +51,7 @@ from models.models import Alert, Diagnosis, ExternalDatasetRow, Patient, Treatme
 from models.train_model import train_models_from_database
 from seed_users import seed_all
 from seed_facilities_and_inventory import seed_facilities, seed_pharmacy_inventory
+from add_prescription_dosage_fields import add_prescription_fields
 
 
 MANAGED_MODELS = [Hospital, User, Patient, Diagnosis, Treatment, Alert, ExternalDatasetRow, LabTest, Prescription, AuditLog, ATCDrug, DetailedLabResult, AntibioticResistance, PharmacyInventory]
@@ -158,6 +159,10 @@ def bootstrap(import_data_enabled=True, seed_enabled=True, train_enabled=True, r
         db.create_all()
         ensure_schema_compatibility()
         print("      Tables ready.")
+        
+        print("      Adding prescription dosage fields...")
+        add_prescription_fields()
+        print("      Prescription dosage fields added.")
 
     if import_data_enabled:
         print("[2/4] Importing and preprocessing datasets...")

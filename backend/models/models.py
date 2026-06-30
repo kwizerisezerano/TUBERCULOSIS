@@ -420,10 +420,13 @@ class Prescription(db.Model):
     medication = db.Column(db.String(200), nullable=False)
     atc_drug_id = db.Column(db.Integer, db.ForeignKey('atc_drug.id'))
     dosage = db.Column(db.String(200))
-    dosage_mg = db.Column(db.Float)  # Dosage in milligrams
+    dosage_mg = db.Column(db.Float)  # Dosage in milligrams per dose
+    frequency = db.Column(db.String(50))  # e.g., "2 times daily", "3 times daily"
     duration_days = db.Column(db.Integer)
     total_mg = db.Column(db.Float)  # Total dosage in milligrams
     ddds = db.Column(db.Float)  # Number of Defined Daily Doses
+    tablets_per_dose = db.Column(db.Integer)  # Number of tablets per dose
+    total_tablets = db.Column(db.Integer)  # Total tablets to dispense
     duration = db.Column(db.String(100))
     risk_level = db.Column(db.String(50))
     ml_recommended = db.Column(db.Boolean, default=False)
@@ -455,9 +458,12 @@ class Prescription(db.Model):
             "atc_drug": self.atc_drug.to_dict() if self.atc_drug else None,
             "dosage": self.dosage,
             "dosage_mg": self.dosage_mg,
+            "frequency": self.frequency,
             "duration_days": self.duration_days,
             "total_mg": self.total_mg,
             "ddds": self.ddds,
+            "tablets_per_dose": self.tablets_per_dose,
+            "total_tablets": self.total_tablets,
             "duration": self.duration,
             "risk_level": self.risk_level,
             "ml_recommended": self.ml_recommended,

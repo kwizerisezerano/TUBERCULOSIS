@@ -504,170 +504,342 @@
             </div>
             <div>
               <h3 class="text-lg font-bold text-gray-900 dark:text-white">Diagnosis Results</h3>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Complete analysis and recommendations</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Complete analysis and treatment recommendations</p>
             </div>
           </div>
 
-          <!-- Key Metrics -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="p-5 rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
-              <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Risk Level</p>
-              <p :class="[
-                'text-2xl font-bold mt-2',
-                diagnosisResult.symptom_analysis?.risk_level === 'HIGH RISK' ? 'text-red-600 dark:text-red-400'
-                  : diagnosisResult.symptom_analysis?.risk_level === 'MODERATE RISK' ? 'text-yellow-600 dark:text-yellow-400'
-                  : 'text-green-600 dark:text-green-400'
-              ]">
-                {{ diagnosisResult.symptom_analysis?.risk_level_display || 'Unknown' }}
-              </p>
-              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Score: {{ diagnosisResult.symptom_analysis?.risk_score }}</p>
-            </div>
-            <div class="p-5 rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
-              <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Primary Diagnosis</p>
-              <p class="text-2xl font-bold text-gray-900 dark:text-white mt-2">{{ diagnosisResult.who_standards?.primary_diagnosis || 'Pending' }}</p>
-            </div>
-            <div class="p-5 rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
-              <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Bacteria Species</p>
-              <p class="text-2xl font-bold text-gray-900 dark:text-white mt-2">{{ diagnosisResult.bacteria_assessment?.species || 'Unknown' }}</p>
-            </div>
-            <div class="p-5 rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
-              <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Resistance Class</p>
-              <p class="text-2xl font-bold text-gray-900 dark:text-white mt-2">{{ diagnosisResult.resistance_profile?.classification || 'Unknown' }}</p>
-            </div>
-          </div>
-
-          <!-- Detailed Sections -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div class="p-5 rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
-              <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-                Test Evaluation
-              </h4>
-              <div class="space-y-2 text-sm">
-                <p class="text-gray-700 dark:text-gray-300"><span class="font-medium text-gray-900 dark:text-white">Classification:</span> {{ diagnosisResult.test_evaluation?.classification }}</p>
-                <p class="text-gray-700 dark:text-gray-300"><span class="font-medium text-gray-900 dark:text-white">Confidence:</span> {{ diagnosisResult.test_evaluation?.confidence_percent }}%</p>
-                <div v-if="diagnosisResult.test_evaluation?.findings?.length">
-                  <p class="font-medium text-gray-900 dark:text-white mb-1">Findings:</p>
-                  <div class="flex flex-wrap gap-2">
-                    <span v-for="(f, i) in diagnosisResult.test_evaluation.findings" :key="i" class="px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700 border border-blue-300">
-                      {{ f }}
-                    </span>
-                  </div>
-                </div>
+          <!-- Risk Assessment Banner -->
+          <div :class="[
+            'p-4 rounded-xl border-l-4',
+            diagnosisResult.symptom_analysis?.risk_level === 'HIGH RISK' 
+              ? 'bg-red-50 dark:bg-red-900/20 border-red-500' 
+              : diagnosisResult.symptom_analysis?.risk_level === 'MODERATE RISK' 
+              ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500' 
+              : 'bg-green-50 dark:bg-green-900/20 border-green-500'
+          ]">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wide mb-1" :class="[
+                  diagnosisResult.symptom_analysis?.risk_level === 'HIGH RISK' ? 'text-red-600 dark:text-red-400' 
+                    : diagnosisResult.symptom_analysis?.risk_level === 'MODERATE RISK' 
+                    ? 'text-yellow-600 dark:text-yellow-400' 
+                    : 'text-green-600 dark:text-green-400'
+                ]">Risk Assessment</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ diagnosisResult.symptom_analysis?.risk_level_display || 'Unknown' }}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Risk Score: {{ diagnosisResult.symptom_analysis?.risk_score }}/100</p>
               </div>
-            </div>
-            <div class="p-5 rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
-              <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                <svg class="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                Clinical Guidance
-              </h4>
-              <div v-if="diagnosisResult.symptom_analysis?.red_flags?.length" class="mb-3">
-                <p class="font-medium text-red-600 dark:text-red-400 mb-1">Red Flags:</p>
-                <ul class="list-disc pl-5 text-gray-700 dark:text-gray-300 text-sm">
-                  <li v-for="(rf, i) in diagnosisResult.symptom_analysis.red_flags" :key="i">{{ rf }}</li>
-                </ul>
-              </div>
-              <div class="p-3 rounded-xl bg-primary-100 dark:bg-primary-900/20 border border-primary-300 dark:border-primary-800/50">
-                <p class="font-medium text-primary-800 dark:text-primary-300 text-sm">Advice:</p>
-                <p class="text-primary-700 dark:text-primary-400 text-sm mt-1">{{ diagnosisResult.symptom_analysis?.clinical_advice }}</p>
-              </div>
-            </div>
-            <div v-if="diagnosisResult.ml_prediction" class="p-5 rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
-              <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                </svg>
-                ML Predictions
-              </h4>
-              <div class="space-y-3">
-                <div v-if="diagnosisResult.ml_prediction.tb_status">
-                  <div class="flex justify-between items-center mb-1 text-sm">
-                    <span class="text-gray-700 dark:text-gray-300">TB Status</span>
-                    <span class="font-semibold text-gray-900 dark:text-white">{{ diagnosisResult.ml_prediction.tb_status.prediction }}</span>
-                  </div>
-                  <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                    <div class="bg-primary-600 h-2 rounded-full transition-all duration-300" :style="{ width: `${diagnosisResult.ml_prediction.tb_status.confidence * 100}%` }"></div>
-                  </div>
-                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 text-right">Confidence: {{ Math.round(diagnosisResult.ml_prediction.tb_status.confidence * 100) }}%</p>
-                </div>
-                <div v-if="diagnosisResult.ml_prediction.drug_resistance">
-                  <div class="flex justify-between items-center mb-1 text-sm">
-                    <span class="text-gray-700 dark:text-gray-300">Drug Resistance</span>
-                    <span class="font-semibold text-gray-900 dark:text-white">{{ diagnosisResult.ml_prediction.drug_resistance.prediction }}</span>
-                  </div>
-                  <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                    <div class="bg-red-600 h-2 rounded-full transition-all duration-300" :style="{ width: `${diagnosisResult.ml_prediction.drug_resistance.confidence * 100}%` }"></div>
-                  </div>
-                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 text-right">Confidence: {{ Math.round(diagnosisResult.ml_prediction.drug_resistance.confidence * 100) }}%</p>
-                </div>
-              </div>
-            </div>
-            <div class="p-5 rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
-              <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-2.322l-.896-.298a2 2 0 01-1.333-2.322L18 7.5V6a2 2 0 00-2-2H8a2 2 0 00-2 2v1.5l.825 4.982a2 2 0 01-1.333 2.322l-.896.298a2 2 0 00-1.022 2.322V21h18v-4.572z"></path><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                Infection Assessment
-              </h4>
-              <div class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                <p v-if="diagnosisResult.infection_assessment?.primary_infection"><span class="font-medium text-gray-900 dark:text-white">Primary:</span> {{ diagnosisResult.infection_assessment.primary_infection }}</p>
-                <p v-if="diagnosisResult.infection_assessment?.site"><span class="font-medium text-gray-900 dark:text-white">Site:</span> {{ diagnosisResult.infection_assessment.site }}</p>
+              <div class="text-right">
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ diagnosisResult.who_standards?.primary_diagnosis || 'Pending' }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Primary Diagnosis</p>
               </div>
             </div>
           </div>
 
-          <!-- Treatment Plan -->
-          <div class="p-5 rounded-xl bg-gray-100 dark:bg-gray-700/30 border border-gray-300 dark:border-gray-600">
-            <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-              <svg class="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 018.382 3.984M5 12H9a3 3 0 013 3V12a3 3 0 01-3 3H5z"></path>
-              </svg>
-              Treatment Recommendation
-            </h4>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-              <div class="p-3 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+          <!-- Resistance Warning for Returning Patients (HIGH PRIORITY) -->
+          <div v-if="diagnosisResult.resistance_warning && diagnosisResult.resistance_warning.has_previous_treatment" class="p-5 rounded-xl bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 border-2 border-red-300 dark:border-red-700">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+              </div>
+              <div>
+                <h4 class="text-lg font-bold text-red-800 dark:text-red-300">Resistance Pattern Alert</h4>
+                <p class="text-xs text-red-600 dark:text-red-400">Previous treatment history detected</p>
+              </div>
+            </div>
+            <div class="space-y-3">
+              <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700">
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Previous Medications</p>
+                <div class="flex flex-wrap gap-2">
+                  <span v-for="(med, i) in diagnosisResult.resistance_warning.previous_medications" :key="i" class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                    {{ med }}
+                  </span>
+                </div>
+              </div>
+              <div v-if="diagnosisResult.resistance_warning.resistance_detected" class="p-3 rounded-lg bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-600">
+                <p class="text-sm font-semibold text-red-800 dark:text-red-300 mb-2">⚠️ Resistance Detected</p>
+                <p class="text-xs text-red-700 dark:text-red-400 mb-2">The following drugs show resistance patterns:</p>
+                <div class="flex flex-wrap gap-2">
+                  <span v-for="(drug, i) in diagnosisResult.resistance_warning.resistant_drugs" :key="i" class="px-3 py-1 rounded-full text-xs font-bold bg-red-200 text-red-900 dark:bg-red-800 dark:text-red-200 border border-red-400">
+                    {{ drug }}
+                  </span>
+                </div>
+                <p class="text-xs text-red-700 dark:text-red-400 mt-2">Regimen has been adjusted to avoid resistant medications.</p>
+              </div>
+              <div v-else class="p-3 rounded-lg bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-600">
+                <p class="text-sm font-semibold text-green-800 dark:text-green-300">✓ No Resistance Detected</p>
+                <p class="text-xs text-green-700 dark:text-green-400">Standard regimen can be used based on previous treatment history.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Treatment Regimen Card -->
+          <div class="p-6 rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 border border-indigo-200 dark:border-indigo-700">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-2.322l-.896-.298a2 2 0 01-1.333-2.322L18 7.5V6a2 2 0 00-2-2H8a2 2 0 00-2 2v1.5l.825 4.982a2 2 0 01-1.333 2.322l-.896.298a2 2 0 00-1.022 2.322V21h18v-4.572z"></path>
+                </svg>
+              </div>
+              <div>
+                <h4 class="text-lg font-bold text-gray-900 dark:text-white">Treatment Regimen</h4>
+                <p class="text-xs text-gray-500 dark:text-gray-400">WHO-aligned TB treatment protocol</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+              <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                 <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Regimen</p>
-                <p class="text-lg font-semibold text-gray-900 dark:text-white mt-1">{{ diagnosisResult.treatment_recommendation?.regimen_name }}</p>
+                <p class="text-base font-bold text-gray-900 dark:text-white">{{ diagnosisResult.treatment_recommendation?.regimen_name }}</p>
               </div>
-              <div class="p-3 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+              <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                 <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Duration</p>
-                <p class="text-lg font-semibold text-gray-900 dark:text-white mt-1">{{ diagnosisResult.treatment_recommendation?.duration }}</p>
+                <p class="text-base font-bold text-gray-900 dark:text-white">{{ diagnosisResult.treatment_recommendation?.duration }}</p>
               </div>
-              <div class="p-3 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+              <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                 <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Urgency</p>
-                <p class="text-lg font-semibold text-gray-900 dark:text-white mt-1">{{ diagnosisResult.treatment_recommendation?.urgency }}</p>
-              </div>
-              <div class="p-3 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Guideline</p>
-                <p class="text-lg font-semibold text-gray-900 dark:text-white mt-1">{{ diagnosisResult.treatment_recommendation?.guideline_source }}</p>
-              </div>
-            </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div class="p-3 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                <p class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Drugs</p>
-                <p class="text-gray-700 dark:text-gray-300 text-sm">{{ diagnosisResult.treatment_recommendation?.drugs }}</p>
-              </div>
-              <div class="p-3 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                <p class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Dosage</p>
-                <p class="text-gray-700 dark:text-gray-300 text-sm">{{ diagnosisResult.treatment_recommendation?.dosage }}</p>
-              </div>
-              <div class="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-700">
-                <p class="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-2">How to Take</p>
-                <p class="text-blue-700 dark:text-blue-400 text-sm">{{ diagnosisResult.treatment_recommendation?.administration || 'Follow clinician instructions' }}</p>
-              </div>
-              <div class="p-3 rounded-xl bg-purple-100 dark:bg-purple-900/20 border border-purple-300 dark:border-purple-700">
-                <p class="text-sm font-semibold text-purple-800 dark:text-purple-300 mb-2">Monitoring</p>
-                <p class="text-purple-700 dark:text-purple-400 text-sm">{{ diagnosisResult.treatment_recommendation?.monitoring || 'Regular check-ups required' }}</p>
+                <p :class="[
+                  'text-base font-bold',
+                  diagnosisResult.treatment_recommendation?.urgency === 'HIGH' ? 'text-red-600 dark:text-red-400'
+                    : diagnosisResult.treatment_recommendation?.urgency === 'MODERATE' ? 'text-yellow-600 dark:text-yellow-400'
+                    : 'text-green-600 dark:text-green-400'
+                ]">{{ diagnosisResult.treatment_recommendation?.urgency }}</p>
               </div>
             </div>
-            <div class="mt-4 p-3 rounded-xl bg-amber-100 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700">
-              <p class="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">Notes</p>
-              <p class="text-amber-700 dark:text-amber-400 text-sm">{{ diagnosisResult.treatment_recommendation?.notes }}</p>
+
+            <!-- Medications List -->
+            <div class="p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 mb-4">
+              <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Prescribed Medications</p>
+              <div class="space-y-3">
+                <div v-if="diagnosisResult.treatment_recommendation?.drugs" class="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                  <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-2.322l-.896-.298a2 2 0 01-1.333-2.322L18 7.5V6a2 2 0 00-2-2H8a2 2 0 00-2 2v1.5l.825 4.982a2 2 0 01-1.333 2.322l-.896.298a2 2 0 00-1.022 2.322V21h18v-4.572z"></path>
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <p class="font-semibold text-gray-900 dark:text-white">{{ diagnosisResult.treatment_recommendation.drugs }}</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ diagnosisResult.treatment_recommendation?.dosage }}</p>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            <!-- Detailed Dosage Breakdown -->
+            <div class="p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-300 dark:border-green-700 mb-4">
+              <div class="flex items-center gap-2 mb-4">
+                <div class="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                  </svg>
+                </div>
+                <p class="text-base font-bold text-green-800 dark:text-green-300">Dosage Breakdown</p>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700">
+                  <p class="text-xs text-gray-500 dark:text-gray-400 uppercase">Dosage</p>
+                  <p class="text-lg font-bold text-gray-900 dark:text-white">{{ calculatedDosage.dosageMg }} <span class="text-sm font-normal">mg</span></p>
+                </div>
+                <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700">
+                  <p class="text-xs text-gray-500 dark:text-gray-400 uppercase">Frequency</p>
+                  <p class="text-lg font-bold text-gray-900 dark:text-white">{{ calculatedDosage.timesPerDay }} <span class="text-sm font-normal">times/day</span></p>
+                </div>
+                <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700">
+                  <p class="text-xs text-gray-500 dark:text-gray-400 uppercase">Duration</p>
+                  <p class="text-lg font-bold text-gray-900 dark:text-white">{{ calculatedDosage.durationDays }} <span class="text-sm font-normal">days</span></p>
+                </div>
+                <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700">
+                  <p class="text-xs text-gray-500 dark:text-gray-400 uppercase">Total Tablets</p>
+                  <p class="text-lg font-bold text-green-600 dark:text-green-400">{{ calculatedDosage.totalTablets }}</p>
+                </div>
+              </div>
+              <div class="mt-3 p-3 rounded-lg bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-600">
+                <p class="text-sm font-semibold text-green-800 dark:text-green-300">Tablets per Dose: {{ calculatedDosage.tabletsPerDose }}</p>
+                <p class="text-xs text-green-700 dark:text-green-400 mt-1">Based on {{ calculatedDosage.tabletStrength }}mg tablet strength</p>
+              </div>
+            </div>
+
+            <!-- Dosage Instructions -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="p-4 rounded-lg bg-blue-100 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-700">
+                <div class="flex items-center gap-2 mb-2">
+                  <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <p class="text-sm font-semibold text-blue-800 dark:text-blue-300">Administration</p>
+                </div>
+                <p class="text-sm text-blue-700 dark:text-blue-400">{{ diagnosisResult.treatment_recommendation?.administration || 'Daily oral therapy under supervision' }}</p>
+              </div>
+              <div class="p-4 rounded-lg bg-purple-100 dark:bg-purple-900/20 border border-purple-300 dark:border-purple-700">
+                <div class="flex items-center gap-2 mb-2">
+                  <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                  </svg>
+                  <p class="text-sm font-semibold text-purple-800 dark:text-purple-300">Monitoring</p>
+                </div>
+                <p class="text-sm text-purple-700 dark:text-purple-400">{{ diagnosisResult.treatment_recommendation?.monitoring || 'Regular clinical and lab monitoring required' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- TB Infection Assessment -->
+          <div class="p-5 rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 border border-orange-200 dark:border-orange-700">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-orange-600 flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-2.322l-.896-.298a2 2 0 01-1.333-2.322L18 7.5V6a2 2 0 00-2-2H8a2 2 0 00-2 2v1.5l.825 4.982a2 2 0 01-1.333 2.322l-.896.298a2 2 0 00-1.022 2.322V21h18v-4.572z"></path>
+                </svg>
+              </div>
+              <div>
+                <h4 class="text-lg font-bold text-gray-900 dark:text-white">TB Infection Assessment</h4>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Detailed infection classification</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Primary Infection</p>
+                <p class="text-base font-bold text-gray-900 dark:text-white">{{ diagnosisResult.infection_assessment?.primary_infection || 'Not specified' }}</p>
+              </div>
+              <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Infection Site</p>
+                <p class="text-base font-bold text-gray-900 dark:text-white">{{ diagnosisResult.infection_assessment?.site || 'Not specified' }}</p>
+              </div>
+              <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Bacteria Species</p>
+                <p class="text-base font-bold text-gray-900 dark:text-white">{{ diagnosisResult.bacteria_assessment?.species || 'Not identified' }}</p>
+              </div>
+              <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Resistance Pattern</p>
+                <p class="text-base font-bold text-gray-900 dark:text-white">{{ diagnosisResult.resistance_profile?.classification || 'Not specified' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Key Findings Grid (MEDIUM PRIORITY) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-2.322l-.896-.298a2 2 0 01-1.333-2.322L18 7.5V6a2 2 0 00-2-2H8a2 2 0 00-2 2v1.5l.825 4.982a2 2 0 01-1.333 2.322l-.896.298a2 2 0 00-1.022 2.322V21h18v-4.572z"></path>
+                  </svg>
+                </div>
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Bacteria Species</p>
+              </div>
+              <p class="text-lg font-bold text-gray-900 dark:text-white">{{ diagnosisResult.bacteria_assessment?.species || 'Unknown' }}</p>
+            </div>
+            <div class="p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                  </svg>
+                </div>
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Resistance</p>
+              </div>
+              <p class="text-lg font-bold text-gray-900 dark:text-white">{{ diagnosisResult.resistance_profile?.classification || 'Unknown' }}</p>
+            </div>
+            <div class="p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                </div>
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Confidence</p>
+              </div>
+              <p class="text-lg font-bold text-gray-900 dark:text-white">{{ diagnosisResult.test_evaluation?.confidence_percent || 0 }}%</p>
+            </div>
+          </div>
+
+          <!-- ML Predictions (LOW PRIORITY) -->
+          <div v-if="diagnosisResult.ml_prediction" class="p-5 rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
+            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+              ML Model Predictions
+            </h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div v-if="diagnosisResult.ml_prediction.tb_status" class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">TB Status</span>
+                  <span class="px-2 py-1 rounded-full text-xs font-semibold" :class="diagnosisResult.ml_prediction.tb_status.prediction === 'Yes' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'">
+                    {{ diagnosisResult.ml_prediction.tb_status.prediction }}
+                  </span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                  <div class="bg-primary-600 h-2 rounded-full transition-all duration-300" :style="{ width: `${diagnosisResult.ml_prediction.tb_status.confidence * 100}%` }"></div>
+                </div>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Confidence: {{ Math.round(diagnosisResult.ml_prediction.tb_status.confidence * 100) }}%</p>
+              </div>
+              <div v-if="diagnosisResult.ml_prediction.drug_resistance" class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">Drug Resistance</span>
+                  <span class="px-2 py-1 rounded-full text-xs font-semibold" :class="diagnosisResult.ml_prediction.drug_resistance.prediction === 'Yes' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'">
+                    {{ diagnosisResult.ml_prediction.drug_resistance.prediction }}
+                  </span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                  <div class="bg-red-600 h-2 rounded-full transition-all duration-300" :style="{ width: `${diagnosisResult.ml_prediction.drug_resistance.confidence * 100}%` }"></div>
+                </div>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Confidence: {{ Math.round(diagnosisResult.ml_prediction.drug_resistance.confidence * 100) }}%</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Clinical Notes -->
+          <div v-if="diagnosisResult.treatment_recommendation?.notes" class="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
+            <div class="flex items-start gap-3">
+              <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <div>
+                <p class="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">Clinical Notes</p>
+                <p class="text-sm text-amber-700 dark:text-amber-400">{{ diagnosisResult.treatment_recommendation.notes }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Prescription Status -->
+          <div v-if="prescriptionCreated" class="p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-700">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-green-800 dark:text-green-300">Prescription Created Automatically</p>
+                <p class="text-xs text-green-700 dark:text-green-400">The pharmacist can now review and dispense the medication.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- No Prescription - No TB Detected -->
+          <div v-if="!prescriptionCreated && diagnosisResult" class="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-700">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-blue-800 dark:text-blue-300">No Prescription Created</p>
+                <p class="text-xs text-blue-700 dark:text-blue-400">No TB detected. Antibiotics not prescribed per antimicrobial stewardship guidelines.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex flex-col sm:flex-row gap-3">
+            <button @click="printReport" class="flex-1 py-3 px-6 rounded-xl bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold text-sm transition flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+              </svg>
+              Print Report
+            </button>
           </div>
         </div>
 
@@ -740,7 +912,59 @@ const selectedPatient = ref<any>(null);
 const diagnoses = ref<any[]>([]);
 const isLoading = ref(false);
 const diagnosisResult = ref<any>(null);
+const prescriptionCreated = ref(false);
 const API_BASE = 'http://127.0.0.1:5000/api';
+
+// Computed dosage breakdown
+const calculatedDosage = computed(() => {
+  if (!diagnosisResult.value) {
+    return { dosageMg: 0, timesPerDay: 0, durationDays: 0, totalTablets: 0, tabletsPerDose: 0, tabletStrength: 0 };
+  }
+  
+  const treatment = diagnosisResult.value.treatment_recommendation;
+  const dosageText = treatment?.dosage || '300mg daily';
+  
+  // Parse dosage mg
+  let dosageMg = 300;
+  const mgMatch = dosageText.match(/(\d+)mg/);
+  if (mgMatch) {
+    dosageMg = parseInt(mgMatch[1]);
+  }
+  
+  // Parse frequency
+  let timesPerDay = 1;
+  if (dosageText.toLowerCase().includes('twice') || dosageText.toLowerCase().includes('2 times')) {
+    timesPerDay = 2;
+  } else if (dosageText.toLowerCase().includes('3 times')) {
+    timesPerDay = 3;
+  }
+  
+  // Parse duration
+  let durationDays = 180; // Default 6 months
+  const durationText = treatment?.duration || '6 months';
+  const monthMatch = durationText.match(/(\d+)\s*month/i);
+  if (monthMatch) {
+    durationDays = parseInt(monthMatch[1]) * 30;
+  }
+  
+  // Tablet strength (default 300mg for TB drugs)
+  const tabletStrength = 300;
+  
+  // Calculate tablets per dose
+  const tabletsPerDose = Math.ceil(dosageMg / tabletStrength);
+  
+  // Calculate total tablets
+  const totalTablets = tabletsPerDose * timesPerDay * durationDays;
+  
+  return {
+    dosageMg,
+    timesPerDay,
+    durationDays,
+    totalTablets,
+    tabletsPerDose,
+    tabletStrength
+  };
+});
 
 const patientLabTests = ref<any[]>([]);
 
@@ -870,8 +1094,30 @@ const loadPatient = async () => {
       form.value[key as keyof typeof form.value] = patient[key];
     }
   });
+  
+  // Auto-populate drug resistance from previous records
+  await fetchPatientDrugResistance();
+  
   // Load lab tests for this patient
   await fetchPatientLabTests();
+};
+
+const fetchPatientDrugResistance = async () => {
+  if (!selectedPatientId.value) return;
+  try {
+    const response = await fetch(`${API_BASE}/patients/${selectedPatientId.value}/drug-resistance`, {
+      headers: { 'Authorization': `Bearer ${authToken.value}` }
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data.drug_resistance) {
+        form.value.drug_resistance = data.drug_resistance;
+        console.log('Auto-populated drug resistance:', data.drug_resistance);
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching drug resistance:', error);
+  }
 };
 
 const fetchPatientLabTests = async () => {
@@ -1003,6 +1249,16 @@ const handleDiagnose = async () => {
     diagnosisResult.value = res;
     currentStep.value = 5;
     await loadDiagnoses();
+    
+    // Only create prescription if TB is detected
+    // Good practice: Don't prescribe antibiotics for non-TB cases
+    const tbDetected = shouldCreatePrescription(res);
+    if (tbDetected && res && selectedPatientId.value) {
+      await autoCreatePrescription(res);
+    } else if (!tbDetected) {
+      console.log('No TB detected - prescription not created');
+      prescriptionCreated.value = false;
+    }
   } catch (e) {
     console.error('Diagnosis failed:', e);
     diagnosisError.value = 'Failed to get diagnosis. Please try again.';
@@ -1011,12 +1267,124 @@ const handleDiagnose = async () => {
   }
 };
 
+const shouldCreatePrescription = (diagnosisData: any) => {
+  // Check if TB is detected based on multiple indicators
+  // Priority: ML prediction > Risk Level > Lab results > Treatment drugs
+  
+  // 1. ML prediction is the primary indicator - if it says No, don't prescribe
+  const mlPrediction = diagnosisData.ml_prediction?.tb_status?.prediction;
+  const mlConfidence = diagnosisData.ml_prediction?.tb_status?.confidence || 0;
+  
+  if (mlPrediction === 'No') {
+    // If ML confidently says No (confidence > 50%), don't create prescription
+    if (mlConfidence > 0.5) {
+      console.log('ML predicts no TB with high confidence - no prescription');
+      return false;
+    }
+  }
+  
+  // 2. Risk level - MINIMAL risk with no evidence of TB
+  const riskLevel = diagnosisData.symptom_analysis?.risk_level;
+  const riskScore = diagnosisData.symptom_analysis?.risk_score || 0;
+  const primaryDiagnosis = diagnosisResult.value?.who_standards?.primary_diagnosis || '';
+  
+  if (riskLevel === 'MINIMAL RISK' && riskScore < 20) {
+    // Check if primary diagnosis explicitly says no TB
+    if (primaryDiagnosis.toLowerCase().includes('no evidence') || 
+        primaryDiagnosis.toLowerCase().includes('not tb') ||
+        primaryDiagnosis.toLowerCase().includes('unlikely')) {
+      console.log('Minimal risk with no TB evidence - no prescription');
+      return false;
+    }
+  }
+  
+  // 3. High or moderate risk level - create prescription
+  if (riskLevel === 'HIGH RISK' || riskLevel === 'MODERATE RISK') {
+    return true;
+  }
+  
+  // 4. ML prediction indicates TB
+  if (mlPrediction === 'Yes') {
+    return true;
+  }
+  
+  // 5. Treatment recommendation has actual drugs (but only if ML or risk supports it)
+  const drugs = diagnosisData.treatment_recommendation?.drugs;
+  if (drugs && drugs !== 'No medication needed' && drugs !== 'None') {
+    // Only create if there's some supporting evidence
+    const hasSupportingEvidence = 
+      (mlPrediction === 'Yes') ||
+      (riskLevel === 'HIGH RISK' || riskLevel === 'MODERATE RISK') ||
+      (diagnosisData.who_standards?.primary_diagnosis?.toLowerCase().includes('tb'));
+    
+    if (hasSupportingEvidence) {
+      return true;
+    }
+  }
+  
+  // 6. Positive lab results (but only if ML or risk supports it)
+  const labPositive = 
+    diagnosisData.who_standards?.primary_diagnosis?.toLowerCase().includes('tb') ||
+    diagnosisData.bacteria_assessment?.species?.toLowerCase().includes('mycobacterium');
+  
+  if (labPositive) {
+    // Only create if ML or risk supports it
+    const hasSupportingEvidence = 
+      (mlPrediction === 'Yes') ||
+      (riskLevel === 'HIGH RISK' || riskLevel === 'MODERATE RISK');
+    
+    if (hasSupportingEvidence) {
+      return true;
+    }
+  }
+  
+  // No TB detected - don't create prescription
+  console.log('No TB detected based on combined indicators - no prescription');
+  return false;
+};
+
+const autoCreatePrescription = async (diagnosisData: any) => {
+  try {
+    const token = authToken.value;
+    const treatment = diagnosisData.treatment_recommendation;
+    const dosage = calculatedDosage.value;
+    
+    const prescriptionData = {
+      patient_id: selectedPatientId.value,
+      diagnosis_id: null,
+      medication: treatment?.drugs || 'TB Treatment',
+      dosage: treatment?.dosage || '300mg daily',
+      dosage_mg: dosage.dosageMg,
+      frequency: dosage.timesPerDay === 1 ? '1 time daily' : dosage.timesPerDay === 2 ? '2 times daily' : `${dosage.timesPerDay} times daily`,
+      duration_days: dosage.durationDays,
+      duration: treatment?.duration || '6 months',
+      risk_level: diagnosisData.symptom_analysis?.risk_level
+    };
+
+    const response = await fetch(`${API_BASE}/prescriptions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(prescriptionData)
+    });
+
+    if (response.ok) {
+      prescriptionCreated.value = true;
+      console.log('Prescription created automatically');
+    } else {
+      console.error('Failed to auto-create prescription');
+    }
+  } catch (error) {
+    console.error('Error auto-creating prescription:', error);
+  }
+};
+
 const resetDiagnosis = () => {
-  diagnosisResult.value = null;
   currentStep.value = 1;
-  patientMode.value = 'new';
-  selectedPatientId.value = null;
-  selectedPatient.value = null;
+  diagnosisResult.value = null;
+  prescriptionCreated.value = false;
   form.value = {
     patient_id: '',
     first_name: '',
@@ -1066,6 +1434,127 @@ const resetDiagnosis = () => {
     has_fatigue: '',
     has_shortness_of_breath: ''
   };
+  selectedPatientId.value = null;
+  selectedPatient.value = null;
+  patientMode.value = 'new';
+};
+
+const createPrescription = async () => {
+  if (!diagnosisResult.value || !selectedPatientId.value) {
+    alert('Please complete diagnosis first');
+    return;
+  }
+
+  try {
+    const token = authToken.value;
+    const treatment = diagnosisResult.value.treatment_recommendation;
+    
+    // Parse dosage from treatment recommendation
+    const dosageText = treatment?.dosage || 'Unknown';
+    let dosageMg = 300; // default
+    let frequency = '1 time daily';
+    
+    // Extract dosage mg if available
+    const mgMatch = dosageText.match(/(\d+)mg/);
+    if (mgMatch) {
+      dosageMg = parseInt(mgMatch[1]);
+    }
+    
+    // Extract frequency
+    if (dosageText.toLowerCase().includes('twice') || dosageText.toLowerCase().includes('2 times')) {
+      frequency = '2 times daily';
+    } else if (dosageText.toLowerCase().includes('3 times')) {
+      frequency = '3 times daily';
+    }
+
+    const prescriptionData = {
+      patient_id: selectedPatientId.value,
+      diagnosis_id: null, // Will be set after diagnosis creation
+      medication: treatment?.drugs || 'TB Treatment',
+      dosage: dosageText,
+      dosage_mg: dosageMg,
+      frequency: frequency,
+      duration_days: 180, // Default 6 months
+      duration: treatment?.duration || '6 months',
+      risk_level: diagnosisResult.value.symptom_analysis?.risk_level
+    };
+
+    const response = await fetch(`${API_BASE}/prescriptions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(prescriptionData)
+    });
+
+    if (response.ok) {
+      alert('✓ Prescription created successfully!\n\nThe pharmacist will review and dispense the medication.');
+      // Navigate to prescriptions page
+      window.location.href = '/prescriptions';
+    } else {
+      const errorData = await response.json();
+      alert(`Failed to create prescription: ${errorData.msg || 'Unknown error'}`);
+    }
+  } catch (error) {
+    console.error('Error creating prescription:', error);
+    alert(`Network error: ${error.message}`);
+  }
+};
+
+const printReport = () => {
+  if (!diagnosisResult.value) return;
+  
+  const reportContent = `
+TB DIAGNOSIS REPORT
+===================
+
+Patient: ${form.value.first_name} ${form.value.last_name}
+Patient ID: ${form.value.patient_id}
+Age: ${form.value.age} | Gender: ${form.value.gender}
+Weight: ${form.value.weight}kg
+
+RISK ASSESSMENT
+---------------
+Risk Level: ${diagnosisResult.value.symptom_analysis?.risk_level_display}
+Risk Score: ${diagnosisResult.value.symptom_analysis?.risk_score}/100
+Primary Diagnosis: ${diagnosisResult.value.who_standards?.primary_diagnosis}
+
+LABORATORY FINDINGS
+-------------------
+Bacteria Species: ${diagnosisResult.value.bacteria_assessment?.species}
+Resistance Class: ${diagnosisResult.value.resistance_profile?.classification}
+Confidence: ${diagnosisResult.value.test_evaluation?.confidence_percent}%
+
+TREATMENT REGIMEN
+-----------------
+Regimen: ${diagnosisResult.value.treatment_recommendation?.regimen_name}
+Duration: ${diagnosisResult.value.treatment_recommendation?.duration}
+Urgency: ${diagnosisResult.value.treatment_recommendation?.urgency}
+
+Medications: ${diagnosisResult.value.treatment_recommendation?.drugs}
+Dosage: ${diagnosisResult.value.treatment_recommendation?.dosage}
+
+Administration: ${diagnosisResult.value.treatment_recommendation?.administration}
+Monitoring: ${diagnosisResult.value.treatment_recommendation?.monitoring}
+
+ML PREDICTIONS
+--------------
+TB Status: ${diagnosisResult.value.ml_prediction?.tb_status?.prediction} (${Math.round(diagnosisResult.value.ml_prediction?.tb_status?.confidence * 100)}% confidence)
+Drug Resistance: ${diagnosisResult.value.ml_prediction?.drug_resistance?.prediction} (${Math.round(diagnosisResult.value.ml_prediction?.drug_resistance?.confidence * 100)}% confidence)
+
+CLINICAL NOTES
+--------------
+${diagnosisResult.value.treatment_recommendation?.notes}
+
+Generated by TB Predictive EHR Analytics Dashboard
+Date: ${new Date().toLocaleDateString()}
+  `;
+  
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(`<pre style="font-family: monospace; white-space: pre-wrap;">${reportContent}</pre>`);
+  printWindow.document.close();
+  printWindow.print();
 };
 
 const loadDiagnoses = async () => {

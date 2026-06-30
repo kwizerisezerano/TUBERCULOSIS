@@ -2382,7 +2382,7 @@ def determine_resistance_profile(drug_resistant, genexpert, antibiogram_result=N
     }
 
 
-def build_infection_assessment(tb_analysis, lang=None):
+def build_infection_assessment(tb_analysis, bacteria_assessment=None, lang=None):
     lang = lang or get_request_lang()
     infection_types = []
     seen = set()
@@ -2400,6 +2400,7 @@ def build_infection_assessment(tb_analysis, lang=None):
         ("hiv", "INFECT_TB_HIV", "SITE_SYSTEMIC"),
     ]
 
+    # First check tb_types for infection patterns
     for tb_type in tb_analysis["tb_types"]:
         lower = tb_type.lower()
         for key, label_key, site_key in infection_rules:
@@ -2414,6 +2415,59 @@ def build_infection_assessment(tb_analysis, lang=None):
                 )
                 seen.add(label)
 
+    # If no infection types from tb_types, use bacteria species to infer infection
+    if not infection_types and bacteria_assessment:
+        species = bacteria_assessment.get("species", "").lower()
+        
+        # Map common TB species to likely infection types
+        species_infection_map = {
+            "mycobacterium tuberculosis": ("INFECT_PULMONARY", "SITE_LUNGS"),
+            "m. tuberculosis": ("INFECT_PULMONARY", "SITE_LUNGS"),
+            "mycobacterium bovis": ("INFECT_EXTRAPULMONARY", "SITE_EXTRAPULMONARY"),
+            "m. bovis": ("INFECT_EXTRAPULMONARY", "SITE_EXTRAPULMONARY"),
+            "mycobacterium africanum": ("INFECT_PULMONARY", "SITE_LUNGS"),
+            "m. africanum": ("INFECT_PULMONARY", "SITE_LUNGS"),
+            "mycobacterium microti": ("INFECT_EXTRAPULMONARY", "SITE_EXTRAPULMONARY"),
+            "m. microti": ("INFECT_EXTRAPULMONARY", "SITE_EXTRAPULMONARY"),
+        }
+        
+        for species_key, (label_key, site_key) in species_infection_map.items():
+            if species_key in species:
+                label = tr(label_key, lang=lang)
+                site = tr(site_key, lang=lang)
+                if label not in seen:
+                    infection_types.append({
+                        "label": label,
+                        "site": site,
+                        "source_classification": f"Species-based: {bacteria_assessment.get('species')}",
+                    })
+                    seen.add(label)
+                break
+
+    # If still no infection types, check lab results for clues
+    if not infection_types:
+        # Check for pulmonary indicators
+        if tb_analysis.get("sputum_smear") == "Positive" or tb_analysis.get("genexpert") == "Positive":
+            label = tr("INFECT_PULMONARY", lang=lang)
+            site = tr("SITE_LUNGS", lang=lang)
+            infection_types.append({
+                "label": label,
+                "site": site,
+                "source_classification": "Lab-based: Positive sputum/GeneXpert",
+            })
+            seen.add(label)
+        # Check for extrapulmonary indicators
+        elif tb_analysis.get("chest_xray") == "Abnormal":
+            label = tr("INFECT_PULMONARY", lang=lang)
+            site = tr("SITE_LUNGS", lang=lang)
+            infection_types.append({
+                "label": label,
+                "site": site,
+                "source_classification": "Lab-based: Abnormal chest X-ray",
+            })
+            seen.add(label)
+
+    # Final fallback
     if not infection_types:
         infection_types.append(
             {
@@ -2423,8 +2477,19 @@ def build_infection_assessment(tb_analysis, lang=None):
             }
         )
 
+    # Determine primary infection site more specifically
+    primary_site = infection_types[0]["site"]
+    if "unspecified" in primary_site.lower() and bacteria_assessment:
+        # Try to infer site from species
+        species = bacteria_assessment.get("species", "").lower()
+        if "microti" in species or "bovis" in species:
+            infection_types[0]["site"] = tr("SITE_EXTRAPULMONARY", lang=lang)
+        elif "tuberculosis" in species:
+            infection_types[0]["site"] = tr("SITE_LUNGS", lang=lang)
+
     return {
         "primary_infection": infection_types[0]["label"],
+        "site": infection_types[0]["site"],
         "infection_types": infection_types,
     }
 
@@ -3850,23 +3915,51 @@ def prescriptions():
             atc_drug_id=data.get('atc_drug_id'),
             dosage=data.get('dosage'),
             dosage_mg=data.get('dosage_mg'),
+            frequency=data.get('frequency', '1 time daily'),
             duration_days=data.get('duration_days'),
             duration=data.get('duration'),
             risk_level=data.get('risk_level'),
             ml_recommended=data.get('ml_recommended', False)
         )
         
-        # Calculate total_mg and ddds if possible
+        # Calculate total_mg, tablets_per_dose, and total_tablets
         if presc.dosage_mg and presc.duration_days:
-            presc.total_mg = presc.dosage_mg * presc.duration_days
+            # Parse frequency to get doses per day
+            freq_str = presc.frequency.lower()
+            if 'once' in freq_str or '1 time' in freq_str:
+                doses_per_day = 1
+            elif 'twice' in freq_str or '2 times' in freq_str:
+                doses_per_day = 2
+            elif '3 times' in freq_str:
+                doses_per_day = 3
+            elif '4 times' in freq_str:
+                doses_per_day = 4
+            else:
+                doses_per_day = 1  # default
             
+            presc.total_mg = presc.dosage_mg * doses_per_day * presc.duration_days
+            
+            # Calculate tablets
             if presc.atc_drug_id:
                 atc_drug = ATCDrug.query.get(presc.atc_drug_id)
                 if atc_drug and atc_drug.ddd:
-                    # Convert DDD from grams to mg if needed
-                    ddd_mg = atc_drug.ddd * 1000 if atc_drug.ddd_unit == 'g' else atc_drug.ddd
+                    # DDD is in grams, convert to mg
+                    tablet_strength_mg = atc_drug.ddd * 1000
+                    presc.tablets_per_dose = int(presc.dosage_mg / tablet_strength_mg) if tablet_strength_mg > 0 else 1
+                    presc.total_tablets = presc.tablets_per_dose * doses_per_day * presc.duration_days
+                    
+                    # Calculate DDDs
+                    ddd_mg = tablet_strength_mg
                     if ddd_mg > 0:
                         presc.ddds = presc.total_mg / ddd_mg
+                else:
+                    # Fallback: assume 500mg per tablet
+                    presc.tablets_per_dose = int(presc.dosage_mg / 500)
+                    presc.total_tablets = presc.tablets_per_dose * doses_per_day * presc.duration_days
+            else:
+                # Fallback: assume 500mg per tablet
+                presc.tablets_per_dose = int(presc.dosage_mg / 500)
+                presc.total_tablets = presc.tablets_per_dose * doses_per_day * presc.duration_days
         
         db.session.add(presc)
         
@@ -4229,6 +4322,52 @@ def patient_detail(patient_id):
         db.session.commit()
         return jsonify({'message': tr('PATIENT_DELETED')})
 
+@app.route('/api/patients/<int:patient_id>/drug-resistance', methods=['GET'])
+@jwt_required()
+def get_patient_drug_resistance(patient_id):
+    """
+    Get drug resistance information from patient's previous records.
+    Checks prescriptions and antibiotic resistance records.
+    """
+    patient = Patient.query.get_or_404(patient_id)
+    
+    resistance_patterns = []
+    
+    # Check patient's current drug_resistance field
+    if patient.drug_resistance and patient.drug_resistance.strip():
+        resistance_patterns.append(patient.drug_resistance)
+    
+    # Check antibiotic resistance records
+    for record in patient.antibiotic_resistance_records:
+        if record.resistance_pattern and record.resistance_pattern not in resistance_patterns:
+            resistance_patterns.append(record.resistance_pattern)
+    
+    # Check previous prescriptions for resistance indicators
+    from models.models import Prescription
+    previous_prescriptions = Prescription.query.filter_by(
+        patient_id=patient_id
+    ).order_by(Prescription.created_at.desc()).limit(10).all()
+    
+    resistance_drugs = set()
+    for presc in previous_prescriptions:
+        if presc.medication:
+            # Check if medication contains resistance indicators
+            med_lower = presc.medication.lower()
+            if 'resistant' in med_lower or 'mdr' in med_lower or 'xdr' in med_lower:
+                if presc.medication not in resistance_patterns:
+                    resistance_patterns.append(presc.medication)
+    
+    # Combine all resistance information
+    combined_resistance = '; '.join(resistance_patterns) if resistance_patterns else ''
+    
+    return jsonify({
+        'patient_id': patient_id,
+        'drug_resistance': combined_resistance,
+        'resistance_patterns': resistance_patterns,
+        'has_resistance': len(resistance_patterns) > 0,
+        'previous_prescriptions_count': len(previous_prescriptions)
+    })
+
 # Hospital Management
 @app.route('/api/hospitals', methods=['GET', 'POST'])
 @jwt_required()
@@ -4516,15 +4655,32 @@ def dispense_prescription(presc_id):
         ).first()
         
         if inventory:
-            required_quantity = presc.duration_days if presc.duration_days else 30
+            # Use pre-calculated total_tablets if available, otherwise calculate
+            if presc.total_tablets:
+                required_quantity = presc.total_tablets
+            elif presc.dosage_mg and presc.duration_days:
+                # Fallback calculation
+                atc_drug = ATCDrug.query.get(presc.atc_drug_id)
+                if atc_drug and atc_drug.ddd:
+                    tablet_strength_mg = atc_drug.ddd * 1000
+                    required_quantity = int((presc.dosage_mg * presc.duration_days) / tablet_strength_mg)
+                else:
+                    required_quantity = int((presc.dosage_mg * presc.duration_days) / 500)
+            else:
+                required_quantity = presc.duration_days if presc.duration_days else 30
+            
             if inventory.stock_quantity < required_quantity:
                 return jsonify({
                     'error': 'Insufficient stock',
                     'stock_quantity': inventory.stock_quantity,
-                    'required_quantity': required_quantity
+                    'required_quantity': required_quantity,
+                    'unit': inventory.unit_type,
+                    'total_tablets_needed': presc.total_tablets,
+                    'tablets_per_dose': presc.tablets_per_dose,
+                    'frequency': presc.frequency
                 }), 400
             
-            # Update stock
+            # Update stock - reduce by actual quantity dispensed
             inventory.stock_quantity -= required_quantity
             presc.stock_updated = True
     
@@ -4752,7 +4908,7 @@ def diagnose():
     localized_who_category = translate_backend_text_value(tb_analysis["who_category"], lang=lang)
     localized_tb_types = localize_payload(tb_analysis["tb_types"], lang=lang)
     bacteria_assessment = localize_payload(build_bacteria_assessment(species_result, tb_analysis), lang=lang)
-    infection_assessment = build_infection_assessment(tb_analysis, lang=lang)
+    infection_assessment = build_infection_assessment(tb_analysis, bacteria_assessment, lang=lang)
 
     # Get WHO clinical info
     clinical_info = localize_payload(get_who_clinical_info(

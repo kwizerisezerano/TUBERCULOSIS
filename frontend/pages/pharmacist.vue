@@ -67,6 +67,7 @@
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Medication</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dosage</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Duration</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total Tablets</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Stock</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
@@ -78,18 +79,41 @@
                     {{ presc.patient_name || `Patient #${presc.patient_id}` }}
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                    {{ presc.medication }}
+                    <div>{{ presc.medication }}</div>
+                    <div class="text-xs text-gray-500">{{ presc.dosage }}</div>
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                    {{ presc.dosage }}
+                    <div>{{ presc.dosage_mg }}mg</div>
+                    <div class="text-xs text-gray-500">{{ presc.frequency }}</div>
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {{ presc.duration_days }} days
                   </td>
+                  <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                    <div v-if="presc.total_tablets" class="font-semibold">
+                      {{ presc.total_tablets }} tablets
+                    </div>
+                    <div v-if="presc.tablets_per_dose" class="text-xs text-gray-500">
+                      {{ presc.tablets_per_dose }} per dose
+                    </div>
+                  </td>
                   <td class="px-6 py-4 text-sm">
-                    <span v-if="presc.stockCheck" :class="presc.stockCheck.available ? 'text-green-600' : 'text-red-600'">
-                      {{ presc.stockCheck?.stock_quantity || 'Checking...' }}
-                    </span>
+                    <div v-if="presc.stockCheck">
+                      <div :class="presc.stockCheck.available ? 'text-green-600' : 'text-red-600'">
+                        Stock: {{ presc.stockCheck?.stock_quantity || 0 }}
+                      </div>
+                      <div v-if="presc.total_tablets" class="text-xs">
+                        Required: {{ presc.total_tablets }} tablets
+                      </div>
+                      <div v-if="presc.total_tablets && presc.stockCheck" class="text-xs font-semibold mt-1">
+                        <span v-if="presc.stockCheck.stock_quantity >= presc.total_tablets" class="text-green-600">
+                          ✓ Stock sufficient - Can approve
+                        </span>
+                        <span v-else class="text-red-600">
+                          ✗ Low stock - Restock needed
+                        </span>
+                      </div>
+                    </div>
                     <span v-else class="text-gray-500">-</span>
                   </td>
                   <td class="px-6 py-4">
@@ -106,16 +130,23 @@
                       Check Stock
                     </button>
                     <button
-                      v-if="presc.status === 'pending' && presc.stockCheck?.available"
+                      v-if="presc.status === 'pending' && presc.stockCheck && presc.stockCheck.stock_quantity >= presc.total_tablets"
                       @click="approvePrescription(presc)"
-                      class="text-green-600 hover:text-green-900 dark:text-green-400"
+                      class="text-green-600 hover:text-green-900 dark:text-green-400 font-semibold"
                     >
-                      Approve
+                      ✓ Approve
+                    </button>
+                    <button
+                      v-if="presc.status === 'pending' && presc.stockCheck && presc.stockCheck.stock_quantity < presc.total_tablets"
+                      @click="restockMedicine(presc)"
+                      class="text-orange-600 hover:text-orange-900 dark:text-orange-400 font-semibold"
+                    >
+                      + Restock
                     </button>
                     <button
                       v-if="presc.status === 'approved'"
                       @click="dispensePrescription(presc)"
-                      class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400"
+                      class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 font-semibold"
                     >
                       Dispense
                     </button>
@@ -126,12 +157,6 @@
                     >
                       Reject
                     </button>
-                  </td>
-                  <td class="px-6 py-4 text-sm">
-                    <span v-if="presc.stockCheck" :class="presc.stockCheck.available ? 'text-green-600' : 'text-red-600'">
-                      {{ presc.stockCheck.available ? `✓ ${presc.stockCheck.stock_quantity} in stock` : `✗ ${presc.stockCheck.message}` }}
-                    </span>
-                    <span v-else class="text-gray-400">-</span>
                   </td>
                 </tr>
               </tbody>
@@ -480,6 +505,27 @@ const approvePrescription = async (presc) => {
 const dispensePrescription = async (presc) => {
   try {
     const token = authToken.value
+    
+    // Show dosage guidance before dispensing
+    const guidance = `
+DOSAGE DISTRIBUTION GUIDE:
+---------------------------
+Medication: ${presc.medication}
+Dosage: ${presc.dosage_mg}mg ${presc.frequency}
+Duration: ${presc.duration_days} days
+
+Tablets per dose: ${presc.tablets_per_dose || 'N/A'}
+Total tablets to dispense: ${presc.total_tablets || 'N/A'}
+
+Instructions:
+- Give ${presc.tablets_per_dose || 'calculated'} tablet(s) ${presc.frequency}
+- Total supply: ${presc.total_tablets || 'calculated'} tablets for ${presc.duration_days} days
+    `
+    
+    if (!confirm(guidance + '\n\nProceed with dispensing?')) {
+      return
+    }
+    
     const response = await fetch(`http://127.0.0.1:5000/api/prescriptions/${presc.id}/dispense`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
@@ -496,6 +542,62 @@ const dispensePrescription = async (presc) => {
     }
   } catch (error) {
     console.error('Error dispensing prescription:', error)
+    alert(`Network error: ${error.message}`)
+  }
+}
+
+const restockMedicine = async (presc) => {
+  try {
+    const token = authToken.value
+    
+    // Calculate restock amount (add 100 tablets buffer)
+    const restockAmount = (presc.total_tablets || 30) + 100
+    
+    const guidance = `
+RESTOCK NEEDED:
+----------------
+Medication: ${presc.medication}
+Current stock: ${presc.stockCheck?.stock_quantity || 0}
+Required: ${presc.total_tablets || 30} tablets
+Recommended restock: ${restockAmount} tablets
+
+This will add ${restockAmount} tablets to inventory.
+    `
+    
+    if (!confirm(guidance + '\n\nProceed with restocking?')) {
+      return
+    }
+    
+    // Find inventory item for this drug
+    const inventoryItem = inventory.value.find(
+      item => item.atc_drug_id === presc.atc_drug_id
+    )
+    
+    if (!inventoryItem) {
+      alert('No inventory record found for this medicine. Please add it manually.')
+      return
+    }
+    
+    const response = await fetch(`${API_BASE}/pharmacy-inventory/${inventoryItem.id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ 
+        stock_quantity: (presc.stockCheck?.stock_quantity || 0) + restockAmount 
+      })
+    })
+    
+    if (response.ok) {
+      alert(`✓ Restocked ${restockAmount} tablets of ${presc.medication}`)
+      presc.stockCheck.stock_quantity += restockAmount
+      fetchInventory()
+    } else {
+      alert('Failed to restock. Please try again.')
+    }
+  } catch (error) {
+    console.error('Error restocking:', error)
     alert(`Network error: ${error.message}`)
   }
 }

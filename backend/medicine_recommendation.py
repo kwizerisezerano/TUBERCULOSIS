@@ -199,12 +199,17 @@ def get_prescription_recommendation(patient_id, infection_type=None):
     Returns:
         Dictionary with regimen, availability, and recommendations
     """
+    from models.models import Prescription
+    
     patient = Patient.query.get(patient_id)
     if not patient:
         return {'error': 'Patient not found'}
     
     if not patient.hospital_id:
         return {'error': 'Patient hospital not found'}
+    
+    # Check for previous prescriptions and resistance patterns
+    resistance_warning = check_previous_resistance(patient_id)
     
     # Determine infection type if not provided
     if not infection_type:
@@ -237,6 +242,10 @@ def get_prescription_recommendation(patient_id, infection_type=None):
             'reason': 'Low TB risk score'
         }
     
+    # Adjust regimen based on previous resistance
+    if resistance_warning['has_previous_treatment']:
+        recommendation = adjust_regimen_for_resistance(recommendation, resistance_warning)
+    
     # Check availability
     availability = check_medicine_availability(patient.hospital_id, recommendation['medicines'])
     
@@ -250,7 +259,119 @@ def get_prescription_recommendation(patient_id, infection_type=None):
         'availability': availability,
         'all_available': all_available,
         'risk_score': patient.risk_score,
-        'recommendation': 'Prescribe' if all_available else 'Order medicines first'
+        'recommendation': 'Prescribe' if all_available else 'Order medicines first',
+        'resistance_warning': resistance_warning
+    }
+
+def check_previous_resistance(patient_id):
+    """
+    Check patient's previous prescriptions for resistance patterns.
+    
+    Args:
+        patient_id: Patient ID
+    
+    Returns:
+        Dictionary with resistance warning information
+    """
+    from models.models import Prescription
+    
+    previous_prescriptions = Prescription.query.filter_by(
+        patient_id=patient_id
+    ).order_by(Prescription.created_at.desc()).limit(5).all()
+    
+    if not previous_prescriptions:
+        return {
+            'has_previous_treatment': False,
+            'previous_medications': [],
+            'resistance_detected': False,
+            'resistant_drugs': []
+        }
+    
+    previous_medications = []
+    resistant_drugs = []
+    
+    for presc in previous_prescriptions:
+        if presc.medication:
+            previous_medications.append(presc.medication)
+    
+    # Check patient's current resistance status
+    patient = Patient.query.get(patient_id)
+    if patient and patient.drug_resistance:
+        resistance_text = patient.drug_resistance.lower()
+        
+        # Map resistance patterns to specific drugs
+        resistance_map = {
+            'isoniazid': ['Isoniazid', 'H'],
+            'rifampicin': ['Rifampicin', 'R'],
+            'pyrazinamide': ['Pyrazinamide', 'Z'],
+            'ethambutol': ['Ethambutol', 'E']
+        }
+        
+        for drug, abbreviations in resistance_map.items():
+            if drug in resistance_text or any(abbr in resistance_text for abbr in abbreviations):
+                resistant_drugs.extend([drug] + abbreviations)
+    
+    return {
+        'has_previous_treatment': True,
+        'previous_medications': list(set(previous_medications)),
+        'resistance_detected': len(resistant_drugs) > 0,
+        'resistant_drugs': list(set(resistant_drugs))
+    }
+
+def adjust_regimen_for_resistance(recommendation, resistance_warning):
+    """
+    Adjust recommended regimen based on detected resistance.
+    
+    Args:
+        recommendation: Current recommendation dictionary
+        resistance_warning: Resistance warning from check_previous_resistance
+    
+    Returns:
+        Adjusted recommendation dictionary
+    """
+    if not resistance_warning['resistance_detected']:
+        return recommendation
+    
+    resistant_drugs = resistance_warning['resistant_drugs']
+    current_medicines = recommendation['medicines']
+    
+    # Remove resistant drugs from the regimen
+    adjusted_medicines = []
+    for med in current_medicines:
+        med_lower = med.lower()
+        is_resistant = False
+        
+        for resistant in resistant_drugs:
+            if resistant.lower() in med_lower or med_lower in resistant.lower():
+                is_resistant = True
+                break
+        
+        if not is_resistant:
+            adjusted_medicines.append(med)
+    
+    # If too many drugs removed, switch to MDR regimen
+    if len(adjusted_medicines) < 2:
+        mdr_regimen = TB_REGIMENS['mdr_tb']
+        all_medicines = []
+        if 'phase1' in mdr_regimen:
+            all_medicines.extend(mdr_regimen['phase1']['medicines'])
+        if 'phase2' in mdr_regimen:
+            all_medicines.extend(mdr_regimen['phase2']['medicines'])
+        
+        return {
+            'regimen': mdr_regimen,
+            'medicines': list(set(all_medicines)),
+            'regimen_key': 'mdr_tb',
+            'adjusted_for_resistance': True,
+            'reason': 'Resistance detected, switched to MDR regimen'
+        }
+    
+    return {
+        'regimen': recommendation['regimen'],
+        'medicines': adjusted_medicines,
+        'regimen_key': recommendation['regimen_key'],
+        'adjusted_for_resistance': True,
+        'removed_drugs': list(set(current_medicines) - set(adjusted_medicines))
     }
 
 def get_medicine_by_name(medicine_name):
