@@ -4626,6 +4626,15 @@ def check_prescription_stock(presc_id):
     
     presc = Prescription.query.get_or_404(presc_id)
     
+    # If no atc_drug_id, try to find by medication name and update the prescription
+    if not presc.atc_drug_id and presc.medication:
+        atc_drug = ATCDrug.query.filter(
+            ATCDrug.drug_name.ilike(f"%{presc.medication}%")
+        ).first()
+        if atc_drug:
+            presc.atc_drug_id = atc_drug.id
+            db.session.commit()
+    
     if not presc.atc_drug_id:
         return jsonify({
             'available': False,

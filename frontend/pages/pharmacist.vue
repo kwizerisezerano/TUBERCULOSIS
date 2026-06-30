@@ -41,6 +41,13 @@
               Pending Prescriptions
             </button>
             <button
+              @click="activeTab = 'rejected'"
+              :class="activeTab === 'rejected' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+              class="px-6 py-4 border-b-2 font-medium text-sm"
+            >
+              Rejected Prescriptions
+            </button>
+            <button
               @click="activeTab = 'inventory'"
               :class="activeTab === 'inventory' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
               class="px-6 py-4 border-b-2 font-medium text-sm"
@@ -164,6 +171,65 @@
           </div>
           <div v-if="pendingPrescriptions.length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
             No pending prescriptions
+          </div>
+        </div>
+
+        <!-- Rejected Prescriptions Tab -->
+        <div v-if="activeTab === 'rejected'" class="p-6">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Patient</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Medication</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dosage</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Duration</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total Tablets</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Rejection Reason</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                <tr v-for="presc in rejectedPrescriptions" :key="presc.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                    {{ presc.patient_name || `Patient #${presc.patient_id}` }}
+                  </td>
+                  <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                    <div>{{ presc.medication }}</div>
+                    <div class="text-xs text-gray-500">{{ presc.dosage }}</div>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                    <div>{{ presc.dosage_mg }}mg</div>
+                    <div class="text-xs text-gray-500">{{ presc.frequency }}</div>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                    {{ presc.duration_days }} days
+                  </td>
+                  <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                    <div v-if="presc.total_tablets" class="font-semibold">
+                      {{ presc.total_tablets }} tablets
+                    </div>
+                    <div v-if="presc.tablets_per_dose" class="text-xs text-gray-500">
+                      {{ presc.tablets_per_dose }} per dose
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-red-600">
+                    {{ presc.rejection_reason }}
+                  </td>
+                  <td class="px-6 py-4 text-sm space-x-2">
+                    <button
+                      @click="revisitRejectedPrescription(presc)"
+                      class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 font-semibold"
+                    >
+                      Revisit
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-if="rejectedPrescriptions.length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
+            No rejected prescriptions
           </div>
         </div>
 
@@ -409,6 +475,7 @@ const API_BASE = config.public.apiBase
 
 const activeTab = ref('pending')
 const pendingPrescriptions = ref([])
+const rejectedPrescriptions = ref([])
 const inventory = ref([])
 const dispensedPrescriptions = ref([])
 const inventorySearch = ref('')
@@ -470,11 +537,13 @@ const fetchPendingPrescriptions = async () => {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     const data = await response.json()
-    const prescriptions = (data.prescriptions || []).filter(p => p.status !== 'dispensed')
-    pendingPrescriptions.value = prescriptions
+    const prescriptions = data.prescriptions || []
+    
+    pendingPrescriptions.value = prescriptions.filter(p => ['pending', 'approved'].includes(p.status))
+    rejectedPrescriptions.value = prescriptions.filter(p => p.status === 'rejected')
     
     // Auto-check stock for all prescriptions
-    for (const presc of prescriptions) {
+    for (const presc of [...pendingPrescriptions.value, ...rejectedPrescriptions.value]) {
       await checkStock(presc)
     }
   } catch (error) {
@@ -798,6 +867,25 @@ const confirmRejectPrescription = async (reason) => {
     }
   } catch (error) {
     console.error('Error rejecting prescription:', error)
+  }
+}
+
+const revisitRejectedPrescription = async (presc) => {
+  try {
+    const token = authToken.value
+    const response = await fetch(`${API_BASE}/prescriptions/${presc.id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ status: 'pending', rejection_reason: null })
+    })
+    if (response.ok) {
+      fetchPendingPrescriptions()
+    }
+  } catch (error) {
+    console.error('Error revisiting prescription:', error)
   }
 }
 
