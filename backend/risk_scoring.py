@@ -30,35 +30,36 @@ def calculate_risk_score(patient_id):
         model = joblib.load(model_path)
         le = joblib.load(encoder_path)
         
-        # Get patient features
+        # Get patient features (returns 25 features matching the trained model)
         features = get_patient_features(patient)
         if features is None:
             return calculate_rule_based_risk(patient)
         
-        # Prepare feature vector
+        # Prepare feature vector in the same order as training data
         feature_names = [
-            'age', 'weight', 'has_fever', 'has_cough', 'has_weight_loss',
-            'has_night_sweats', 'has_chest_pain', 'has_blood', 'has_fatigue',
-            'has_shortness_of_breath', 'hiv', 'diabetes', 'smoking_status',
-            'alcohol_use', 'contact_with_tb_patient', 'previous_tb_treatment'
+            'age', 'weight', 'gender_male', 'gender_female', 'gender_other',
+            'persistent_cough_duration_weeks', 'contact_with_tb_patient_yes',
+            'previous_tb_treatment_yes', 'smoking_current', 'smoking_former',
+            'alcohol_regular', 'oxygen_saturation_spo2', 'has_fever', 'has_cough',
+            'has_weight_loss', 'has_night_sweats', 'has_chest_pain', 'has_blood',
+            'has_fatigue', 'has_shortness_of_breath', 'sputum_positive',
+            'genexpert_positive', 'chest_xray_abnormal', 'hiv_yes', 'diabetes_yes'
         ]
         
         feature_vector = []
         for name in feature_names:
             value = features.get(name, 0)
-            if isinstance(value, str):
-                # Encode categorical values
-                if value == 'Yes':
-                    feature_vector.append(1)
-                elif value == 'No':
-                    feature_vector.append(0)
-                else:
-                    feature_vector.append(0.5)
+            if value is None:
+                feature_vector.append(0)
             else:
-                feature_vector.append(float(value) if value is not None else 0)
+                feature_vector.append(float(value))
+        
+        # Create DataFrame with proper feature names to avoid sklearn warning
+        import pandas as pd
+        X = pd.DataFrame([feature_vector], columns=feature_names)
         
         # Predict
-        prediction_proba = model.predict_proba([feature_vector])[0]
+        prediction_proba = model.predict_proba(X)[0]
         
         # Get probability of positive TB class
         positive_class_idx = list(le.classes_).index('Yes') if 'Yes' in le.classes_ else 0
@@ -69,8 +70,11 @@ def calculate_risk_score(patient_id):
         patient.last_risk_calculation = datetime.now()
         db.session.commit()
         
-        # Trigger alert if risk > 70%
-        if risk_score > 70:
+        print(f"DEBUG: Risk score calculated for patient {patient.patient_id}: {risk_score:.2f}%")
+        
+        # Trigger alert if risk > 50% (lowered threshold for better visibility)
+        if risk_score > 50:
+            print(f"DEBUG: Triggering high risk alert for patient {patient.patient_id} (risk: {risk_score:.2f}%)")
             trigger_high_risk_alert(patient, risk_score)
         
         return patient.risk_score

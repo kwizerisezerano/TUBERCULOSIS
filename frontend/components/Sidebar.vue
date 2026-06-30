@@ -34,6 +34,7 @@
         >
           <span v-html="item.icon"></span>
           <span class="font-medium">{{ item.label }}</span>
+          <span v-if="item.badge && item.badge > 0" class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{{ item.badge }}</span>
         </router-link>
       </template>
     </nav>
@@ -93,6 +94,30 @@ const { userRole, currentUser, logout } = useAuth();
 const route = useRoute();
 
 const showLogoutModal = ref(false);
+const unreadAlertCount = ref(0);
+
+// Fetch unread alert count
+const fetchAlertCount = async () => {
+  try {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      const response = await fetch('http://127.0.0.1:5000/api/alerts?unread_only=true', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      unreadAlertCount.value = data.unread_count || 0;
+    }
+  } catch (error) {
+    console.error('Failed to fetch alert count:', error);
+  }
+};
+
+// Fetch alert count on mount and periodically
+onMounted(() => {
+  fetchAlertCount();
+  const interval = setInterval(fetchAlertCount, 30000); // Refresh every 30 seconds
+  onUnmounted(() => clearInterval(interval));
+});
 
 const isActive = (path: string) => route.path === path || route.path.startsWith(path + '/');
 
@@ -182,6 +207,13 @@ const navItems = computed(() => {
       label: 'ATC Drugs',
       icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-2.322l-.896-.298a2 2 0 01-1.333-2.322L18 7.5V6a2 2 0 00-2-2H8a2 2 0 00-2 2v1.5l.825 4.982a2 2 0 01-1.333 2.322l-.896.298a2 2 0 00-1.022 2.322V21h18v-4.572z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 018.382 3.984M5 12H9a3 3 0 013 3V12a3 3 0 01-3 3H5z"></path></svg>`,
       roles: ['admin', 'doctor', 'pharmacist', 'hospital_admin']
+    },
+    {
+      path: '/alerts',
+      label: 'Alerts',
+      icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>`,
+      roles: ['admin', 'doctor', 'hospital_admin'],
+      badge: unreadAlertCount.value
     },
     {
       path: '/hospitals',

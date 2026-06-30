@@ -4627,7 +4627,8 @@ def check_prescription_stock(presc_id):
         return jsonify({
             'available': False,
             'message': 'Drug not in inventory',
-            'stock_quantity': 0
+            'stock_quantity': 0,
+            'inventory_exists': False
         })
     
     required_quantity = presc.duration_days if presc.duration_days else 30  # Default 30 days
@@ -4638,7 +4639,8 @@ def check_prescription_stock(presc_id):
         'stock_quantity': inventory.stock_quantity,
         'required_quantity': required_quantity,
         'drug_name': inventory.atc_drug.drug_name if inventory.atc_drug else 'Unknown',
-        'below_minimum': inventory.stock_quantity <= inventory.minimum_stock_level
+        'below_minimum': inventory.stock_quantity <= inventory.minimum_stock_level,
+        'inventory_exists': True
     })
 
 @app.route('/api/prescriptions/<int:presc_id>/dispense', methods=['POST'])
@@ -4973,7 +4975,11 @@ def diagnose():
         elif patient.hiv == 'Yes':
             infection_type = 'tb_hiv'
     
-    prescription_recommendation = get_prescription_recommendation(patient.id, infection_type)
+    # Compute ML prediction first to base everything on it
+    ml_prediction = predict_ml(patient)
+    
+    # Pass ML prediction to prescription recommendation
+    prescription_recommendation = get_prescription_recommendation(patient.id, infection_type, ml_prediction)
     
     # Extract detailed medicines if available (only if TB is actually detected)
     detailed_medicines = []
@@ -4993,8 +4999,6 @@ def diagnose():
         build_treatment_plan(tb_analysis, bacteria_assessment, resistance_profile, treatment, clinical_info),
         lang=lang,
     )
-
-    ml_prediction = predict_ml(patient)
 
     # Determine if alert should be created
     alert_created = None
@@ -5036,40 +5040,126 @@ def diagnose():
     db.session.add(diagnosis_record)
     db.session.flush()
 
-    treatment_record = Treatment(
-        patient_id=patient.id,
-        diagnosis_id=diagnosis_record.id,
-        treatment_type=treatment_plan["selected_option"]["name"],
-        drugs=treatment_plan["selected_option"]["drugs"],
-        duration=treatment_plan["selected_option"]["duration"],
-        dosage=(
-            f"Intensive: {treatment.get('intensive_phase')}, Continuation: {treatment.get('continuation_phase')}"
-            if treatment.get('intensive_phase') and treatment.get('continuation_phase')
-            else treatment_plan["selected_option"]["administration"]
-        ),
-        administration_notes=treatment_plan["selected_option"]["notes"]
-    )
-    db.session.add(treatment_record)
-    db.session.flush()
+    # Only create treatment record if ML predicts TB
+    treatment_record = None
+    if ml_prediction and ml_prediction.get('tb_status', {}).get('prediction') == 'Yes':
+        treatment_record = Treatment(
+            patient_id=patient.id,
+            diagnosis_id=diagnosis_record.id,
+            treatment_type=treatment_plan["selected_option"]["name"],
+            drugs=treatment_plan["selected_option"]["drugs"],
+            duration=treatment_plan["selected_option"]["duration"],
+            dosage=(
+                f"Intensive: {treatment.get('intensive_phase')}, Continuation: {treatment.get('continuation_phase')}"
+                if treatment.get('intensive_phase') and treatment.get('continuation_phase')
+                else treatment_plan["selected_option"]["administration"]
+            ),
+            administration_notes=treatment_plan["selected_option"]["notes"]
+        )
+        db.session.add(treatment_record)
+        db.session.flush()
+    else:
+        print(f"DEBUG: No treatment record created - ML predicts no TB")
 
-    # Automatically create ML-recommended prescription
-    atc_drug = ATCDrug.query.filter(
-        ATCDrug.drug_name.ilike("%isoniazid%") | ATCDrug.drug_name.ilike("%rifampicin%")
-    ).first()
+    # Initialize prescription variable
+    prescription = None
 
-    prescription = Prescription(
-        patient_id=patient.id,
-        diagnosis_id=diagnosis_record.id,
-        created_by=user.id,
-        medication=treatment_plan["selected_option"]["drugs"],
-        atc_drug_id=atc_drug.id if atc_drug else None,
-        dosage=treatment_record.dosage,
-        duration=treatment_record.duration,
-        risk_level=symptom_analysis["risk_level"],
-        ml_recommended=True,
-        status="pending"
+    # Only create prescription if ML prediction indicates TB and risk score is sufficient
+    # Base decision on ML prediction (yes/no) and risk score, not WHO category
+    print(f"DEBUG: ML Prediction = {ml_prediction}")
+    print(f"DEBUG: Risk Score = {patient.risk_score}")
+    
+    # Check if ML predicts TB and risk score is above threshold
+    tb_detected = (
+        ml_prediction and 
+        ml_prediction.get('tb_status', {}).get('prediction') == 'Yes' and
+        patient.risk_score and
+        patient.risk_score >= 30  # Minimum risk score threshold
     )
-    db.session.add(prescription)
+    
+    print(f"DEBUG: TB Detected (based on ML) = {tb_detected}")
+    
+    if tb_detected:
+        # Automatically create ML-recommended prescription
+        atc_drug = ATCDrug.query.filter(
+            ATCDrug.drug_name.ilike("%isoniazid%") | ATCDrug.drug_name.ilike("%rifampicin%")
+        ).first()
+
+        # Parse dosage from treatment record to calculate tablets
+        dosage_mg = 300  # Default for isoniazid/rifampicin
+        frequency = "once daily"
+        duration_days = 180  # Default 6 months for TB treatment
+        
+        # Try to extract dosage from treatment record
+        if treatment_record and treatment_record.dosage:
+            dosage_str = str(treatment_record.dosage).lower()
+            # Extract mg value if present
+            import re
+            mg_match = re.search(r'(\d+)\s*mg', dosage_str)
+            if mg_match:
+                dosage_mg = int(mg_match.group(1))
+            
+            # Extract frequency
+            if 'twice' in dosage_str or '2 times' in dosage_str or 'bid' in dosage_str:
+                frequency = "twice daily"
+            elif '3 times' in dosage_str or 'tid' in dosage_str:
+                frequency = "3 times daily"
+            elif 'once' in dosage_str or '1 time' in dosage_str or 'qd' in dosage_str:
+                frequency = "once daily"
+        
+        # Extract duration from treatment record
+        if treatment_record and treatment_record.duration:
+            duration_str = str(treatment_record.duration).lower()
+            months_match = re.search(r'(\d+)\s*months?', duration_str)
+            if months_match:
+                duration_days = int(months_match.group(1)) * 30
+            else:
+                days_match = re.search(r'(\d+)\s*days?', duration_str)
+                if days_match:
+                    duration_days = int(days_match.group(1))
+        
+        # Calculate doses per day
+        freq_str = frequency.lower()
+        if 'once' in freq_str or '1 time' in freq_str:
+            doses_per_day = 1
+        elif 'twice' in freq_str or '2 times' in freq_str:
+            doses_per_day = 2
+        elif '3 times' in freq_str:
+            doses_per_day = 3
+        else:
+            doses_per_day = 1
+        
+        # Calculate tablets
+        tablets_per_dose = 1  # Default
+        if atc_drug and atc_drug.ddd:
+            tablet_strength_mg = atc_drug.ddd * 1000
+            tablets_per_dose = int(dosage_mg / tablet_strength_mg) if tablet_strength_mg > 0 else 1
+        else:
+            tablets_per_dose = int(dosage_mg / 500) if dosage_mg >= 500 else 1
+        
+        total_tablets = tablets_per_dose * doses_per_day * duration_days
+
+        prescription = Prescription(
+            patient_id=patient.id,
+            diagnosis_id=diagnosis_record.id,
+            created_by=user.id,
+            medication=treatment_plan["selected_option"]["drugs"],
+            atc_drug_id=atc_drug.id if atc_drug else None,
+            dosage=treatment_record.dosage if treatment_record else dosage_mg,
+            duration=treatment_record.duration if treatment_record else f"{duration_days} days",
+            risk_level=symptom_analysis["risk_level"],
+            ml_recommended=True,
+            status="pending",
+            dosage_mg=dosage_mg,
+            frequency=frequency,
+            duration_days=duration_days,
+            tablets_per_dose=tablets_per_dose,
+            total_tablets=total_tablets
+        )
+        db.session.add(prescription)
+        print(f"DEBUG: Prescription created for patient {patient.patient_id} with {total_tablets} total tablets")
+    else:
+        print(f"DEBUG: No prescription created - ML prediction: {ml_prediction.get('tb_status', {}).get('prediction') if ml_prediction else 'N/A'}, Risk: {patient.risk_score}")
 
     # Check for antibiotic misuse
     recent_prescriptions = Prescription.query.filter(
@@ -5108,7 +5198,7 @@ def diagnose():
         "regimen_level": treatment_plan["selected_option"]["level"],
         "duration": treatment_plan["selected_option"]["duration"],
         "drugs": treatment_plan["selected_option"]["drugs"],
-        "dosage": treatment_record.dosage,
+        "dosage": treatment_record.dosage if treatment_record else treatment_plan["selected_option"]["administration"],
         "administration": treatment_plan["selected_option"]["administration"],
         "monitoring": treatment_plan["selected_option"]["monitoring"],
         "urgency": urgency,
@@ -5169,8 +5259,8 @@ def diagnose():
         "ml_prediction": ml_prediction,
         "treatment_recommendation": treatment_recommendation,
         "saved_diagnosis": diagnosis_record.to_dict(),
-        "saved_treatment": treatment_record.to_dict(),
-        "saved_prescription": prescription.to_dict(),
+        "saved_treatment": treatment_record.to_dict() if treatment_record else None,
+        "saved_prescription": prescription.to_dict() if prescription else None,
         "alert_created": alert_created.id if alert_created else None,
     })
     

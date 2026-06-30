@@ -254,13 +254,14 @@ def check_medicine_availability(hospital_id, medicine_names):
     
     return availability
 
-def get_prescription_recommendation(patient_id, infection_type=None):
+def get_prescription_recommendation(patient_id, infection_type=None, ml_prediction=None):
     """
     Get complete prescription recommendation for a patient.
     
     Args:
         patient_id: Patient ID
         infection_type: Optional infection type override
+        ml_prediction: Optional ML prediction dict with tb_status
     
     Returns:
         Dictionary with regimen, availability, and recommendations
@@ -273,6 +274,19 @@ def get_prescription_recommendation(patient_id, infection_type=None):
     
     if not patient.hospital_id:
         return {'error': 'Patient hospital not found'}
+    
+    # Check ML prediction first - if it says No TB, return no medication
+    if ml_prediction:
+        tb_status = ml_prediction.get('tb_status', {})
+        ml_prediction_result = tb_status.get('prediction', 'No')
+        ml_confidence = tb_status.get('confidence', 0)
+        
+        if ml_prediction_result == 'No' or ml_confidence < 0.5:
+            return {
+                'recommendation': 'No medication needed',
+                'risk_score': patient.risk_score or 0,
+                'reason': f'ML model predicts no TB (confidence: {ml_confidence:.2%})'
+            }
     
     # Check for previous prescriptions and resistance patterns
     resistance_warning = check_previous_resistance(patient_id)

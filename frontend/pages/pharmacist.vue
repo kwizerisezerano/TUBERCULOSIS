@@ -123,25 +123,25 @@
                   </td>
                   <td class="px-6 py-4 text-sm space-x-2">
                     <button
-                      v-if="presc.status === 'pending'"
-                      @click="checkStock(presc)"
-                      class="text-blue-600 hover:text-blue-900 dark:text-blue-400"
-                    >
-                      Check Stock
-                    </button>
-                    <button
-                      v-if="presc.status === 'pending' && presc.stockCheck && presc.stockCheck.stock_quantity >= presc.total_tablets"
+                      v-if="presc.status === 'pending' && presc.stockCheck && presc.stockCheck.stock_quantity >= presc.total_tablets && presc.stockCheck.inventory_exists"
                       @click="approvePrescription(presc)"
                       class="text-green-600 hover:text-green-900 dark:text-green-400 font-semibold"
                     >
                       ✓ Approve
                     </button>
                     <button
-                      v-if="presc.status === 'pending' && presc.stockCheck && presc.stockCheck.stock_quantity < presc.total_tablets"
+                      v-if="presc.status === 'pending' && presc.stockCheck && presc.stockCheck.stock_quantity < presc.total_tablets && presc.stockCheck.inventory_exists"
                       @click="restockMedicine(presc)"
                       class="text-orange-600 hover:text-orange-900 dark:text-orange-400 font-semibold"
                     >
                       + Restock
+                    </button>
+                    <button
+                      v-if="presc.status === 'pending' && presc.stockCheck && !presc.stockCheck.inventory_exists"
+                      @click="addDrugToInventory(presc)"
+                      class="text-purple-600 hover:text-purple-900 dark:text-purple-400 font-semibold"
+                    >
+                      + Add Drug
                     </button>
                     <button
                       v-if="presc.status === 'approved'"
@@ -225,6 +225,13 @@
                     >
                       Edit
                     </button>
+                    <button
+                      v-if="item.stock_quantity <= item.minimum_stock_level || item.stock_quantity === 0"
+                      @click="quickAddStock(item)"
+                      class="text-green-600 hover:text-green-900 dark:text-green-400 font-semibold"
+                    >
+                      + Add Stock
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -285,6 +292,28 @@
     @close="showRejectionModal = false"
     @confirm="confirmRejectPrescription"
   />
+
+  <!-- Confirmation Modal -->
+  <div v-if="showConfirmationModal && confirmationData" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showConfirmationModal = false"></div>
+    <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-md border border-gray-200 dark:border-gray-700">
+      <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ confirmationData.title }}</h3>
+      <div class="space-y-3 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-line mb-6">
+        {{ confirmationData.message }}
+      </div>
+      <div class="flex gap-3">
+        <button @click="showConfirmationModal = false" class="flex-1 py-3 px-4 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold transition-colors">
+          Cancel
+        </button>
+        <button 
+          @click="confirmAction" 
+          class="flex-1 py-3 px-4 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold transition-colors"
+        >
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Edit Inventory Modal -->
   <InputModal
@@ -382,6 +411,8 @@ const inventorySearch = ref('')
 const showAddInventoryModal = ref(false)
 const showRejectionModal = ref(false)
 const showEditInventoryModal = ref(false)
+const showConfirmationModal = ref(false)
+const confirmationData = ref(null)
 const rejectionReason = ref('')
 const editInventoryQuantity = ref('')
 const editingInventoryItem = ref(null)
@@ -508,11 +539,29 @@ const approvePrescription = async (presc) => {
   }
 }
 
+const confirmAction = () => {
+  if (!confirmationData.value) return
+  
+  const action = confirmationData.value.action
+  showConfirmationModal.value = false
+  
+  if (action === 'restock') {
+    executeRestock()
+  } else if (action === 'addDrug') {
+    executeAddDrug()
+  } else if (action === 'quickAddStock') {
+    executeQuickAddStock()
+  } else if (action === 'dispense') {
+    executeDispense()
+  }
+  
+  confirmationData.value = null
+}
+
 const dispensePrescription = async (presc) => {
   try {
     const token = authToken.value
     
-    // Show dosage guidance before dispensing
     const guidance = `
 DOSAGE DISTRIBUTION GUIDE:
 ---------------------------
@@ -528,10 +577,23 @@ Instructions:
 - Total supply: ${presc.total_tablets || 'calculated'} tablets for ${presc.duration_days} days
     `
     
-    if (!confirm(guidance + '\n\nProceed with dispensing?')) {
-      return
+    confirmationData.value = {
+      title: 'Dispense Prescription',
+      message: guidance,
+      action: 'dispense',
+      presc
     }
-    
+    showConfirmationModal.value = true
+  } catch (error) {
+    console.error('Error preparing dispense:', error)
+    alert(`Network error: ${error.message}`)
+  }
+}
+
+const executeDispense = async () => {
+  const presc = confirmationData.value.presc
+  try {
+    const token = authToken.value
     const response = await fetch(`http://127.0.0.1:5000/api/prescriptions/${presc.id}/dispense`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
@@ -570,10 +632,6 @@ Recommended restock: ${restockAmount} tablets
 This will add ${restockAmount} tablets to inventory.
     `
     
-    if (!confirm(guidance + '\n\nProceed with restocking?')) {
-      return
-    }
-    
     // Find inventory item for this drug
     const inventoryItem = inventory.value.find(
       item => item.atc_drug_id === presc.atc_drug_id
@@ -584,6 +642,25 @@ This will add ${restockAmount} tablets to inventory.
       return
     }
     
+    confirmationData.value = {
+      title: 'Restock Medicine',
+      message: guidance,
+      action: 'restock',
+      presc,
+      inventoryItem,
+      restockAmount
+    }
+    showConfirmationModal.value = true
+  } catch (error) {
+    console.error('Error preparing restock:', error)
+    alert(`Network error: ${error.message}`)
+  }
+}
+
+const executeRestock = async () => {
+  const { presc, inventoryItem, restockAmount } = confirmationData.value
+  try {
+    const token = authToken.value
     const response = await fetch(`${API_BASE}/pharmacy-inventory/${inventoryItem.id}`, {
       method: 'PUT',
       headers: {
@@ -604,6 +681,84 @@ This will add ${restockAmount} tablets to inventory.
     }
   } catch (error) {
     console.error('Error restocking:', error)
+    alert(`Network error: ${error.message}`)
+  }
+}
+
+const addDrugToInventory = async (presc) => {
+  try {
+    const token = authToken.value
+    
+    // Calculate initial stock (add required amount + buffer)
+    const initialStock = (presc.total_tablets || 30) + 100
+    
+    const guidance = `
+ADD DRUG TO INVENTORY:
+-----------------------
+Medication: ${presc.medication}
+Required for prescription: ${presc.total_tablets || 30} tablets
+Recommended initial stock: ${initialStock} tablets
+
+This will create a new inventory entry for this drug with ${initialStock} tablets.
+    `
+    
+    confirmationData.value = {
+      title: 'Add Drug to Inventory',
+      message: guidance,
+      action: 'addDrug',
+      presc,
+      initialStock
+    }
+    showConfirmationModal.value = true
+  } catch (error) {
+    console.error('Error preparing add drug:', error)
+    alert(`Network error: ${error.message}`)
+  }
+}
+
+const executeAddDrug = async () => {
+  const { presc, initialStock } = confirmationData.value
+  try {
+    const token = authToken.value
+    
+    // Get hospital ID from current user
+    const hospitalId = currentUser.value?.hospital_id
+    
+    if (!hospitalId) {
+      alert('Unable to determine hospital. Please ensure you are assigned to a hospital.')
+      return
+    }
+    
+    // Create new inventory entry
+    const response = await fetch(`${API_BASE}/pharmacy-inventory`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        hospital_id: hospitalId,
+        atc_drug_id: presc.atc_drug_id,
+        stock_quantity: initialStock,
+        unit_type: 'tablets',
+        batch_number: 'AUTO-' + Date.now().toString().slice(-6),
+        expiry_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 year from now
+        location: 'Pharmacy',
+        minimum_stock_level: 50
+      })
+    })
+    
+    if (response.ok) {
+      alert(`✓ Added ${presc.medication} to inventory with ${initialStock} tablets`)
+      fetchInventory()
+      // Re-check stock for this prescription
+      await checkStock(presc)
+    } else {
+      const errorData = await response.json()
+      alert(`Failed to add drug: ${errorData.error || 'Unknown error'}`)
+    }
+  } catch (error) {
+    console.error('Error adding drug to inventory:', error)
     alert(`Network error: ${error.message}`)
   }
 }
@@ -663,6 +818,67 @@ const confirmEditInventory = async (value) => {
     }
   } catch (error) {
     console.error('Error updating inventory:', error)
+  }
+}
+
+const quickAddStock = async (item) => {
+  try {
+    const token = authToken.value
+    
+    // Calculate restock amount (add 100 tablets or bring to minimum + 50)
+    const restockAmount = Math.max(100, (item.minimum_stock_level || 10) + 50)
+    const newStock = (item.stock_quantity || 0) + restockAmount
+    
+    const guidance = `
+QUICK ADD STOCK:
+----------------
+Drug: ${item.atc_drug?.drug_name || 'Unknown'}
+Current stock: ${item.stock_quantity || 0}
+Minimum stock level: ${item.minimum_stock_level || 10}
+Adding: ${restockAmount} ${item.unit_type || 'tablets'}
+New total: ${newStock} ${item.unit_type || 'tablets'}
+
+This will add ${restockAmount} ${item.unit_type || 'tablets'} to inventory.
+    `
+    
+    confirmationData.value = {
+      title: 'Quick Add Stock',
+      message: guidance,
+      action: 'quickAddStock',
+      item,
+      restockAmount,
+      newStock
+    }
+    showConfirmationModal.value = true
+  } catch (error) {
+    console.error('Error preparing quick add stock:', error)
+    alert(`Network error: ${error.message}`)
+  }
+}
+
+const executeQuickAddStock = async () => {
+  const { item, restockAmount, newStock } = confirmationData.value
+  try {
+    const token = authToken.value
+    const response = await fetch(`${API_BASE}/pharmacy-inventory/${item.id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ stock_quantity: newStock })
+    })
+    
+    if (response.ok) {
+      alert(`✓ Added ${restockAmount} ${item.unit_type || 'tablets'} of ${item.atc_drug?.drug_name || 'drug'}`)
+      item.stock_quantity = newStock
+      fetchInventory()
+    } else {
+      alert('Failed to add stock. Please try again.')
+    }
+  } catch (error) {
+    console.error('Error adding stock:', error)
+    alert(`Network error: ${error.message}`)
   }
 }
 
