@@ -74,13 +74,13 @@
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                 <tr v-for="test in pendingTests" :key="test.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                    Patient #{{ test.patient_id }}
+                    {{ test.patient_name || `Patient #${test.patient_id}` }}
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {{ test.test_type }}
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                    Doctor #{{ test.requested_by }}
+                    {{ test.requester_name || `Doctor #${test.requested_by}` }}
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {{ formatDate(test.created_at) }}
@@ -128,7 +128,7 @@
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                 <tr v-for="test in inProgressTests" :key="test.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                    Patient #{{ test.patient_id }}
+                    {{ test.patient_name || `Patient #${test.patient_id}` }}
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {{ test.test_type }}
@@ -169,7 +169,7 @@
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                 <tr v-for="test in completedTests" :key="test.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                    Patient #{{ test.patient_id }}
+                    {{ test.patient_name || `Patient #${test.patient_id}` }}
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {{ test.test_type }}
@@ -183,7 +183,7 @@
                     {{ formatDate(test.completed_at) }}
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                    Tech #{{ test.completed_by }}
+                    {{ test.completer_name || `Tech #${test.completed_by}` }}
                   </td>
                 </tr>
               </tbody>
@@ -256,11 +256,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useAuth } from '~/composables/useAuth'
+import { useApi } from '~/composables/useApi'
 
 const { authToken, currentUser, userRole } = useAuth()
 const isAdmin = computed(() => ['admin', 'hospital_admin'].includes(userRole.value))
-
-const API_BASE = 'http://127.0.0.1:5000/api'
+const api = useApi()
 
 const activeTab = ref('pending')
 const pendingTests = ref([])
@@ -309,12 +309,7 @@ const getResultColor = (result) => {
 
 const fetchPendingTests = async () => {
   try {
-    const token = authToken.value
-    console.log('Fetching pending tests with token:', token ? 'present' : 'missing')
-    const response = await fetch('http://127.0.0.1:5000/api/lab-tests/pending', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    const data = await response.json()
+    const data = await api.getPendingLabTests()
     console.log('Pending tests response:', data)
     pendingTests.value = data.pending_tests || []
   } catch (error) {
@@ -324,13 +319,7 @@ const fetchPendingTests = async () => {
 
 const fetchAllTests = async () => {
   try {
-    const token = authToken.value
-    console.log('Fetching all tests with token:', token ? 'present' : 'missing')
-    const response = await fetch('http://127.0.0.1:5000/api/lab-tests', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    console.log('Response status:', response.status)
-    const data = await response.json()
+    const data = await api.getAllLabTests()
     console.log('All tests response:', data)
     const allTests = data.lab_tests || []
     
@@ -344,20 +333,10 @@ const fetchAllTests = async () => {
 
 const startTest = async (test) => {
   try {
-    const token = authToken.value
-    const response = await fetch(`http://127.0.0.1:5000/api/lab-tests/${test.id}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ status: 'in_progress' })
-    })
-    if (response.ok) {
-      test.status = 'in_progress'
-      fetchPendingTests()
-      fetchAllTests()
-    }
+    await api.updateLabTestStatus(test.id, 'in_progress')
+    test.status = 'in_progress'
+    fetchPendingTests()
+    fetchAllTests()
   } catch (error) {
     console.error('Error starting test:', error)
   }
@@ -375,21 +354,11 @@ const confirmSubmitResult = async () => {
   }
   
   try {
-    const token = authToken.value
-    const response = await fetch(`http://127.0.0.1:5000/api/lab-tests/${selectedTest.value.id}/submit-result`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(resultForm.value)
-    })
-    if (response.ok) {
-      showResultModal.value = false
-      selectedTest.value = null
-      fetchPendingTests()
-      fetchAllTests()
-    }
+    await api.submitLabTestResult(selectedTest.value.id, resultForm.value)
+    showResultModal.value = false
+    selectedTest.value = null
+    fetchPendingTests()
+    fetchAllTests()
   } catch (error) {
     console.error('Error submitting result:', error)
   }

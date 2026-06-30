@@ -252,6 +252,76 @@
         </form>
       </div>
     </div>
+
+    <!-- Patients Modal -->
+    <div v-if="showPatientsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-4xl mx-4 max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+            Patients at {{ selectedHospital?.name }}
+          </h2>
+          <button
+            @click="closeModal"
+            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="mb-4">
+          <p class="text-gray-600 dark:text-gray-400">
+            Total Patients: {{ hospitalPatients.length }}
+          </p>
+        </div>
+
+        <div v-if="hospitalPatients.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
+          No patients found for this facility
+        </div>
+
+        <div v-else class="overflow-x-auto">
+          <table class="w-full">
+            <thead class="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Patient ID</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Name</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Age</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Gender</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">TB Status</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">City</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+              <tr v-for="patient in hospitalPatients" :key="patient.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">{{ patient.patient_id }}</td>
+                <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                  {{ patient.first_name }} {{ patient.last_name }}
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">{{ patient.age }}</td>
+                <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">{{ patient.gender }}</td>
+                <td class="px-4 py-3 text-sm">
+                  <span class="px-2 py-1 text-xs font-medium rounded-full"
+                    :class="patient.tb_status_label === 'Yes' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'">
+                    {{ patient.tb_status_label || 'Unknown' }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">{{ patient.city }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+          <button
+            @click="closeModal"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
   </DashboardLayout>
 </template>
 
@@ -269,7 +339,10 @@ const searchQuery = ref('')
 const filterType = ref('')
 const showAddModal = ref(false)
 const showEditModal = ref(false)
+const showPatientsModal = ref(false)
 const editingHospital = ref(null)
+const selectedHospital = ref(null)
+const hospitalPatients = ref([])
 
 const formData = ref({
   name: '',
@@ -401,15 +474,32 @@ const deleteHospital = async (hospital) => {
   }
 }
 
-const viewHospital = (hospital) => {
-  // Navigate to hospital detail view
-  console.log('View hospital:', hospital)
+const viewHospital = async (hospital) => {
+  selectedHospital.value = hospital
+  showPatientsModal.value = true
+  
+  try {
+    const token = authToken.value
+    const response = await fetch(`${API_BASE}/hospitals/${hospital.id}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    const data = await response.json()
+    hospitalPatients.value = data.patients || []
+  } catch (error) {
+    console.error('Error fetching hospital patients:', error)
+    hospitalPatients.value = []
+  }
 }
 
 const closeModal = () => {
   showAddModal.value = false
   showEditModal.value = false
+  showPatientsModal.value = false
   editingHospital.value = null
+  selectedHospital.value = null
+  hospitalPatients.value = []
   formData.value = {
     name: '',
     facility_type: 'Hospital',

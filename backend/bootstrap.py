@@ -47,14 +47,14 @@ from sqlalchemy.engine import make_url
 from app import app, db, load_models
 from import_data import main as import_data_main
 from import_new_datasets import import_healthcare_dataset, import_medicine_dataset, import_amr_dataset
-from models.models import Alert, Diagnosis, ExternalDatasetRow, Patient, Treatment, User, LabTest, Prescription, AuditLog, ATCDrug, DetailedLabResult, AntibioticResistance, Hospital, PharmacyInventory
+from models.models import Alert, Diagnosis, ExternalDatasetRow, Patient, Treatment, User, LabTest, Prescription, AuditLog, ATCDrug, DetailedLabResult, AntibioticResistance, Hospital, PharmacyInventory, PatientConsent
 from models.train_model import train_models_from_database
 from seed_users import seed_all
 from seed_facilities_and_inventory import seed_facilities, seed_pharmacy_inventory
 from add_prescription_dosage_fields import add_prescription_fields
 
 
-MANAGED_MODELS = [Hospital, User, Patient, Diagnosis, Treatment, Alert, ExternalDatasetRow, LabTest, Prescription, AuditLog, ATCDrug, DetailedLabResult, AntibioticResistance, PharmacyInventory]
+MANAGED_MODELS = [Hospital, User, Patient, Diagnosis, Treatment, Alert, ExternalDatasetRow, LabTest, Prescription, AuditLog, ATCDrug, DetailedLabResult, AntibioticResistance, PharmacyInventory, PatientConsent]
 
 
 def recreate_database():
@@ -164,33 +164,33 @@ def bootstrap(import_data_enabled=True, seed_enabled=True, train_enabled=True, r
         add_prescription_fields()
         print("      Prescription dosage fields added.")
 
+    if seed_enabled:
+        print("[2/4] Seeding healthcare centers, laboratories, pharmacies...")
+        with app.app_context():
+            seed_facilities()
+            seed_pharmacy_inventory()
+        print("      Facilities and inventory seeded.")
+        
+        print("[2.5/4] Seeding users, roles, and sample data...")
+        seed_result = seed_all()
+        print(f"      Users in database: {seed_result['users']['total']} (added {seed_result['users']['added']}).")
+        print(f"      Sample data added: {seed_result['sample_data']}")
+    else:
+        print("[2/4] Skipping user/sample data seeding.")
+
     if import_data_enabled:
-        print("[2/4] Importing and preprocessing datasets...")
+        print("[3/4] Importing and preprocessing datasets...")
         import_data_main()
         print("      Dataset import finished.")
         
-        print("[2.5/4] Importing new multi-hospital datasets...")
+        print("[3.5/4] Importing new multi-hospital datasets...")
         with app.app_context():
             import_healthcare_dataset()
             import_medicine_dataset()
             import_amr_dataset()
         print("      New dataset import finished.")
     else:
-        print("[2/4] Skipping dataset import.")
-
-    if seed_enabled:
-        print("[3/4] Seeding users, roles, and sample data...")
-        seed_result = seed_all()
-        print(f"      Users in database: {seed_result['users']['total']} (added {seed_result['users']['added']}).")
-        print(f"      Sample data added: {seed_result['sample_data']}")
-        
-        print("[3.5/4] Seeding healthcare centers, laboratories, pharmacies...")
-        with app.app_context():
-            seed_facilities()
-            seed_pharmacy_inventory()
-        print("      Facilities and inventory seeded.")
-    else:
-        print("[3/4] Skipping user/sample data seeding.")
+        print("[3/4] Skipping dataset import.")
 
     training_result = None
     if train_enabled:

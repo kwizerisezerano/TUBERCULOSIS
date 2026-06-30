@@ -63,6 +63,7 @@ class Hospital(db.Model):
             "pharmacy_capacity": self.pharmacy_capacity,
             "has_cold_storage": self.has_cold_storage,
             "source_dataset": self.source_dataset,
+            "patient_count": len(self.patients) if hasattr(self, 'patients') else 0,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }
@@ -74,7 +75,7 @@ class User(db.Model):
     _email = db.Column('email', db.String(200), nullable=False, unique=True)  # encrypted
     password = db.Column(db.String(200), nullable=False)  # hashed
     role = db.Column(db.String(50), default='doctor')
-    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'))
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
     hospital = db.relationship('Hospital', backref=db.backref('users', lazy=True))
@@ -112,23 +113,24 @@ class User(db.Model):
 
 class Patient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    patient_id = db.Column(db.String(100), unique=True, nullable=False)
-    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'))
-    first_name = db.Column(db.String(100))
-    last_name = db.Column(db.String(100))
+    # Encrypted PII and sensitive health data
+    _patient_id = db.Column('patient_id', db.String(200), unique=True, nullable=False)
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
+    _first_name = db.Column('first_name', db.String(200))
+    _last_name = db.Column('last_name', db.String(200))
     age = db.Column(db.Integer)
     gender = db.Column(db.String(50))
     weight = db.Column(db.Float)  # kg
     tb_status_label = db.Column(db.String(50))
     source_dataset = db.Column(db.String(100))
     source_row_id = db.Column(db.String(100))
-    region = db.Column(db.String(100))
-    occupation = db.Column(db.String(100))
+    _region = db.Column('region', db.String(200))
+    _occupation = db.Column('occupation', db.String(200))
     date_of_diagnosis = db.Column(db.Integer)
 
     hospital = db.relationship('Hospital', backref=db.backref('patients', lazy=True))
-    symptoms = db.Column(db.Text)
-    exposure_history = db.Column(db.Text)
+    _symptoms = db.Column('symptoms', db.Text)
+    _exposure_history = db.Column('exposure_history', db.Text)
     persistent_cough_duration_weeks = db.Column(db.Integer)
     contact_with_tb_patient = db.Column(db.String(50))  # Yes/No/Unknown
     previous_tb_treatment = db.Column(db.String(50))  # Yes/No/Unknown
@@ -141,23 +143,23 @@ class Patient(db.Model):
     bacteria_species = db.Column(db.String(100))
     treatment_type = db.Column(db.String(100))
     duration_of_treatment = db.Column(db.Integer)
-    drug_resistance = db.Column(db.String(50))
+    _drug_resistance = db.Column('drug_resistance', db.String(200))
     treatment_outcome = db.Column(db.String(100))
     relapse = db.Column(db.String(50))
     mortality = db.Column(db.String(50))
-    complications = db.Column(db.Text)
+    _complications = db.Column('complications', db.Text)
     malnutrition = db.Column(db.String(50))
-    diabetes = db.Column(db.String(50))
-    hiv = db.Column(db.String(50))
+    _diabetes = db.Column('diabetes', db.String(200))
+    _hiv = db.Column('hiv', db.String(200))
     chronic_lung_disease = db.Column(db.String(50))
     smoking_status = db.Column(db.String(100))  # Never/Former/Current/Unknown
     alcohol_use = db.Column(db.String(100))  # Never/Occasional/Regular/Unknown
     oxygen_saturation_spo2 = db.Column(db.Float)  # %
     living_conditions = db.Column(db.String(100))
     access_to_healthcare = db.Column(db.String(50))
-    city = db.Column(db.String(100))
+    _city = db.Column('city', db.String(200))
     region_code = db.Column(db.String(50))
-    antibiotic_usage_history = db.Column(db.Text)
+    _antibiotic_usage_history = db.Column('antibiotic_usage_history', db.Text)
     # Symptom checkboxes for ML model
     has_fever = db.Column(db.String(10))  # Yes/No/Unknown
     has_cough = db.Column(db.String(10))
@@ -171,6 +173,111 @@ class Patient(db.Model):
     last_risk_calculation = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+    # Property getters/setters for encrypted fields
+    @property
+    def patient_id(self):
+        return decrypt_data(self._patient_id)
+
+    @patient_id.setter
+    def patient_id(self, value):
+        self._patient_id = encrypt_data(value)
+
+    @property
+    def first_name(self):
+        return decrypt_data(self._first_name)
+
+    @first_name.setter
+    def first_name(self, value):
+        self._first_name = encrypt_data(value)
+
+    @property
+    def last_name(self):
+        return decrypt_data(self._last_name)
+
+    @last_name.setter
+    def last_name(self, value):
+        self._last_name = encrypt_data(value)
+
+    @property
+    def region(self):
+        return decrypt_data(self._region)
+
+    @region.setter
+    def region(self, value):
+        self._region = encrypt_data(value)
+
+    @property
+    def occupation(self):
+        return decrypt_data(self._occupation)
+
+    @occupation.setter
+    def occupation(self, value):
+        self._occupation = encrypt_data(value)
+
+    @property
+    def symptoms(self):
+        return decrypt_data(self._symptoms)
+
+    @symptoms.setter
+    def symptoms(self, value):
+        self._symptoms = encrypt_data(value)
+
+    @property
+    def exposure_history(self):
+        return decrypt_data(self._exposure_history)
+
+    @exposure_history.setter
+    def exposure_history(self, value):
+        self._exposure_history = encrypt_data(value)
+
+    @property
+    def drug_resistance(self):
+        return decrypt_data(self._drug_resistance)
+
+    @drug_resistance.setter
+    def drug_resistance(self, value):
+        self._drug_resistance = encrypt_data(value)
+
+    @property
+    def complications(self):
+        return decrypt_data(self._complications)
+
+    @complications.setter
+    def complications(self, value):
+        self._complications = encrypt_data(value)
+
+    @property
+    def diabetes(self):
+        return decrypt_data(self._diabetes)
+
+    @diabetes.setter
+    def diabetes(self, value):
+        self._diabetes = encrypt_data(value)
+
+    @property
+    def hiv(self):
+        return decrypt_data(self._hiv)
+
+    @hiv.setter
+    def hiv(self, value):
+        self._hiv = encrypt_data(value)
+
+    @property
+    def city(self):
+        return decrypt_data(self._city)
+
+    @city.setter
+    def city(self, value):
+        self._city = encrypt_data(value)
+
+    @property
+    def antibiotic_usage_history(self):
+        return decrypt_data(self._antibiotic_usage_history)
+
+    @antibiotic_usage_history.setter
+    def antibiotic_usage_history(self, value):
+        self._antibiotic_usage_history = encrypt_data(value)
 
     def to_dict(self):
         return {
@@ -228,22 +335,42 @@ class Diagnosis(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
     clinician_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
     diagnosis_type = db.Column(db.String(100))
     risk_level = db.Column(db.String(50))
     confidence_percent = db.Column(db.Float)
-    details = db.Column(db.Text)
-    ml_prediction = db.Column(db.Text)
+    _details = db.Column('details', db.Text)
+    _ml_prediction = db.Column('ml_prediction', db.Text)
     status = db.Column(db.String(50), default='pending')
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
     patient = db.relationship('Patient', backref=db.backref('diagnoses', lazy=True))
     clinician = db.relationship('User', backref=db.backref('diagnoses', lazy=True))
+    hospital = db.relationship('Hospital', backref=db.backref('diagnoses', lazy=True))
+
+    @property
+    def details(self):
+        return decrypt_data(self._details)
+
+    @details.setter
+    def details(self, value):
+        self._details = encrypt_data(value)
+
+    @property
+    def ml_prediction(self):
+        return decrypt_data(self._ml_prediction)
+
+    @ml_prediction.setter
+    def ml_prediction(self, value):
+        self._ml_prediction = encrypt_data(value)
 
     def to_dict(self):
         return {
             "id": self.id,
             "patient_id": self.patient_id,
             "clinician_id": self.clinician_id,
+            "hospital_id": self.hospital_id,
+            "hospital": self.hospital.to_dict() if self.hospital else None,
             "diagnosis_type": self.diagnosis_type,
             "risk_level": self.risk_level,
             "confidence_percent": self.confidence_percent,
@@ -257,11 +384,12 @@ class Treatment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
     diagnosis_id = db.Column(db.Integer, db.ForeignKey('diagnosis.id'))
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
     treatment_type = db.Column(db.String(100))
-    drugs = db.Column(db.Text)
+    _drugs = db.Column('drugs', db.Text)
     duration = db.Column(db.String(100))
-    dosage = db.Column(db.Text)
-    administration_notes = db.Column(db.Text)
+    _dosage = db.Column('dosage', db.Text)
+    _administration_notes = db.Column('administration_notes', db.Text)
     start_date = db.Column(db.DateTime)
     end_date = db.Column(db.DateTime)
     status = db.Column(db.String(50), default='active')
@@ -269,12 +397,39 @@ class Treatment(db.Model):
 
     patient = db.relationship('Patient', backref=db.backref('treatments', lazy=True))
     diagnosis = db.relationship('Diagnosis', backref=db.backref('treatments', lazy=True))
+    hospital = db.relationship('Hospital', backref=db.backref('treatments', lazy=True))
+
+    @property
+    def drugs(self):
+        return decrypt_data(self._drugs)
+
+    @drugs.setter
+    def drugs(self, value):
+        self._drugs = encrypt_data(value)
+
+    @property
+    def dosage(self):
+        return decrypt_data(self._dosage)
+
+    @dosage.setter
+    def dosage(self, value):
+        self._dosage = encrypt_data(value)
+
+    @property
+    def administration_notes(self):
+        return decrypt_data(self._administration_notes)
+
+    @administration_notes.setter
+    def administration_notes(self, value):
+        self._administration_notes = encrypt_data(value)
 
     def to_dict(self):
         return {
             "id": self.id,
             "patient_id": self.patient_id,
             "diagnosis_id": self.diagnosis_id,
+            "hospital_id": self.hospital_id,
+            "hospital": self.hospital.to_dict() if self.hospital else None,
             "treatment_type": self.treatment_type,
             "drugs": self.drugs,
             "duration": self.duration,
@@ -290,8 +445,9 @@ class Alert(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
     alert_type = db.Column(db.String(100))
-    message = db.Column(db.Text)
+    _message = db.Column('message', db.Text)
     severity = db.Column(db.String(50))
     is_read = db.Column(db.Boolean, default=False)
     email_sent = db.Column(db.Boolean, default=False)
@@ -299,12 +455,23 @@ class Alert(db.Model):
 
     patient = db.relationship('Patient', backref=db.backref('alerts', lazy=True))
     user = db.relationship('User', backref=db.backref('alerts', lazy=True))
+    hospital = db.relationship('Hospital', backref=db.backref('alerts', lazy=True))
+
+    @property
+    def message(self):
+        return decrypt_data(self._message)
+
+    @message.setter
+    def message(self, value):
+        self._message = encrypt_data(value)
 
     def to_dict(self):
         return {
             "id": self.id,
             "patient_id": self.patient_id,
             "user_id": self.user_id,
+            "hospital_id": self.hospital_id,
+            "hospital": self.hospital.to_dict() if self.hospital else None,
             "alert_type": self.alert_type,
             "message": self.message,
             "severity": self.severity,
@@ -317,10 +484,11 @@ class LabTest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
     requested_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
     test_type = db.Column(db.String(100), nullable=False)  # e.g., "GeneXpert", "Sputum Smear", "Chest X-ray", "Blood Test"
     status = db.Column(db.String(50), default='requested')  # requested, in_progress, completed, cancelled
-    results = db.Column(db.Text)
-    notes = db.Column(db.Text)
+    _results = db.Column('results', db.Text)
+    _notes = db.Column('notes', db.Text)
     completed_by = db.Column(db.Integer, db.ForeignKey('user.id'))
     completed_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
@@ -329,17 +497,39 @@ class LabTest(db.Model):
     patient = db.relationship('Patient', backref=db.backref('lab_tests', lazy=True))
     requester = db.relationship('User', foreign_keys=[requested_by], backref=db.backref('requested_lab_tests', lazy=True))
     completer = db.relationship('User', foreign_keys=[completed_by], backref=db.backref('completed_lab_tests', lazy=True))
+    hospital = db.relationship('Hospital', backref=db.backref('lab_tests', lazy=True))
+
+    @property
+    def results(self):
+        return decrypt_data(self._results)
+
+    @results.setter
+    def results(self, value):
+        self._results = encrypt_data(value)
+
+    @property
+    def notes(self):
+        return decrypt_data(self._notes)
+
+    @notes.setter
+    def notes(self, value):
+        self._notes = encrypt_data(value)
 
     def to_dict(self):
         return {
             "id": self.id,
             "patient_id": self.patient_id,
+            "patient_name": f"{self.patient.first_name or ''} {self.patient.last_name or ''}".strip() if self.patient else None,
             "requested_by": self.requested_by,
+            "requester_name": self.requester.username if self.requester else None,
+            "hospital_id": self.hospital_id,
+            "hospital": self.hospital.to_dict() if self.hospital else None,
             "test_type": self.test_type,
             "status": self.status,
             "results": self.results,
             "notes": self.notes,
             "completed_by": self.completed_by,
+            "completer_name": self.completer.username if self.completer else None,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
@@ -379,7 +569,7 @@ class ATCDrug(db.Model):
 
 class PharmacyInventory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'))
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
     atc_drug_id = db.Column(db.Integer, db.ForeignKey('atc_drug.id'), nullable=False)
     stock_quantity = db.Column(db.Integer, default=0)  # Number of units in stock
     unit_type = db.Column(db.String(50))  # e.g., tablets, vials, bottles
@@ -416,10 +606,11 @@ class Prescription(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
     diagnosis_id = db.Column(db.Integer, db.ForeignKey('diagnosis.id'))
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    medication = db.Column(db.String(200), nullable=False)
+    _medication = db.Column('medication', db.String(200), nullable=False)
     atc_drug_id = db.Column(db.Integer, db.ForeignKey('atc_drug.id'))
-    dosage = db.Column(db.String(200))
+    _dosage = db.Column('dosage', db.String(200))
     dosage_mg = db.Column(db.Float)  # Dosage in milligrams per dose
     frequency = db.Column(db.String(50))  # e.g., "2 times daily", "3 times daily"
     duration_days = db.Column(db.Integer)
@@ -431,7 +622,7 @@ class Prescription(db.Model):
     risk_level = db.Column(db.String(50))
     ml_recommended = db.Column(db.Boolean, default=False)
     status = db.Column(db.String(50), default='pending')  # pending, approved, rejected, dispensed
-    rejection_reason = db.Column(db.Text)
+    _rejection_reason = db.Column('rejection_reason', db.Text)
     approved_by = db.Column(db.Integer, db.ForeignKey('user.id'))
     approved_at = db.Column(db.DateTime)
     dispensed_by = db.Column(db.Integer, db.ForeignKey('user.id'))  # Pharmacist who dispensed
@@ -442,16 +633,43 @@ class Prescription(db.Model):
 
     patient = db.relationship('Patient', backref=db.backref('prescriptions', lazy=True))
     diagnosis = db.relationship('Diagnosis', backref=db.backref('prescriptions', lazy=True))
+    hospital = db.relationship('Hospital', backref=db.backref('prescriptions', lazy=True))
     creator = db.relationship('User', foreign_keys=[created_by], backref=db.backref('created_prescriptions', lazy=True))
     approver = db.relationship('User', foreign_keys=[approved_by], backref=db.backref('approved_prescriptions', lazy=True))
     dispenser = db.relationship('User', foreign_keys=[dispensed_by], backref=db.backref('dispensed_prescriptions', lazy=True))
     atc_drug = db.relationship('ATCDrug', backref=db.backref('prescriptions', lazy=True))
+
+    @property
+    def medication(self):
+        return decrypt_data(self._medication)
+
+    @medication.setter
+    def medication(self, value):
+        self._medication = encrypt_data(value)
+
+    @property
+    def dosage(self):
+        return decrypt_data(self._dosage)
+
+    @dosage.setter
+    def dosage(self, value):
+        self._dosage = encrypt_data(value)
+
+    @property
+    def rejection_reason(self):
+        return decrypt_data(self._rejection_reason)
+
+    @rejection_reason.setter
+    def rejection_reason(self, value):
+        self._rejection_reason = encrypt_data(value)
 
     def to_dict(self):
         return {
             "id": self.id,
             "patient_id": self.patient_id,
             "diagnosis_id": self.diagnosis_id,
+            "hospital_id": self.hospital_id,
+            "hospital": self.hospital.to_dict() if self.hospital else None,
             "created_by": self.created_by,
             "medication": self.medication,
             "atc_drug_id": self.atc_drug_id,
@@ -505,6 +723,22 @@ class AuditLog(db.Model):
                 "role": self.user.role if self.user else None
             } if self.user else None
         }
+
+
+# Event listener to make AuditLog immutable (prevent updates/deletes)
+from sqlalchemy import event
+from sqlalchemy.orm import Mapper
+
+
+@event.listens_for(AuditLog, 'before_update')
+def prevent_audit_update(mapper, connection, target):
+    raise ValueError("AuditLog entries are immutable and cannot be updated!")
+
+
+@event.listens_for(AuditLog, 'before_delete')
+def prevent_audit_delete(mapper, connection, target):
+    raise ValueError("AuditLog entries are immutable and cannot be deleted!")
+
 
 
 class ExternalDatasetRow(db.Model):
@@ -618,3 +852,54 @@ class AntibioticResistance(db.Model):
             "notes": self.notes,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
+
+
+class PatientConsent(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
+    requesting_hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
+    sharing_hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
+    consent_type = db.Column(db.String(50), nullable=False)  # 'full_record', 'diagnoses_only', 'lab_tests_only'
+    status = db.Column(db.String(50), default='pending')  # 'pending', 'granted', 'denied', 'revoked'
+    granted_at = db.Column(db.DateTime)
+    revoked_at = db.Column(db.DateTime)
+    expires_at = db.Column(db.DateTime)  # Optional expiry date
+    verification_method = db.Column(db.String(50))  # 'sms', 'email', 'in_person'
+    _verification_code = db.Column('verification_code', db.String(200))  # Encrypted verification code
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+    
+    patient = db.relationship('Patient', backref=db.backref('consents', lazy=True))
+    requesting_hospital = db.relationship('Hospital', foreign_keys=[requesting_hospital_id], backref=db.backref('incoming_consents', lazy=True))
+    sharing_hospital = db.relationship('Hospital', foreign_keys=[sharing_hospital_id], backref=db.backref('outgoing_consents', lazy=True))
+    
+    @property
+    def verification_code(self):
+        from utils.security import decrypt_data
+        return decrypt_data(self._verification_code) if self._verification_code else None
+    
+    @verification_code.setter
+    def verification_code(self, value):
+        from utils.security import encrypt_data
+        self._verification_code = encrypt_data(value) if value else None
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "patient_id": self.patient_id,
+            "requesting_hospital_id": self.requesting_hospital_id,
+            "requesting_hospital": self.requesting_hospital.to_dict() if self.requesting_hospital else None,
+            "sharing_hospital_id": self.sharing_hospital_id,
+            "sharing_hospital": self.sharing_hospital.to_dict() if self.sharing_hospital else None,
+            "consent_type": self.consent_type,
+            "status": self.status,
+            "granted_at": self.granted_at.isoformat() if self.granted_at else None,
+            "revoked_at": self.revoked_at.isoformat() if self.revoked_at else None,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "verification_method": self.verification_method,
+            "notes": self.notes,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
+        }
+

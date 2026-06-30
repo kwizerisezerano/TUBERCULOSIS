@@ -99,6 +99,11 @@ export const useApi = () => {
     approvePrescription: (id: number, data: any) => request(`/prescriptions/${id}`, { method: 'PUT', body: data }),
     dispensePrescription: (id: number) => request(`/prescriptions/${id}/dispense`, { method: 'POST' }),
     getHospitals: () => request('/hospitals'),
+    // Lab test methods
+    getPendingLabTests: () => request('/lab-tests/pending'),
+    getAllLabTests: () => request('/lab-tests'),
+    updateLabTestStatus: (id: number, status: string) => request(`/lab-tests/${id}`, { method: 'PUT', body: { status } }),
+    submitLabTestResult: (id: number, data: any) => request(`/lab-tests/${id}/submit-result`, { method: 'POST', body: data }),
   };
 };
 

@@ -3161,9 +3161,16 @@ def send_email(recipient, subject, body):
 
 def create_alert(patient_id, user_id, alert_type, message, severity='medium'):
     lang = get_request_lang()
+    hospital_id = None
+    if user_id:
+        user = User.query.get(user_id)
+        if user:
+            hospital_id = user.hospital_id
+    
     alert = Alert(
         patient_id=patient_id,
         user_id=user_id,
+        hospital_id=hospital_id,
         alert_type=alert_type,
         message=message,
         severity=severity,
@@ -3440,8 +3447,48 @@ def patients():
         per_page = request.args.get('per_page', 20, type=int)
         search = request.args.get('search', '')
         sort = request.args.get('sort', 'created_desc')
+        filter_hospital_id = request.args.get('hospital_id', type=int)
 
         query = Patient.query
+        
+        # Hospital-based access control with improved interoperability
+        current_user = get_current_user_from_jwt()
+        if current_user:
+            # Admin can see all patients or filter by hospital
+            if current_user.role == 'admin':
+                if filter_hospital_id:
+                    query = query.filter_by(hospital_id=filter_hospital_id)
+            else:
+                if current_user.hospital_id:
+                    # Non-admin users see:
+                    # 1. Patients with primary hospital = user's hospital
+                    # OR
+                    # 2. Patients that have ANY record (diagnosis, lab test, prescription, treatment, alert) at user's hospital
+                    from sqlalchemy import or_
+                    query = query.filter(
+                        or_(
+                            Patient.hospital_id == current_user.hospital_id,
+                            Patient.id.in_(
+                                db.session.query(Diagnosis.patient_id).filter(Diagnosis.hospital_id == current_user.hospital_id)
+                            ),
+                            Patient.id.in_(
+                                db.session.query(LabTest.patient_id).filter(LabTest.hospital_id == current_user.hospital_id)
+                            ),
+                            Patient.id.in_(
+                                db.session.query(Prescription.patient_id).filter(Prescription.hospital_id == current_user.hospital_id)
+                            ),
+                            Patient.id.in_(
+                                db.session.query(Treatment.patient_id).filter(Treatment.hospital_id == current_user.hospital_id)
+                            ),
+                            Patient.id.in_(
+                                db.session.query(Alert.patient_id).filter(Alert.hospital_id == current_user.hospital_id)
+                            )
+                        )
+                    )
+                else:
+                    # If user has no hospital, show only patients with no hospital
+                    query = query.filter(Patient.hospital_id.is_(None))
+        
         if search:
             query = query.filter(
                 (Patient.first_name.ilike(f'%{search}%')) |
@@ -3563,6 +3610,59 @@ def patients():
 
         return jsonify(patient.to_dict()), 201
 
+
+# Patient Medical History (Cross-Hospital)
+@app.route('/api/patients/<int:patient_id>/history', methods=['GET'])
+@jwt_required()
+def patient_history(patient_id):
+    from flask_jwt_extended import get_jwt_identity
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    patient = Patient.query.get_or_404(patient_id)
+    
+    # Check if user is authorized to view this patient's history
+    current_user = get_current_user_from_jwt()
+    authorized = False
+    
+    if current_user:
+        if current_user.role == 'admin':
+            authorized = True
+        elif current_user.hospital_id:
+            # Check if user's hospital has any relationship to the patient
+            # 1. Patient's primary hospital is user's hospital
+            # 2. User's hospital has any records for this patient
+            from sqlalchemy import or_
+            has_primary = patient.hospital_id == current_user.hospital_id
+            has_diagnosis = Diagnosis.query.filter_by(patient_id=patient_id, hospital_id=current_user.hospital_id).first() is not None
+            has_labtest = LabTest.query.filter_by(patient_id=patient_id, hospital_id=current_user.hospital_id).first() is not None
+            has_prescription = Prescription.query.filter_by(patient_id=patient_id, hospital_id=current_user.hospital_id).first() is not None
+            has_treatment = Treatment.query.filter_by(patient_id=patient_id, hospital_id=current_user.hospital_id).first() is not None
+            has_alert = Alert.query.filter_by(patient_id=patient_id, hospital_id=current_user.hospital_id).first() is not None
+            
+            if has_primary or has_diagnosis or has_labtest or has_prescription or has_treatment or has_alert:
+                authorized = True
+    
+    if not authorized:
+        return jsonify({"msg": "Not authorized to view this patient's history"}), 403
+    
+    # Get all records for this patient
+    diagnoses = Diagnosis.query.filter_by(patient_id=patient_id).order_by(Diagnosis.created_at.desc()).all()
+    treatments = Treatment.query.filter_by(patient_id=patient_id).order_by(Treatment.created_at.desc()).all()
+    lab_tests = LabTest.query.filter_by(patient_id=patient_id).order_by(LabTest.created_at.desc()).all()
+    prescriptions = Prescription.query.filter_by(patient_id=patient_id).order_by(Prescription.created_at.desc()).all()
+    alerts = Alert.query.filter_by(patient_id=patient_id).order_by(Alert.created_at.desc()).all()
+    
+    return jsonify({
+        "patient": patient.to_dict(),
+        "diagnoses": [d.to_dict() for d in diagnoses],
+        "treatments": [t.to_dict() for t in treatments],
+        "lab_tests": [l.to_dict() for l in lab_tests],
+        "prescriptions": [p.to_dict() for p in prescriptions],
+        "alerts": [a.to_dict() for a in alerts]
+    })
+
+
 # Lab Test Management
 @app.route('/api/lab-tests', methods=['GET', 'POST'])
 @jwt_required()
@@ -3575,13 +3675,33 @@ def lab_tests():
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
         patient_id = request.args.get('patient_id', type=int)
+        status = request.args.get('status')
+        filter_hospital_id = request.args.get('hospital_id', type=int)
         
-        print(f"Fetching lab tests: page={page}, per_page={per_page}, user_role={user.role}, patient_id={patient_id}")
+        print(f"Fetching lab tests: page={page}, per_page={per_page}, user_role={user.role}, patient_id={patient_id}, status={status}")
         
-        # Build query with patient_id filter if provided
+        # Build query with filters if provided
         query = LabTest.query
+        
+        # Hospital-based access control
+        current_user = get_current_user_from_jwt()
+        if current_user:
+            # Admin can see all or filter by hospital
+            if current_user.role == 'admin':
+                if filter_hospital_id:
+                    query = query.filter(LabTest.hospital_id == filter_hospital_id)
+            else:
+                # Non-admin users see only their hospital's lab tests
+                if current_user.hospital_id:
+                    query = query.filter(LabTest.hospital_id == current_user.hospital_id)
+                # User has no hospital, show nothing or only patients with no hospital
+                else:
+                    query = query.filter(LabTest.hospital_id.is_(None))
+        
         if patient_id:
             query = query.filter_by(patient_id=patient_id)
+        if status:
+            query = query.filter_by(status=status)
         
         if user.role == 'lab_technician':
             # Lab techs can see all requested lab tests (or filtered by patient)
@@ -3623,6 +3743,7 @@ def lab_tests():
         test = LabTest(
             patient_id=data.get('patient_id'),
             requested_by=user_id,
+            hospital_id=user.hospital_id,
             test_type=data.get('test_type'),
             notes=data.get('notes'),
             status='requested'
@@ -3893,12 +4014,25 @@ def prescriptions():
     user = User.query.get(user_id)
     
     if request.method == 'GET':
+        filter_hospital_id = request.args.get('hospital_id', type=int)
+        
+        query = Prescription.query
+        
+        if user.role == 'admin':
+            if filter_hospital_id:
+                query = query.filter_by(hospital_id=filter_hospital_id)
+        else:
+            if user.hospital_id:
+                query = query.filter_by(hospital_id=user.hospital_id)
+            else:
+                query = query.filter(Prescription.hospital_id.is_(None))
+        
         if user.role == 'pharmacist':
             # Pharmacists see all pending and their approved/rejected
-            prescs = Prescription.query.order_by(Prescription.created_at.desc()).all()
-        elif user.role in ['doctor', 'admin', 'hospital_admin']:
-            # Doctors and admins see all
-            prescs = Prescription.query.order_by(Prescription.created_at.desc()).all()
+            prescs = query.order_by(Prescription.created_at.desc()).all()
+        elif user.role in ['doctor', 'hospital_admin']:
+            # Doctors and hospital admins see only their hospital
+            prescs = query.order_by(Prescription.created_at.desc()).all()
         elif user.role == 'lab_technician':
             # Lab techs don't see prescriptions
             prescs = []
@@ -3926,6 +4060,7 @@ def prescriptions():
         presc = Prescription(
             patient_id=data.get('patient_id'),
             diagnosis_id=data.get('diagnosis_id'),
+            hospital_id=user.hospital_id,
             created_by=user_id,
             medication=data.get('medication'),
             atc_drug_id=atc_drug_id,
@@ -3991,6 +4126,7 @@ def prescriptions():
             alert = Alert(
                 patient_id=presc.patient_id,
                 user_id=user_id,
+                hospital_id=user.hospital_id,
                 alert_type='antimicrobial_stewardship',
                 message='Possible antibiotic overuse detected. Review patient prescription history before prescribing.',
                 severity='warning'
@@ -4114,7 +4250,7 @@ def dashboard():
     }
     
     # Universal stats for all roles that should see them
-    total_detailed_lab_results = DetailedLabResult.query.count()
+    total_completed_lab_tests = LabTest.query.filter_by(status='completed').count()
     total_antibiotic_resistance_records = AntibioticResistance.query.count()
     total_atc_drugs = ATCDrug.query.count()
     total_diagnoses = Diagnosis.query.count()
@@ -4153,7 +4289,7 @@ def dashboard():
         'recent': recent_patients
     }
     response['hospital_stats'] = { 'total': total_hospitals }
-    response['detailed_lab_stats'] = { 'total': total_detailed_lab_results }
+    response['detailed_lab_stats'] = { 'total': total_completed_lab_tests }
     response['antimicrobial_resistance_stats'] = { 'total': total_antibiotic_resistance_records }
     response['atc_drug_stats'] = { 'total': total_atc_drugs }
     response['diagnosis_stats'] = { 'total': total_diagnoses }
@@ -4199,7 +4335,7 @@ def dashboard():
         unread_alerts = Alert.query.filter_by(is_read=False, user_id=user_id).count()
         stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship').count()
         requested_lab_tests = LabTest.query.filter_by(requested_by=user_id, status='requested').count()
-        completed_lab_tests = DetailedLabResult.query.count()
+        completed_lab_tests = LabTest.query.filter_by(status='completed').count()
         recent_audits = AuditLog.query.filter_by(user_id=user_id).order_by(AuditLog.created_at.desc()).limit(10).all()
         pending_prescriptions = Prescription.query.filter_by(status='pending').count()
         approved_prescriptions = Prescription.query.filter_by(status='approved').count()
@@ -4222,13 +4358,33 @@ def dashboard():
         # Lab tech dashboard: Only lab tests
         requested_lab_tests = LabTest.query.filter_by(status='requested').count()
         in_progress_lab_tests = LabTest.query.filter_by(status='in_progress').count()
-        completed_lab_tests = LabTest.query.filter_by(status='completed', completed_by=user_id).count()
+        
+        today = datetime.now().date()
+        completed_today_lab_tests = LabTest.query.filter(
+            LabTest.status == 'completed',
+            LabTest.completed_by == user_id,
+            db.func.date(LabTest.completed_at) == today
+        ).count()
+        
+        week_start = today - timedelta(days=today.weekday())
+        total_week_lab_tests = LabTest.query.filter(
+            db.func.date(LabTest.completed_at) >= week_start
+        ).count()
+        
+        sputum_tests = LabTest.query.filter(LabTest.test_type.ilike('%sputum%')).count()
+        genexpert_tests = LabTest.query.filter(LabTest.test_type.ilike('%genexpert%')).count()
+        xray_tests = LabTest.query.filter(LabTest.test_type.ilike('%x-ray%') | LabTest.test_type.ilike('%xray%')).count()
+        
         recent_audits = AuditLog.query.filter_by(user_id=user_id).order_by(AuditLog.created_at.desc()).limit(10).all()
         
-        response['lab_test_stats'] = {
-            'requested': requested_lab_tests,
+        response['lab_stats'] = {
+            'pending': requested_lab_tests,
             'in_progress': in_progress_lab_tests,
-            'completed_by_me': completed_lab_tests
+            'completed_today': completed_today_lab_tests,
+            'total_week': total_week_lab_tests,
+            'sputum_tests': sputum_tests,
+            'genexpert_tests': genexpert_tests,
+            'xray_tests': xray_tests
         }
         response['prescription_stats'] = {
             'pending': Prescription.query.filter_by(status='pending').count(),
@@ -4238,16 +4394,37 @@ def dashboard():
         response['recent_activity'] = [audit.to_dict() for audit in recent_audits]
     
     elif role == 'pharmacist':
-        # Pharmacist dashboard: Only prescriptions
+        # Pharmacist dashboard: Only prescriptions and inventory
         pending_prescriptions = Prescription.query.filter_by(status='pending').count()
-        approved_prescriptions = Prescription.query.filter_by(status='approved', approved_by=user_id).count()
-        rejected_prescriptions = Prescription.query.filter_by(status='rejected', approved_by=user_id).count()
+        
+        today = datetime.now().date()
+        approved_today_prescriptions = Prescription.query.filter(
+            Prescription.status == 'approved',
+            Prescription.approved_by == user_id,
+            db.func.date(Prescription.approved_at) == today
+        ).count()
+        
+        dispensed_today_prescriptions = Prescription.query.filter(
+            Prescription.status == 'dispensed',
+            Prescription.dispensed_by == user_id,
+            db.func.date(Prescription.dispensed_at) == today
+        ).count()
+        
+        total_inventory_drugs = PharmacyInventory.query.count()
+        low_stock = PharmacyInventory.query.filter(
+            PharmacyInventory.stock_quantity <= PharmacyInventory.minimum_stock_level
+        ).count()
+        
         recent_audits = AuditLog.query.filter_by(user_id=user_id).order_by(AuditLog.created_at.desc()).limit(10).all()
         
         response['prescription_stats'] = {
             'pending': pending_prescriptions,
-            'approved': Prescription.query.filter_by(status='approved').count(),
-            'rejected': Prescription.query.filter_by(status='rejected').count()
+            'approved': approved_today_prescriptions,
+            'dispensed': dispensed_today_prescriptions
+        }
+        response['inventory_stats'] = {
+            'total_drugs': total_inventory_drugs,
+            'low_stock': low_stock
         }
         response['recent_activity'] = [audit.to_dict() for audit in recent_audits]
     
@@ -5048,6 +5225,7 @@ def diagnose():
     diagnosis_record = Diagnosis(
         patient_id=patient.id,
         clinician_id=user.id,
+        hospital_id=user.hospital_id,
         diagnosis_type=tb_analysis['who_category'],
         risk_level=symptom_analysis["risk_level"],
         confidence_percent=test_evaluation["confidence_percent"],
@@ -5078,6 +5256,7 @@ def diagnose():
         treatment_record = Treatment(
             patient_id=patient.id,
             diagnosis_id=diagnosis_record.id,
+            hospital_id=user.hospital_id,
             treatment_type=treatment_plan["selected_option"]["name"],
             drugs=treatment_plan["selected_option"]["drugs"],
             duration=treatment_plan["selected_option"]["duration"],
@@ -5226,6 +5405,7 @@ def diagnose():
         alert = Alert(
             patient_id=patient.id,
             user_id=user.id,
+            hospital_id=user.hospital_id,
             alert_type="antimicrobial_stewardship",
             message=f"Possible antibiotic misuse detected: {misuse_reason}. Review patient history.",
             severity="high"
@@ -5321,7 +5501,23 @@ def diagnose():
 def get_diagnoses():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
-    pagination = Diagnosis.query.order_by(Diagnosis.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    filter_hospital_id = request.args.get('hospital_id', type=int)
+    
+    # Build query with hospital-based access control
+    query = Diagnosis.query
+    current_user = get_current_user_from_jwt()
+    
+    if current_user:
+        if current_user.role == 'admin':
+            if filter_hospital_id:
+                query = query.filter_by(hospital_id=filter_hospital_id)
+        else:
+            if current_user.hospital_id:
+                query = query.filter_by(hospital_id=current_user.hospital_id)
+            else:
+                query = query.filter(Diagnosis.hospital_id.is_(None))
+    
+    pagination = query.order_by(Diagnosis.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     diagnoses = [d.to_dict() for d in pagination.items]
     return jsonify({
         'diagnoses': diagnoses, 
@@ -5335,7 +5531,23 @@ def get_diagnoses():
 def get_treatments():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
-    pagination = Treatment.query.order_by(Treatment.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    filter_hospital_id = request.args.get('hospital_id', type=int)
+    
+    # Build query with hospital-based access control
+    query = Treatment.query
+    current_user = get_current_user_from_jwt()
+    
+    if current_user:
+        if current_user.role == 'admin':
+            if filter_hospital_id:
+                query = query.filter_by(hospital_id=filter_hospital_id)
+        else:
+            if current_user.hospital_id:
+                query = query.filter_by(hospital_id=current_user.hospital_id)
+            else:
+                query = query.filter(Treatment.hospital_id.is_(None))
+    
+    pagination = query.order_by(Treatment.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     treatments = [t.to_dict() for t in pagination.items]
     return jsonify({'treatments': treatments, 'total': pagination.total})       
 
@@ -5344,19 +5556,341 @@ def get_treatments():
 def get_alerts():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
-    unread_only = request.args.get('unread_only', 'false').lower() == 'true'    
+    unread_only = request.args.get('unread_only', 'false').lower() == 'true'
+    filter_hospital_id = request.args.get('hospital_id', type=int)
 
     query = Alert.query
+    
+    # Hospital-based access control
+    current_user = get_current_user_from_jwt()
+    if current_user:
+        if current_user.role == 'admin':
+            if filter_hospital_id:
+                query = query.filter_by(hospital_id=filter_hospital_id)
+        else:
+            if current_user.hospital_id:
+                query = query.filter_by(hospital_id=current_user.hospital_id)
+            else:
+                query = query.filter(Alert.hospital_id.is_(None))
+    
     if unread_only:
         query = query.filter_by(is_read=False)
 
     pagination = query.order_by(Alert.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     alerts = [a.to_dict() for a in pagination.items]
+    
+    # Calculate unread count with the same access rules
+    unread_query = Alert.query.filter_by(is_read=False)
+    if current_user:
+        if current_user.role == 'admin':
+            if filter_hospital_id:
+                unread_query = unread_query.filter_by(hospital_id=filter_hospital_id)
+        else:
+            if current_user.hospital_id:
+                unread_query = unread_query.filter_by(hospital_id=current_user.hospital_id)
+            else:
+                unread_query = unread_query.filter(Alert.hospital_id.is_(None))
+    
     return jsonify({
         'alerts': alerts,
         'total': pagination.total,
-        'unread_count': Alert.query.filter_by(is_read=False).count()
+        'unread_count': unread_query.count()
     })
+
+
+# Patient Consent Endpoints
+@app.route('/api/consents', methods=['GET', 'POST'])
+@jwt_required()
+def patient_consents():
+    from models.models import PatientConsent
+    user = get_current_user_from_jwt()
+    
+    if request.method == 'GET':
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        patient_id = request.args.get('patient_id', type=int)
+        filter_hospital_id = request.args.get('hospital_id', type=int)
+        
+        query = PatientConsent.query
+        
+        if user.role == 'admin':
+            if filter_hospital_id:
+                query = query.filter(
+                    (PatientConsent.requesting_hospital_id == filter_hospital_id) |
+                    (PatientConsent.sharing_hospital_id == filter_hospital_id)
+                )
+        else:
+            if user.hospital_id:
+                query = query.filter(
+                    (PatientConsent.requesting_hospital_id == user.hospital_id) |
+                    (PatientConsent.sharing_hospital_id == user.hospital_id)
+                )
+        
+        if patient_id:
+            query = query.filter_by(patient_id=patient_id)
+        
+        pagination = query.order_by(PatientConsent.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+        consents = [c.to_dict() for c in pagination.items]
+        return jsonify({
+            'consents': consents,
+            'total': pagination.total,
+            'pages': pagination.pages,
+            'current_page': page
+        })
+    
+    if request.method == 'POST':
+        from models.models import PatientConsent
+        data = request.get_json()
+        
+        # Determine sharing hospital (defaults to user's hospital)
+        sharing_hospital_id = data.get('sharing_hospital_id')
+        if not sharing_hospital_id and user.hospital_id:
+            sharing_hospital_id = user.hospital_id
+        
+        # Create consent request
+        consent = PatientConsent(
+            patient_id=data.get('patient_id'),
+            requesting_hospital_id=data.get('requesting_hospital_id'),
+            sharing_hospital_id=sharing_hospital_id,
+            consent_type=data.get('consent_type', 'full_record'),
+            status='pending',
+            verification_method=data.get('verification_method'),
+            notes=data.get('notes')
+        )
+        
+        # Generate verification code if needed
+        if data.get('generate_code', False):
+            import random
+            import string
+            code = ''.join(random.choices(string.digits, k=6))
+            consent.verification_code = code
+        
+        db.session.add(consent)
+        
+        # Audit log
+        audit = AuditLog(
+            user_id=user.id,
+            action='create_consent',
+            entity_type='patient_consent',
+            entity_id=consent.id,
+            details=f"Created consent request for patient {data.get('patient_id')}"
+        )
+        db.session.add(audit)
+        
+        db.session.commit()
+        
+        return jsonify(consent.to_dict()), 201
+
+
+@app.route('/api/consents/<int:consent_id>', methods=['GET', 'PUT'])
+@jwt_required()
+def consent_detail(consent_id):
+    from models.models import PatientConsent
+    user = get_current_user_from_jwt()
+    consent = PatientConsent.query.get_or_404(consent_id)
+    
+    if request.method == 'GET':
+        return jsonify(consent.to_dict())
+    
+    if request.method == 'PUT':
+        from datetime import datetime
+        data = request.get_json()
+        
+        # Handle status changes
+        new_status = data.get('status')
+        if new_status in ['granted', 'denied', 'revoked']:
+            if new_status == 'granted':
+                consent.granted_at = datetime.now()
+            elif new_status == 'revoked':
+                consent.revoked_at = datetime.now()
+            consent.status = new_status
+        
+        # Update other fields
+        if 'notes' in data:
+            consent.notes = data.get('notes')
+        if 'expires_at' in data and data.get('expires_at'):
+            from dateutil.parser import parse
+            consent.expires_at = parse(data['expires_at'])
+        
+        # Audit log
+        audit = AuditLog(
+            user_id=user.id,
+            action=f'update_consent_{new_status}' if new_status else 'update_consent',
+            entity_type='patient_consent',
+            entity_id=consent.id,
+            details=f"Updated consent {consent_id}: status changed to {new_status}"
+        )
+        db.session.add(audit)
+        
+        db.session.commit()
+        
+        return jsonify(consent.to_dict())
+
+
+# HL7 FHIR-like Endpoints for Interoperability
+@app.route('/api/fhir/Patient/<int:patient_id>', methods=['GET'])
+@jwt_required()
+def fhir_patient(patient_id):
+    from models.models import PatientConsent
+    user = get_current_user_from_jwt()
+    patient = Patient.query.get_or_404(patient_id)
+    
+    # Check consent if accessing from another hospital
+    authorized = False
+    if user.role == 'admin':
+        authorized = True
+    elif user.hospital_id == patient.hospital_id:
+        authorized = True
+    else:
+        # Check if valid consent exists
+        from datetime import datetime
+        valid_consent = PatientConsent.query.filter(
+            PatientConsent.patient_id == patient_id,
+            PatientConsent.requesting_hospital_id == user.hospital_id,
+            PatientConsent.status == 'granted',
+            (PatientConsent.expires_at.is_(None) | (PatientConsent.expires_at > datetime.now()))
+        ).first()
+        if valid_consent:
+            authorized = True
+    
+    if not authorized:
+        return jsonify({'error': 'Patient consent required to access this data'}), 403
+    
+    # Build FHIR-like Patient resource
+    fhir_patient = {
+        "resourceType": "Patient",
+        "id": str(patient.id),
+        "identifier": [
+            {
+                "system": "https://tb-diagnostic-system.org/patient-id",
+                "value": patient.patient_id
+            }
+        ],
+        "name": [
+            {
+                "use": "official",
+                "family": patient.last_name,
+                "given": [patient.first_name]
+            }
+        ],
+        "gender": patient.gender,
+        "birthDate": patient.date_of_birth.date().isoformat() if patient.date_of_birth else None,
+        "managingOrganization": {
+            "reference": f"Organization/{patient.hospital_id}",
+            "display": patient.hospital.name if patient.hospital else None
+        }
+    }
+    
+    return jsonify(fhir_patient)
+
+
+@app.route('/api/fhir/Patient/<int:patient_id>/Condition', methods=['GET'])
+@jwt_required()
+def fhir_patient_conditions(patient_id):
+    from models.models import Diagnosis, PatientConsent
+    from datetime import datetime
+    user = get_current_user_from_jwt()
+    patient = Patient.query.get_or_404(patient_id)
+    
+    # Check consent
+    authorized = False
+    if user.role == 'admin':
+        authorized = True
+    elif user.hospital_id == patient.hospital_id:
+        authorized = True
+    else:
+        valid_consent = PatientConsent.query.filter(
+            PatientConsent.patient_id == patient_id,
+            PatientConsent.requesting_hospital_id == user.hospital_id,
+            PatientConsent.status == 'granted',
+            PatientConsent.consent_type.in_(['full_record', 'diagnoses_only']),
+            (PatientConsent.expires_at.is_(None) | (PatientConsent.expires_at > datetime.now()))
+        ).first()
+        if valid_consent:
+            authorized = True
+    
+    if not authorized:
+        return jsonify({'error': 'Patient consent required to access this data'}), 403
+    
+    # Get diagnoses (FHIR Condition resources)
+    diagnoses = Diagnosis.query.filter_by(patient_id=patient_id).all()
+    fhir_conditions = []
+    
+    for d in diagnoses:
+        fhir_condition = {
+            "resourceType": "Condition",
+            "id": str(d.id),
+            "subject": {"reference": f"Patient/{patient_id}"},
+            "clinicalStatus": {"coding": [{"code": d.status}]},
+            "code": {
+                "text": d.diagnosis_type
+            },
+            "severity": {
+                "text": d.risk_level
+            },
+            "recordedDate": d.created_at.isoformat()
+        }
+        fhir_conditions.append(fhir_condition)
+    
+    return jsonify({
+        "resourceType": "Bundle",
+        "type": "searchset",
+        "entry": [{"resource": c} for c in fhir_conditions]
+    })
+
+
+@app.route('/api/fhir/Patient/<int:patient_id>/Observation', methods=['GET'])
+@jwt_required()
+def fhir_patient_observations(patient_id):
+    from models.models import LabTest, PatientConsent
+    from datetime import datetime
+    user = get_current_user_from_jwt()
+    patient = Patient.query.get_or_404(patient_id)
+    
+    # Check consent
+    authorized = False
+    if user.role == 'admin':
+        authorized = True
+    elif user.hospital_id == patient.hospital_id:
+        authorized = True
+    else:
+        valid_consent = PatientConsent.query.filter(
+            PatientConsent.patient_id == patient_id,
+            PatientConsent.requesting_hospital_id == user.hospital_id,
+            PatientConsent.status == 'granted',
+            PatientConsent.consent_type.in_(['full_record', 'lab_tests_only']),
+            (PatientConsent.expires_at.is_(None) | (PatientConsent.expires_at > datetime.now()))
+        ).first()
+        if valid_consent:
+            authorized = True
+    
+    if not authorized:
+        return jsonify({'error': 'Patient consent required to access this data'}), 403
+    
+    # Get lab tests (FHIR Observation resources)
+    lab_tests = LabTest.query.filter_by(patient_id=patient_id).all()
+    fhir_observations = []
+    
+    for lt in lab_tests:
+        fhir_observation = {
+            "resourceType": "Observation",
+            "id": str(lt.id),
+            "subject": {"reference": f"Patient/{patient_id}"},
+            "status": lt.status,
+            "code": {
+                "text": lt.test_type
+            },
+            "valueString": lt.results,
+            "issued": lt.completed_at.isoformat() if lt.completed_at else None
+        }
+        fhir_observations.append(fhir_observation)
+    
+    return jsonify({
+        "resourceType": "Bundle",
+        "type": "searchset",
+        "entry": [{"resource": o} for o in fhir_observations]
+    })
+
 
 @app.route('/api/alerts/<int:alert_id>/read', methods=['PUT'])
 @jwt_required()
@@ -5554,6 +6088,11 @@ def dashboard_charts():
 
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    app.run(debug=True, port=5000)
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == 'seed':
+        # Skip running server when seeding
+        pass
+    else:
+        with app.app_context():
+            db.create_all()
+        app.run(debug=True, port=5000)

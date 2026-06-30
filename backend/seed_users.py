@@ -5,7 +5,7 @@ Seed the database with users, roles, and sample data
 import random
 from datetime import datetime, timedelta
 from app import app
-from models.models import db, User, Patient, ATCDrug, LabTest, Prescription, Diagnosis, Treatment, Alert, AuditLog
+from models.models import db, User, Patient, ATCDrug, LabTest, Prescription, Diagnosis, Treatment, Alert, AuditLog, Hospital
 
 users = [
     {
@@ -143,24 +143,45 @@ def seed_users():
     with app.app_context():
         db.create_all()
         
+        # Get or create default hospital for users
+        default_hospital = Hospital.query.filter_by(name="Default Hospital").first()
+        if not default_hospital:
+            default_hospital = Hospital(
+                hospital_id="HOSP-0001",
+                name="Default Hospital",
+                facility_type='Hospital',
+                city='Kigali',
+                region='Kigali City',
+                country='Rwanda',
+                bed_capacity=200
+            )
+            db.session.add(default_hospital)
+            db.session.commit()
+        
         added = 0
+        updated = 0
         
         for user_data in users:
             existing = User.query.filter_by(email=user_data["email"]).first()
             if existing:
+                # Update existing users without hospital_id
+                if existing.hospital_id is None:
+                    existing.hospital_id = default_hospital.id
+                    updated += 1
                 continue
             
             user = User(
                 username=user_data['username'],
                 email=user_data['email'],
-                role=user_data['role']
+                role=user_data['role'],
+                hospital_id=default_hospital.id
             )
             user.set_password(user_data['password'])
             db.session.add(user)
             added += 1
         
         db.session.commit()
-        return {"added": added, "total": User.query.count()}
+        return {"added": added, "updated": updated, "total": User.query.count()}
 
 def seed_sample_data():
     with app.app_context():
@@ -174,11 +195,52 @@ def seed_sample_data():
             db.session.add(drug)
             added_atc += 1
         
+        # Get default hospital for lab tests
+        default_hospital = Hospital.query.filter_by(name="Default Hospital").first()
+        if not default_hospital:
+            default_hospital = Hospital.query.first()
+        
+        # Seed sample lab tests
+        added_lab_tests = 0
+        patients = Patient.query.limit(20).all()
+        doctors = User.query.filter_by(role='doctor').all()
+        lab_techs = User.query.filter_by(role='lab_technician').all()
+        
+        if patients and doctors and default_hospital:
+            test_types = ["GeneXpert", "Sputum Smear", "Chest X-ray", "Blood Test", "TB Culture", "IGRA", "TST"]
+            statuses = ["requested", "in_progress", "completed"]
+            
+            for i, patient in enumerate(patients):
+                for test_type in random.sample(test_types, random.randint(1, 3)):
+                    status = random.choice(statuses)
+                    requested_by = random.choice(doctors)
+                    completed_by = random.choice(lab_techs) if status == "completed" and lab_techs else None
+                    completed_at = datetime.now() - timedelta(days=random.randint(1, 30)) if status == "completed" else None
+                    
+                    results = None
+                    if status == "completed":
+                        possible_results = ["Positive", "Negative", "Abnormal", "Normal", "Inconclusive"]
+                        results = random.choice(possible_results)
+                    
+                    test = LabTest(
+                        patient_id=patient.id,
+                        requested_by=requested_by.id,
+                        hospital_id=default_hospital.id,
+                        test_type=test_type,
+                        status=status,
+                        results=results,
+                        notes="Sample lab test note",
+                        completed_by=completed_by.id if completed_by else None,
+                        completed_at=completed_at
+                    )
+                    db.session.add(test)
+                    added_lab_tests += 1
+        
         db.session.commit()
         
         return {
             "added_atc_drugs": added_atc,
-            "added_lab_tests": 0,
+            "added_lab_tests": added_lab_tests,
             "added_prescriptions": 0,
             "added_diagnoses": 0,
             "added_treatments": 0,

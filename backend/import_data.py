@@ -38,8 +38,33 @@ def _use_project_venv_when_available():
 
 _use_project_venv_when_available()
 
+import random
 from app import app
-from models.models import db, Patient, ExternalDatasetRow, ATCDrug, DetailedLabResult, AntibioticResistance
+from models.models import db, Patient, ExternalDatasetRow, ATCDrug, DetailedLabResult, AntibioticResistance, Hospital
+
+def get_or_create_default_hospital():
+    """Get or create a default hospital for patient imports"""
+    default_hospital = Hospital.query.filter_by(name="Default Hospital").first()
+    if not default_hospital:
+        default_hospital = Hospital(
+            hospital_id="HOSP-0001",
+            name="Default Hospital",
+            facility_type='Hospital',
+            city='Kigali',
+            region='Kigali City',
+            country='Rwanda',
+            bed_capacity=200
+        )
+        db.session.add(default_hospital)
+        db.session.commit()
+    return default_hospital
+
+def get_random_hospital():
+    """Get a random hospital from the database for interoperability testing"""
+    hospitals = Hospital.query.all()
+    if not hospitals:
+        return get_or_create_default_hospital()
+    return random.choice(hospitals)
 
 def clean_text(text):
     """Clean and normalize text data"""
@@ -206,6 +231,9 @@ def import_tb_symptdata_april2024(file_path):
         df = pd.read_csv(file_path)
         print(f"  Found {len(df)} rows")
 
+        # Get random hospital for interoperability testing
+        hospital = get_random_hospital()
+
         symptom_columns = [c for c in df.columns if c.strip().lower() not in {"prediction"}]
         patient_dicts = []
 
@@ -234,6 +262,7 @@ def import_tb_symptdata_april2024(file_path):
 
             patient_dicts.append({
                 "patient_id": patient_id,
+                "hospital_id": hospital.id,
                 "first_name": f"Patient{idx+1}",
                 "last_name": "",
                 "age": 35,
@@ -290,6 +319,9 @@ def import_symptoms_dataset(file_path):
         df = pd.read_csv(file_path)
         print(f"  Found {len(df)} patient records")
 
+        # Get random hospital for interoperability testing
+        hospital = get_random_hospital()
+
         patient_dicts = []
 
         for idx, row in df.iterrows():
@@ -340,6 +372,7 @@ def import_symptoms_dataset(file_path):
 
             patient_dicts.append({
                 "patient_id": patient_id,
+                "hospital_id": hospital.id,
                 "first_name": clean_text(row.get('name', f'Patient{idx+1}')),
                 "last_name": '',
                 "age": int(row.get('age', 35)) if pd.notna(row.get('age')) else None,
@@ -393,6 +426,9 @@ def import_bangladesh_dataset(file_path):
         df = pd.read_csv(file_path)
         print(f"  Found {len(df)} patient records")
 
+        # Get random hospital for interoperability testing
+        hospital = get_random_hospital()
+
         patient_dicts = []
 
         for idx, row in df.iterrows():
@@ -405,6 +441,7 @@ def import_bangladesh_dataset(file_path):
 
             patient_dicts.append({
                 "patient_id": patient_id,
+                "hospital_id": hospital.id,
                 "first_name": f'Patient{int(row.get("Patient ID", idx+1))}',
                 "last_name": '',
                 "age": int(row.get('Age', 35)) if pd.notna(row.get('Age')) else None,
@@ -448,6 +485,9 @@ def import_xray_dataset(file_path):
         df = pd.read_csv(file_path)
         print(f"  Found {len(df)} patient records")
 
+        # Get random hospital for interoperability testing
+        hospital = get_random_hospital()
+
         patient_dicts = []
 
         for idx, row in df.iterrows():
@@ -487,6 +527,7 @@ def import_xray_dataset(file_path):
 
             patient_dicts.append({
                 "patient_id": patient_id,
+                "hospital_id": hospital.id,
                 "first_name": f'Patient{idx+1}',
                 "last_name": '',
                 "age": int(row.get('Age', 35)) if pd.notna(row.get('Age')) else None,
@@ -544,6 +585,9 @@ def import_owner_species_dataset(file_path):
         df = pd.read_csv(file_path)
         print(f"  Found {len(df)} curated patient records")
 
+        # Get random hospital for interoperability testing
+        hospital = get_random_hospital()
+
         patient_dicts = []
         external_count = 0
 
@@ -562,6 +606,7 @@ def import_owner_species_dataset(file_path):
 
             patient_dicts.append({
                 "patient_id": patient_id,
+                "hospital_id": hospital.id,
                 "first_name": f'Owner{idx+1}',
                 "last_name": 'Dataset',
                 "age": int(record.get('age', 35)) if record.get('age') is not None else None,
@@ -721,6 +766,15 @@ def import_synthetic_dataset(file_path: str = None):
     # Preprocess and fill any missing values (as a safety net)
     print("  Preprocessing and validating synthetic data...")
     patient_dicts = preprocess_and_fill_missing(None, patient_dicts)
+    
+    # Add random hospital_id to each patient for interoperability testing
+    hospitals = Hospital.query.all()
+    if not hospitals:
+        default_hospital = get_or_create_default_hospital()
+        hospitals = [default_hospital]
+    
+    for p_dict in patient_dicts:
+        p_dict['hospital_id'] = random.choice(hospitals).id
     
     imported_count = 0
     for p_dict in patient_dicts:

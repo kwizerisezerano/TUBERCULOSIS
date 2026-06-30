@@ -42,7 +42,8 @@ def import_healthcare_dataset():
         if not hospital_name or pd.isna(hospital_name):
             continue
             
-        hospital_id = f"HOSP-{idx+1:04d}"
+        # Use different ID pattern to avoid conflict with default hospital
+        hospital_id = f"HCD-{idx+1:04d}"
         
         # Check if hospital already exists
         existing = Hospital.query.filter_by(name=str(hospital_name).strip()).first()

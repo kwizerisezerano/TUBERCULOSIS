@@ -89,15 +89,12 @@ const getStatusClass = (status: string) => {
 
 const loadResults = async () => {
   try {
-    const response = await fetch(`${API_BASE}/lab-tests?page=${currentPage.value}&per_page=${perPage}`, {
+    const response = await fetch(`${API_BASE}/lab-tests?page=${currentPage.value}&per_page=${perPage}&status=completed`, {
       headers: { 'Authorization': `Bearer ${authToken.value}` }
     });
     const data = await response.json();
     console.log('Lab tests response:', data);
-    console.log('All lab tests:', data.lab_tests);
-    console.log('Filtering for completed tests...');
-    labResults.value = (data.lab_tests || []).filter(t => t.status === 'completed');
-    console.log('Completed lab tests:', labResults.value);
+    labResults.value = data.lab_tests || [];
     totalResults.value = data.total || 0;
     totalPages.value = data.pages || 1;
   } catch (error) {

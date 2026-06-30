@@ -472,8 +472,6 @@ import InputModal from '~/components/InputModal.vue'
 const { authToken, currentUser, userRole } = useAuth()
 const isAdmin = computed(() => ['admin', 'hospital_admin'].includes(userRole.value))
 const api = useApi()
-const config = useRuntimeConfig()
-const API_BASE = config.public.apiBase
 
 const activeTab = ref('pending')
 const pendingPrescriptions = ref([])
@@ -534,11 +532,7 @@ const formatDate = (dateStr) => {
 
 const fetchPendingPrescriptions = async () => {
   try {
-    const token = authToken.value
-    const response = await fetch(`${API_BASE}/prescriptions`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    const data = await response.json()
+    const data = await api.getPrescriptions()
     const prescriptions = data.prescriptions || []
     
     pendingPrescriptions.value = prescriptions.filter(p => ['pending', 'approved'].includes(p.status))
@@ -555,11 +549,7 @@ const fetchPendingPrescriptions = async () => {
 
 const fetchInventory = async () => {
   try {
-    const token = authToken.value
-    const response = await fetch(`${API_BASE}/pharmacy-inventory`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    const data = await response.json()
+    const data = await api.getPharmacyInventory()
     inventory.value = data.inventory || []
   } catch (error) {
     console.error('Error fetching inventory:', error)
@@ -568,11 +558,7 @@ const fetchInventory = async () => {
 
 const fetchDispensedHistory = async () => {
   try {
-    const token = authToken.value
-    const response = await fetch(`${API_BASE}/prescriptions`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    const data = await response.json()
+    const data = await api.getPrescriptions()
     dispensedPrescriptions.value = (data.prescriptions || []).filter(p => p.status === 'dispensed')
   } catch (error) {
     console.error('Error fetching history:', error)
@@ -581,11 +567,7 @@ const fetchDispensedHistory = async () => {
 
 const checkStock = async (presc) => {
   try {
-    const token = authToken.value
-    const response = await fetch(`${API_BASE}/prescriptions/${presc.id}/check-stock`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    const data = await response.json()
+    const data = await api.checkPrescriptionStock(presc.id)
     presc.stockCheck = data
   } catch (error) {
     console.error('Error checking stock:', error)
@@ -594,19 +576,9 @@ const checkStock = async (presc) => {
 
 const approvePrescription = async (presc) => {
   try {
-    const token = authToken.value
-    const response = await fetch(`${API_BASE}/prescriptions/${presc.id}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ status: 'approved' })
-    })
-    if (response.ok) {
-      presc.status = 'approved'
-      fetchPendingPrescriptions()
-    }
+    await api.approvePrescription(presc.id, { status: 'approved' })
+    presc.status = 'approved'
+    fetchPendingPrescriptions()
   } catch (error) {
     console.error('Error approving prescription:', error)
   }
@@ -633,8 +605,6 @@ const confirmAction = () => {
 
 const dispensePrescription = async (presc) => {
   try {
-    const token = authToken.value
-    
     const guidance = `
 DOSAGE DISTRIBUTION GUIDE:
 ---------------------------
@@ -666,21 +636,11 @@ Instructions:
 const executeDispense = async () => {
   const presc = confirmationData.value.presc
   try {
-    const token = authToken.value
-    const response = await fetch(`${API_BASE}/prescriptions/${presc.id}/dispense`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    
-    if (response.ok) {
-      presc.status = 'dispensed'
-      fetchPendingPrescriptions()
-      fetchDispensedHistory()
-      fetchInventory()
-    } else {
-      const errorData = await response.json()
-      alert(`Dispense failed: ${errorData.error || 'Unknown error'}`)
-    }
+    await api.dispensePrescription(presc.id)
+    presc.status = 'dispensed'
+    fetchPendingPrescriptions()
+    fetchDispensedHistory()
+    fetchInventory()
   } catch (error) {
     console.error('Error dispensing prescription:', error)
     alert(`Network error: ${error.message}`)
@@ -689,8 +649,6 @@ const executeDispense = async () => {
 
 const restockMedicine = async (presc) => {
   try {
-    const token = authToken.value
-    
     // Calculate restock amount (add 100 tablets buffer)
     const restockAmount = (presc.total_tablets || 30) + 100
     
@@ -733,25 +691,13 @@ This will add ${restockAmount} tablets to inventory.
 const executeRestock = async () => {
   const { presc, inventoryItem, restockAmount } = confirmationData.value
   try {
-    const token = authToken.value
-    const response = await fetch(`${API_BASE}/pharmacy-inventory/${inventoryItem.id}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ 
-        stock_quantity: (presc.stockCheck?.stock_quantity || 0) + restockAmount 
-      })
+    await api.updatePharmacyInventory(inventoryItem.id, { 
+      stock_quantity: (presc.stockCheck?.stock_quantity || 0) + restockAmount 
     })
     
-    if (response.ok) {
-      alert(`✓ Restocked ${restockAmount} tablets of ${presc.medication}`)
-      presc.stockCheck.stock_quantity += restockAmount
-      fetchInventory()
-    } else {
-      alert('Failed to restock. Please try again.')
-    }
+    alert(`✓ Restocked ${restockAmount} tablets of ${presc.medication}`)
+    presc.stockCheck.stock_quantity += restockAmount
+    fetchInventory()
   } catch (error) {
     console.error('Error restocking:', error)
     alert(`Network error: ${error.message}`)
@@ -760,8 +706,6 @@ const executeRestock = async () => {
 
 const addDrugToInventory = async (presc) => {
   try {
-    const token = authToken.value
-    
     // Calculate initial stock (add required amount + buffer)
     const initialStock = (presc.total_tablets || 30) + 100
     
@@ -792,8 +736,6 @@ This will create a new inventory entry for this drug with ${initialStock} tablet
 const executeAddDrug = async () => {
   const { presc, initialStock } = confirmationData.value
   try {
-    const token = authToken.value
-    
     // Get hospital ID from current user, or use first available hospital
     let hospitalId = currentUser.value?.hospital_id
     
@@ -809,34 +751,22 @@ const executeAddDrug = async () => {
     }
     
     // Create new inventory entry
-    const response = await fetch(`${API_BASE}/pharmacy-inventory`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        hospital_id: hospitalId,
-        atc_drug_id: presc.atc_drug_id,
-        drug_name: presc.medication, // Send medication name for lookup
-        stock_quantity: initialStock,
-        unit_type: 'tablets',
-        batch_number: 'AUTO-' + Date.now().toString().slice(-6),
-        expiry_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 year from now
-        location: 'Pharmacy',
-        minimum_stock_level: 50
-      })
+    await api.createPharmacyInventory({
+      hospital_id: hospitalId,
+      atc_drug_id: presc.atc_drug_id,
+      drug_name: presc.medication, // Send medication name for lookup
+      stock_quantity: initialStock,
+      unit_type: 'tablets',
+      batch_number: 'AUTO-' + Date.now().toString().slice(-6),
+      expiry_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 year from now
+      location: 'Pharmacy',
+      minimum_stock_level: 50
     })
     
-    if (response.ok) {
-      alert(`✓ Added ${presc.medication} to inventory with ${initialStock} tablets`)
-      fetchInventory()
-      // Re-check stock for this prescription
-      await checkStock(presc)
-    } else {
-      const errorData = await response.json()
-      alert(`Failed to add drug: ${errorData.error || 'Unknown error'}`)
-    }
+    alert(`✓ Added ${presc.medication} to inventory with ${initialStock} tablets`)
+    fetchInventory()
+    // Re-check stock for this prescription
+    await checkStock(presc)
   } catch (error) {
     console.error('Error adding drug to inventory:', error)
     alert(`Network error: ${error.message}`)
@@ -852,21 +782,11 @@ const confirmRejectPrescription = async (reason) => {
   if (!reason) return
   
   try {
-    const token = authToken.value
-    const response = await fetch(`${API_BASE}/prescriptions/${selectedPrescription.value.id}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ status: 'rejected', rejection_reason: reason })
-    })
-    if (response.ok) {
-      selectedPrescription.value.status = 'rejected'
-      showRejectionModal.value = false
-      rejectionReason.value = ''
-      fetchPendingPrescriptions()
-    }
+    await api.approvePrescription(selectedPrescription.value.id, { status: 'rejected', rejection_reason: reason })
+    selectedPrescription.value.status = 'rejected'
+    showRejectionModal.value = false
+    rejectionReason.value = ''
+    fetchPendingPrescriptions()
   } catch (error) {
     console.error('Error rejecting prescription:', error)
   }
@@ -874,18 +794,8 @@ const confirmRejectPrescription = async (reason) => {
 
 const revisitRejectedPrescription = async (presc) => {
   try {
-    const token = authToken.value
-    const response = await fetch(`${API_BASE}/prescriptions/${presc.id}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ status: 'pending', rejection_reason: null })
-    })
-    if (response.ok) {
-      fetchPendingPrescriptions()
-    }
+    await api.approvePrescription(presc.id, { status: 'pending', rejection_reason: null })
+    fetchPendingPrescriptions()
   } catch (error) {
     console.error('Error revisiting prescription:', error)
   }
@@ -900,21 +810,11 @@ const confirmEditInventory = async (value) => {
   if (!editingInventoryItem.value) return
   
   try {
-    const token = authToken.value
-    const response = await fetch(`${API_BASE}/pharmacy-inventory/${editingInventoryItem.value.id}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ stock_quantity: parseInt(value) })
-    })
-    if (response.ok) {
-      editingInventoryItem.value.stock_quantity = parseInt(value)
-      showEditInventoryModal.value = false
-      editInventoryQuantity.value = ''
-      fetchInventory()
-    }
+    await api.updatePharmacyInventory(editingInventoryItem.value.id, { stock_quantity: parseInt(value) })
+    editingInventoryItem.value.stock_quantity = parseInt(value)
+    showEditInventoryModal.value = false
+    editInventoryQuantity.value = ''
+    fetchInventory()
   } catch (error) {
     console.error('Error updating inventory:', error)
   }
@@ -922,8 +822,6 @@ const confirmEditInventory = async (value) => {
 
 const quickAddStock = async (item) => {
   try {
-    const token = authToken.value
-    
     // Calculate restock amount (add 100 tablets or bring to minimum + 50)
     const restockAmount = Math.max(100, (item.minimum_stock_level || 10) + 50)
     const newStock = (item.stock_quantity || 0) + restockAmount
@@ -956,25 +854,13 @@ This will add ${restockAmount} ${item.unit_type || 'tablets'} to inventory.
 }
 
 const executeQuickAddStock = async () => {
-  const { item, restockAmount, newStock } = confirmationData.value
+  const { item, newStock } = confirmationData.value
   try {
-    const token = authToken.value
-    const response = await fetch(`${API_BASE}/pharmacy-inventory/${item.id}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ stock_quantity: newStock })
-    })
+    await api.updatePharmacyInventory(item.id, { stock_quantity: newStock })
     
-    if (response.ok) {
-      alert(`✓ Added ${restockAmount} ${item.unit_type || 'tablets'} of ${item.atc_drug?.drug_name || 'drug'}`)
-      item.stock_quantity = newStock
-      fetchInventory()
-    } else {
-      alert('Failed to add stock. Please try again.')
-    }
+    alert(`✓ Added ${confirmationData.value.restockAmount} ${item.unit_type || 'tablets'} of ${item.atc_drug?.drug_name || 'drug'}`)
+    item.stock_quantity = newStock
+    fetchInventory()
   } catch (error) {
     console.error('Error adding stock:', error)
     alert(`Network error: ${error.message}`)
@@ -983,29 +869,19 @@ const executeQuickAddStock = async () => {
 
 const addInventory = async () => {
   try {
-    const token = authToken.value
-    const response = await fetch(`${API_BASE}/pharmacy-inventory`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(newInventoryForm.value)
-    })
-    if (response.ok) {
-      showAddInventoryModal.value = false
-      newInventoryForm.value = {
-        hospital_id: null,
-        atc_drug_id: null,
-        stock_quantity: 0,
-        unit_type: 'tablets',
-        batch_number: '',
-        expiry_date: '',
-        location: '',
-        minimum_stock_level: 10
-      }
-      fetchInventory()
+    await api.createPharmacyInventory(newInventoryForm.value)
+    showAddInventoryModal.value = false
+    newInventoryForm.value = {
+      hospital_id: null,
+      atc_drug_id: null,
+      stock_quantity: 0,
+      unit_type: 'tablets',
+      batch_number: '',
+      expiry_date: '',
+      location: '',
+      minimum_stock_level: 10
     }
+    fetchInventory()
   } catch (error) {
     console.error('Error adding inventory:', error)
   }
@@ -1013,11 +889,7 @@ const addInventory = async () => {
 
 const fetchHospitals = async () => {
   try {
-    const token = authToken.value
-    const response = await fetch(`${API_BASE}/hospitals`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    const data = await response.json()
+    const data = await api.getHospitals()
     hospitals.value = data.hospitals || []
   } catch (error) {
     console.error('Error fetching hospitals:', error)
@@ -1026,11 +898,7 @@ const fetchHospitals = async () => {
 
 const fetchATCDrugs = async () => {
   try {
-    const token = authToken.value
-    const response = await fetch(`${API_BASE}/atc-drugs`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    const data = await response.json()
+    const data = await api.getATCDrugs()
     atcDrugs.value = data.atc_drugs || []
   } catch (error) {
     console.error('Error fetching ATC drugs:', error)

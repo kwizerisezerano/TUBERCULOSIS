@@ -36,9 +36,13 @@ def decrypt_data(encrypted_data):
     """Decrypt sensitive data"""
     if not encrypted_data:
         return None
-    encrypted_bytes = encrypted_data.encode('utf-8')
-    decrypted = cipher_suite.decrypt(encrypted_bytes)
-    return decrypted.decode('utf-8')
+    try:
+        encrypted_bytes = encrypted_data.encode('utf-8')
+        decrypted = cipher_suite.decrypt(encrypted_bytes)
+        return decrypted.decode('utf-8')
+    except Exception:
+        # If decryption fails (data is plaintext or invalid), return it as-is
+        return encrypted_data
 
 def hash_password(password):
     """Hash a password using bcrypt"""
