@@ -3423,9 +3423,31 @@ def patients():
     if request.method == 'POST':
         from flask_jwt_extended import get_jwt_identity
         user_id = get_jwt_identity()
+        user = User.query.get(user_id)
         data = request.get_json()
+        
+        # Get or validate hospital_id
+        hospital_id = data.get('hospital_id')
+        if not hospital_id:
+            # Use user's hospital if available
+            if user.hospital_id:
+                hospital_id = user.hospital_id
+            else:
+                # Get first available hospital as fallback
+                hospital = Hospital.query.first()
+                if hospital:
+                    hospital_id = hospital.id
+                else:
+                    return jsonify({'msg': 'No hospital found. Please create a hospital first.'}), 400
+        
+        # Validate hospital exists
+        hospital = Hospital.query.get(hospital_id)
+        if not hospital:
+            return jsonify({'msg': 'Hospital not found'}), 400
+        
         patient = Patient(
             patient_id=data.get('patient_id'),
+            hospital_id=hospital_id,
             first_name=data.get('first_name'),
             last_name=data.get('last_name'),
             age=data.get('age'),

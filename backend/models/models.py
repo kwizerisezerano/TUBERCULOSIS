@@ -8,7 +8,7 @@ class Hospital(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     hospital_id = db.Column(db.String(100), unique=True, nullable=False)
     name = db.Column(db.String(200), nullable=False)
-    facility_type = db.Column(db.String(50))  # Hospital, Health Center, Laboratory, Pharmacy
+    facility_type = db.Column(db.String(50), default='Hospital')  # Hospital, Health Center, Laboratory, Pharmacy
     address = db.Column(db.Text)
     city = db.Column(db.String(100))
     region = db.Column(db.String(100))
@@ -17,6 +17,23 @@ class Hospital(db.Model):
     email = db.Column(db.String(200))
     bed_capacity = db.Column(db.Integer)
     icu_beds = db.Column(db.Integer)
+    
+    # Healthcare specific
+    has_emergency = db.Column(db.Boolean, default=False)
+    has_surgery = db.Column(db.Boolean, default=False)
+    has_maternity = db.Column(db.Boolean, default=False)
+    has_pediatrics = db.Column(db.Boolean, default=False)
+    
+    # Laboratory specific
+    lab_capacity = db.Column(db.Integer)  # Tests per day
+    has_genexpert = db.Column(db.Boolean, default=False)
+    has_culture = db.Column(db.Boolean, default=False)
+    has_xray = db.Column(db.Boolean, default=False)
+    
+    # Pharmacy specific
+    pharmacy_capacity = db.Column(db.Integer)  # Prescriptions per day
+    has_cold_storage = db.Column(db.Boolean, default=False)
+    
     source_dataset = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
@@ -35,6 +52,16 @@ class Hospital(db.Model):
             "email": self.email,
             "bed_capacity": self.bed_capacity,
             "icu_beds": self.icu_beds,
+            "has_emergency": self.has_emergency,
+            "has_surgery": self.has_surgery,
+            "has_maternity": self.has_maternity,
+            "has_pediatrics": self.has_pediatrics,
+            "lab_capacity": self.lab_capacity,
+            "has_genexpert": self.has_genexpert,
+            "has_culture": self.has_culture,
+            "has_xray": self.has_xray,
+            "pharmacy_capacity": self.pharmacy_capacity,
+            "has_cold_storage": self.has_cold_storage,
             "source_dataset": self.source_dataset,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None

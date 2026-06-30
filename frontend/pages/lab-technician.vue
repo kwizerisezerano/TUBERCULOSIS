@@ -272,12 +272,15 @@ const resultForm = ref({
   notes: ''
 })
 
-const stats = computed(() => ({
-  pending: pendingTests.value.length,
-  completed: completedTests.value.filter(t => isToday(t.completed_at)).length,
-  inProgress: inProgressTests.value.length,
-  total: pendingTests.value.length + inProgressTests.value.length + completedTests.value.length
-}))
+const stats = computed(() => {
+  const completedToday = completedTests.value.filter(t => isToday(t.completed_at)).length
+  return {
+    pending: pendingTests.value.length,
+    completed: completedToday,
+    inProgress: inProgressTests.value.length,
+    total: pendingTests.value.length + inProgressTests.value.length + completedToday
+  }
+})
 
 const formatDate = (dateStr) => {
   if (!dateStr) return 'N/A'

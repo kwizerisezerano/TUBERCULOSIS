@@ -50,6 +50,7 @@ from import_new_datasets import import_healthcare_dataset, import_medicine_datas
 from models.models import Alert, Diagnosis, ExternalDatasetRow, Patient, Treatment, User, LabTest, Prescription, AuditLog, ATCDrug, DetailedLabResult, AntibioticResistance, Hospital, PharmacyInventory
 from models.train_model import train_models_from_database
 from seed_users import seed_all
+from seed_facilities_and_inventory import seed_facilities, seed_pharmacy_inventory
 
 
 MANAGED_MODELS = [Hospital, User, Patient, Diagnosis, Treatment, Alert, ExternalDatasetRow, LabTest, Prescription, AuditLog, ATCDrug, DetailedLabResult, AntibioticResistance, PharmacyInventory]
@@ -177,6 +178,12 @@ def bootstrap(import_data_enabled=True, seed_enabled=True, train_enabled=True, r
         seed_result = seed_all()
         print(f"      Users in database: {seed_result['users']['total']} (added {seed_result['users']['added']}).")
         print(f"      Sample data added: {seed_result['sample_data']}")
+        
+        print("[3.5/4] Seeding healthcare centers, laboratories, pharmacies...")
+        with app.app_context():
+            seed_facilities()
+            seed_pharmacy_inventory()
+        print("      Facilities and inventory seeded.")
     else:
         print("[3/4] Skipping user/sample data seeding.")
 

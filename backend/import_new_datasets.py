@@ -281,6 +281,10 @@ def import_amr_dataset():
     """Import Kaggle_AMR_Dataset_v1.0.csv for enhanced antibiogram"""
     csv_path = os.path.join(os.path.dirname(__file__), '..', 'NEWDATASETS', 'Kaggle_AMR_Dataset_v1.0 (1).csv')
     
+    # Try alternate path if not found
+    if not os.path.exists(csv_path):
+        csv_path = os.path.join(os.path.dirname(__file__), '..', 'NEWDATASETS', 'Kaggle_AMR_Dataset_v1.0.csv')
+    
     if not os.path.exists(csv_path):
         print(f"❌ Kaggle_AMR_Dataset_v1.0.csv not found at {csv_path}")
         return

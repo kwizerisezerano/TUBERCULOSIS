@@ -20,7 +20,7 @@
       </div>
 
       <!-- Stats Cards -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
           <p class="text-gray-500 dark:text-gray-400 text-sm">Total Facilities</p>
           <p class="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">{{ stats.total }}</p>
@@ -36,6 +36,10 @@
         <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
           <p class="text-gray-500 dark:text-gray-400 text-sm">Laboratories</p>
           <p class="text-3xl font-bold text-purple-600 dark:text-purple-400 mt-1">{{ stats.laboratories }}</p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <p class="text-gray-500 dark:text-gray-400 text-sm">Pharmacies</p>
+          <p class="text-3xl font-bold text-orange-600 dark:text-orange-400 mt-1">{{ stats.pharmacies }}</p>
         </div>
       </div>
 
@@ -284,7 +288,8 @@ const stats = computed(() => {
     total: hospitals.value.length,
     hospitals: hospitals.value.filter(h => h.facility_type === 'Hospital').length,
     health_centers: hospitals.value.filter(h => h.facility_type === 'Health Center').length,
-    laboratories: hospitals.value.filter(h => h.facility_type === 'Laboratory').length
+    laboratories: hospitals.value.filter(h => h.facility_type === 'Laboratory').length,
+    pharmacies: hospitals.value.filter(h => h.facility_type === 'Pharmacy').length
   }
 })
 

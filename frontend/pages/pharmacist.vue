@@ -484,14 +484,19 @@ const dispensePrescription = async (presc) => {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     })
+    
     if (response.ok) {
       presc.status = 'dispensed'
       fetchPendingPrescriptions()
       fetchDispensedHistory()
       fetchInventory()
+    } else {
+      const errorData = await response.json()
+      alert(`Dispense failed: ${errorData.error || 'Unknown error'}`)
     }
   } catch (error) {
     console.error('Error dispensing prescription:', error)
+    alert(`Network error: ${error.message}`)
   }
 }
 
