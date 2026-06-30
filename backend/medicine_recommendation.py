@@ -291,7 +291,19 @@ def get_prescription_recommendation(patient_id, infection_type=None):
         elif patient.hiv == 'Yes':
             infection_type = 'tb_hiv'
         else:
-            infection_type = 'latent'
+            # No positive tests - don't default to latent if risk is very low
+            if patient.risk_score and patient.risk_score >= 50:
+                infection_type = 'latent'
+            else:
+                infection_type = None  # No evidence of TB
+    
+    # If no infection type determined, return no medication needed
+    if not infection_type:
+        return {
+            'recommendation': 'No medication needed',
+            'risk_score': patient.risk_score or 0,
+            'reason': 'No evidence of TB infection'
+        }
     
     # Get recommended regimen
     recommendation = get_recommended_medicines(
@@ -301,11 +313,20 @@ def get_prescription_recommendation(patient_id, infection_type=None):
         patient.hiv
     )
     
+    # Don't recommend medication if risk score is too low
     if not recommendation:
         return {
             'recommendation': 'No medication needed',
             'risk_score': patient.risk_score,
             'reason': 'Low TB risk score'
+        }
+    
+    # Additional check: if risk score is very low (<30), don't recommend medication even if regimen exists
+    if patient.risk_score and patient.risk_score < 30:
+        return {
+            'recommendation': 'No medication needed',
+            'risk_score': patient.risk_score,
+            'reason': 'Very low TB risk - observation recommended'
         }
     
     # Adjust regimen based on previous resistance

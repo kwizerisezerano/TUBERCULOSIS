@@ -4938,22 +4938,23 @@ def diagnose():
     # Get detailed prescription recommendation with drug dosages
     from medicine_recommendation import get_prescription_recommendation
     
-    # Determine infection type for prescription recommendation
+    # Determine infection type for prescription recommendation (only if risk is sufficient)
     infection_type = None
-    if 'pulmonary' in tb_analysis['who_category'].lower():
-        infection_type = 'pulmonary_positive'
-    elif 'extrapulmonary' in tb_analysis['who_category'].lower():
-        infection_type = 'extrapulmonary'
-    elif 'latent' in tb_analysis['who_category'].lower():
-        infection_type = 'latent'
-    elif patient.hiv == 'Yes':
-        infection_type = 'tb_hiv'
+    if patient.risk_score and patient.risk_score >= 50:  # Only recommend if risk is at least moderate
+        if 'pulmonary' in tb_analysis['who_category'].lower():
+            infection_type = 'pulmonary_positive'
+        elif 'extrapulmonary' in tb_analysis['who_category'].lower():
+            infection_type = 'extrapulmonary'
+        elif 'latent' in tb_analysis['who_category'].lower():
+            infection_type = 'latent'
+        elif patient.hiv == 'Yes':
+            infection_type = 'tb_hiv'
     
     prescription_recommendation = get_prescription_recommendation(patient.id, infection_type)
     
-    # Extract detailed medicines if available
+    # Extract detailed medicines if available (only if TB is actually detected)
     detailed_medicines = []
-    if prescription_recommendation and 'medicines' in prescription_recommendation:
+    if prescription_recommendation and 'medicines' in prescription_recommendation and prescription_recommendation.get('recommendation') != 'No medication needed':
         detailed_medicines = prescription_recommendation['medicines']
     resistance_profile = determine_resistance_profile(
         patient.drug_resistance or 'No',
@@ -5093,6 +5094,7 @@ def diagnose():
         "decision_basis": treatment_plan["decision_basis"],
         "treatment_options": treatment_plan["options"],
         "medicines": detailed_medicines if detailed_medicines else [],
+        "recommendation": prescription_recommendation.get('recommendation') if prescription_recommendation else 'No medication needed'
     }
 
     if 'CONFIRMED' in tb_analysis['who_category'] or 'URGENT' in urgency or 'CRITICAL' in urgency:

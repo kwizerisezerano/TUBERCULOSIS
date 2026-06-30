@@ -623,8 +623,8 @@
               </div>
             </div>
 
-            <!-- Detailed Dosage Breakdown - Per Drug -->
-            <div class="p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-300 dark:border-green-700 mb-4">
+            <!-- Detailed Dosage Breakdown - Per Drug (Only show if TB detected) -->
+            <div v-if="diagnosisResult.treatment_recommendation?.medicines && diagnosisResult.treatment_recommendation.medicines.length > 0 && diagnosisResult.treatment_recommendation?.recommendation !== 'No medication needed'" class="p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-300 dark:border-green-700 mb-4">
               <div class="flex items-center gap-2 mb-4">
                 <div class="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center">
                   <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
