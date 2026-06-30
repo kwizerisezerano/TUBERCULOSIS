@@ -1,8 +1,6 @@
 
 import type { User } from './useAuth';
 
-const API_BASE = 'http://127.0.0.1:5000/api';
-
 export interface Patient {
   id: number;
   patient_id: string;
@@ -57,6 +55,8 @@ export interface AntibioticResistance {
 
 export const useApi = () => {
   const { authToken } = useAuth();
+  const config = useRuntimeConfig();
+  const API_BASE = config.public.apiBase;
 
   const request = async (url: string, options: any = {}) => {
     return $fetch(`${API_BASE}${url}`, {
@@ -91,6 +91,14 @@ export const useApi = () => {
     },
     markAlertRead: (id: number) => request(`/alerts/${id}/read`, { method: 'PUT' }),
     getDashboardCharts: () => request('/dashboard/charts'),
+    // Pharmacy inventory methods
+    getPharmacyInventory: () => request('/pharmacy-inventory'),
+    createPharmacyInventory: (data: any) => request('/pharmacy-inventory', { method: 'POST', body: data }),
+    updatePharmacyInventory: (id: number, data: any) => request(`/pharmacy-inventory/${id}`, { method: 'PUT', body: data }),
+    checkPrescriptionStock: (id: number) => request(`/prescriptions/${id}/check-stock`),
+    approvePrescription: (id: number, data: any) => request(`/prescriptions/${id}`, { method: 'PUT', body: data }),
+    dispensePrescription: (id: number) => request(`/prescriptions/${id}/dispense`, { method: 'POST' }),
+    getHospitals: () => request('/hospitals'),
   };
 };
 

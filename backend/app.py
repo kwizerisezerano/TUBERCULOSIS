@@ -3913,12 +3913,22 @@ def prescriptions():
             return jsonify({"msg": I18N["ACCESS_DENIED"][lang]}), 403
         
         data = request.get_json()
+        atc_drug_id = data.get('atc_drug_id')
+        
+        # If atc_drug_id not provided, try to find drug by medication name
+        if not atc_drug_id and data.get('medication'):
+            atc_drug = ATCDrug.query.filter(
+                ATCDrug.drug_name.ilike(f"%{data['medication']}%")
+            ).first()
+            if atc_drug:
+                atc_drug_id = atc_drug.id
+        
         presc = Prescription(
             patient_id=data.get('patient_id'),
             diagnosis_id=data.get('diagnosis_id'),
             created_by=user_id,
             medication=data.get('medication'),
-            atc_drug_id=data.get('atc_drug_id'),
+            atc_drug_id=atc_drug_id,
             dosage=data.get('dosage'),
             dosage_mg=data.get('dosage_mg'),
             frequency=data.get('frequency', '1 time daily'),
@@ -4520,9 +4530,22 @@ def pharmacy_inventory():
     
     if request.method == 'POST':
         data = request.get_json()
+        atc_drug_id = data.get('atc_drug_id')
+        
+        # If we have a drug name but no atc_drug_id, try to find the drug by name
+        if not atc_drug_id and data.get('drug_name'):
+            drug = ATCDrug.query.filter(
+                ATCDrug.drug_name.ilike(f"%{data['drug_name']}%")
+            ).first()
+            if drug:
+                atc_drug_id = drug.id
+        
+        if not atc_drug_id:
+            return jsonify({'error': 'Drug not found. Please specify a valid drug name or atc_drug_id.'}), 400
+            
         inventory = PharmacyInventory(
             hospital_id=data.get('hospital_id'),
-            atc_drug_id=data.get('atc_drug_id'),
+            atc_drug_id=atc_drug_id,
             stock_quantity=data.get('stock_quantity', 0),
             unit_type=data.get('unit_type', 'tablets'),
             batch_number=data.get('batch_number'),
@@ -4538,7 +4561,7 @@ def pharmacy_inventory():
             action='create_inventory',
             entity_type='pharmacy_inventory',
             entity_id=inventory.id,
-            details=f"Added inventory for drug ID {data.get('atc_drug_id')}"
+            details=f"Added inventory for drug ID {atc_drug_id}"
         )
         db.session.add(audit)
         db.session.commit()
@@ -4961,7 +4984,7 @@ def diagnose():
     ), lang=lang)
 
     # Get detailed prescription recommendation with drug dosages
-    from medicine_recommendation import get_prescription_recommendation
+    from medicine_recommendation import get_prescription_recommendation, get_recommended_medicines
     
     # Determine infection type for prescription recommendation (only if risk is sufficient)
     infection_type = None
@@ -5080,84 +5103,98 @@ def diagnose():
     print(f"DEBUG: TB Detected (based on ML) = {tb_detected}")
     
     if tb_detected:
-        # Automatically create ML-recommended prescription
-        atc_drug = ATCDrug.query.filter(
-            ATCDrug.drug_name.ilike("%isoniazid%") | ATCDrug.drug_name.ilike("%rifampicin%")
-        ).first()
-
-        # Parse dosage from treatment record to calculate tablets
-        dosage_mg = 300  # Default for isoniazid/rifampicin
-        frequency = "once daily"
-        duration_days = 180  # Default 6 months for TB treatment
+        # Create prescriptions for each drug in the TB regimen
+        drugs_string = treatment_plan["selected_option"]["drugs"]
         
-        # Try to extract dosage from treatment record
-        if treatment_record and treatment_record.dosage:
-            dosage_str = str(treatment_record.dosage).lower()
-            # Extract mg value if present
-            import re
-            mg_match = re.search(r'(\d+)\s*mg', dosage_str)
-            if mg_match:
-                dosage_mg = int(mg_match.group(1))
-            
-            # Extract frequency
-            if 'twice' in dosage_str or '2 times' in dosage_str or 'bid' in dosage_str:
-                frequency = "twice daily"
-            elif '3 times' in dosage_str or 'tid' in dosage_str:
-                frequency = "3 times daily"
-            elif 'once' in dosage_str or '1 time' in dosage_str or 'qd' in dosage_str:
-                frequency = "once daily"
+        # Parse drugs from the string (comma-separated)
+        import re
+        drug_names = [d.strip() for d in drugs_string.split(',') if d.strip()]
         
-        # Extract duration from treatment record
-        if treatment_record and treatment_record.duration:
-            duration_str = str(treatment_record.duration).lower()
-            months_match = re.search(r'(\d+)\s*months?', duration_str)
-            if months_match:
-                duration_days = int(months_match.group(1)) * 30
-            else:
-                days_match = re.search(r'(\d+)\s*days?', duration_str)
-                if days_match:
-                    duration_days = int(days_match.group(1))
-        
-        # Calculate doses per day
-        freq_str = frequency.lower()
-        if 'once' in freq_str or '1 time' in freq_str:
-            doses_per_day = 1
-        elif 'twice' in freq_str or '2 times' in freq_str:
-            doses_per_day = 2
-        elif '3 times' in freq_str:
-            doses_per_day = 3
-        else:
-            doses_per_day = 1
-        
-        # Calculate tablets
-        tablets_per_dose = 1  # Default
-        if atc_drug and atc_drug.ddd:
-            tablet_strength_mg = atc_drug.ddd * 1000
-            tablets_per_dose = int(dosage_mg / tablet_strength_mg) if tablet_strength_mg > 0 else 1
-        else:
-            tablets_per_dose = int(dosage_mg / 500) if dosage_mg >= 500 else 1
-        
-        total_tablets = tablets_per_dose * doses_per_day * duration_days
-
-        prescription = Prescription(
-            patient_id=patient.id,
-            diagnosis_id=diagnosis_record.id,
-            created_by=user.id,
-            medication=treatment_plan["selected_option"]["drugs"],
-            atc_drug_id=atc_drug.id if atc_drug else None,
-            dosage=treatment_record.dosage if treatment_record else dosage_mg,
-            duration=treatment_record.duration if treatment_record else f"{duration_days} days",
-            risk_level=symptom_analysis["risk_level"],
-            ml_recommended=True,
-            status="pending",
-            dosage_mg=dosage_mg,
-            frequency=frequency,
-            duration_days=duration_days,
-            tablets_per_dose=tablets_per_dose,
-            total_tablets=total_tablets
+        # Get regimen info for dosages
+        regimen_info = get_recommended_medicines(
+            infection_type=None,
+            risk_score=patient.risk_score,
+            drug_resistance=symptom_analysis.get('drug_resistance'),
+            hiv_status=patient.hiv
         )
-        db.session.add(prescription)
-        print(f"DEBUG: Prescription created for patient {patient.patient_id} with {total_tablets} total tablets")
+        
+        # Create a mapping of drug name to dosage info
+        drug_dosage_map = {}
+        if regimen_info and 'medicines' in regimen_info:
+            for med in regimen_info['medicines']:
+                drug_dosage_map[med['name'].lower()] = med
+        
+        print(f"DEBUG: Creating prescriptions for drugs: {drug_names}")
+        print(f"DEBUG: Drug dosage map: {drug_dosage_map}")
+        
+        for drug_name in drug_names:
+            # Find ATC drug for this medication
+            atc_drug = ATCDrug.query.filter(
+                ATCDrug.drug_name.ilike(f"%{drug_name}%")
+            ).first()
+            
+            if not atc_drug:
+                print(f"DEBUG: ATC drug not found for {drug_name}")
+                continue
+            
+            # Get dosage info from regimen or use defaults
+            drug_name_lower = drug_name.lower()
+            dosage_info = drug_dosage_map.get(drug_name_lower, {})
+            
+            dosage_mg = dosage_info.get('dosage_mg', 300)
+            frequency = dosage_info.get('frequency', 'daily')
+            tablets_per_dose = dosage_info.get('tablets_per_dose', 1)
+            duration_days = dosage_info.get('duration_days', 60)
+            
+            # If no duration in dosage_info, extract from treatment record
+            if 'duration_days' not in dosage_info and treatment_record:
+                if treatment_record.duration:
+                    duration_str = str(treatment_record.duration).lower()
+                    months_match = re.search(r'(\d+)\s*months?', duration_str)
+                    if months_match:
+                        duration_days = int(months_match.group(1)) * 30
+                    else:
+                        days_match = re.search(r'(\d+)\s*days?', duration_str)
+                        if days_match:
+                            duration_days = int(days_match.group(1))
+            
+            # Calculate doses per day
+            freq_str = frequency.lower()
+            if 'once' in freq_str or '1 time' in freq_str:
+                doses_per_day = 1
+            elif 'twice' in freq_str or '2 times' in freq_str:
+                doses_per_day = 2
+            elif '3 times' in freq_str:
+                doses_per_day = 3
+            else:
+                doses_per_day = 1
+            
+            # Recalculate tablets_per_dose if not provided
+            if tablets_per_dose == 1 and atc_drug.ddd:
+                tablet_strength_mg = atc_drug.ddd * 1000
+                tablets_per_dose = int(dosage_mg / tablet_strength_mg) if tablet_strength_mg > 0 else 1
+            
+            total_tablets = tablets_per_dose * doses_per_day * duration_days
+            
+            prescription = Prescription(
+                patient_id=patient.id,
+                diagnosis_id=diagnosis_record.id,
+                created_by=user.id,
+                medication=drug_name,
+                atc_drug_id=atc_drug.id,
+                dosage=f"{dosage_mg}mg {frequency}",
+                duration=f"{duration_days} days",
+                risk_level=symptom_analysis["risk_level"],
+                ml_recommended=True,
+                status="pending",
+                dosage_mg=dosage_mg,
+                frequency=frequency,
+                duration_days=duration_days,
+                tablets_per_dose=tablets_per_dose,
+                total_tablets=total_tablets
+            )
+            db.session.add(prescription)
+            print(f"DEBUG: Prescription created for {drug_name} with {total_tablets} total tablets, atc_drug_id={atc_drug.id}")
     else:
         print(f"DEBUG: No prescription created - ML prediction: {ml_prediction.get('tb_status', {}).get('prediction') if ml_prediction else 'N/A'}, Risk: {patient.risk_score}")
 

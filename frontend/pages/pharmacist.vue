@@ -399,9 +399,13 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useAuth } from '~/composables/useAuth'
+import { useApi } from '~/composables/useApi'
 import InputModal from '~/components/InputModal.vue'
 
 const { authToken, currentUser } = useAuth()
+const api = useApi()
+const config = useRuntimeConfig()
+const API_BASE = config.public.apiBase
 
 const activeTab = ref('pending')
 const pendingPrescriptions = ref([])
@@ -429,8 +433,6 @@ const newInventoryForm = ref({
   location: '',
   minimum_stock_level: 10
 })
-
-const API_BASE = 'http://127.0.0.1:5000/api'
 
 const stats = computed(() => ({
   pending: pendingPrescriptions.value.filter(p => p.status === 'pending').length,
@@ -483,7 +485,7 @@ const fetchPendingPrescriptions = async () => {
 const fetchInventory = async () => {
   try {
     const token = authToken.value
-    const response = await fetch('http://127.0.0.1:5000/api/pharmacy-inventory', {
+    const response = await fetch(`${API_BASE}/pharmacy-inventory`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     const data = await response.json()
@@ -496,7 +498,7 @@ const fetchInventory = async () => {
 const fetchDispensedHistory = async () => {
   try {
     const token = authToken.value
-    const response = await fetch('http://127.0.0.1:5000/api/prescriptions', {
+    const response = await fetch(`${API_BASE}/prescriptions`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     const data = await response.json()
@@ -509,7 +511,7 @@ const fetchDispensedHistory = async () => {
 const checkStock = async (presc) => {
   try {
     const token = authToken.value
-    const response = await fetch(`http://127.0.0.1:5000/api/prescriptions/${presc.id}/check-stock`, {
+    const response = await fetch(`${API_BASE}/prescriptions/${presc.id}/check-stock`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     const data = await response.json()
@@ -522,7 +524,7 @@ const checkStock = async (presc) => {
 const approvePrescription = async (presc) => {
   try {
     const token = authToken.value
-    const response = await fetch(`http://127.0.0.1:5000/api/prescriptions/${presc.id}`, {
+    const response = await fetch(`${API_BASE}/prescriptions/${presc.id}`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -594,7 +596,7 @@ const executeDispense = async () => {
   const presc = confirmationData.value.presc
   try {
     const token = authToken.value
-    const response = await fetch(`http://127.0.0.1:5000/api/prescriptions/${presc.id}/dispense`, {
+    const response = await fetch(`${API_BASE}/prescriptions/${presc.id}/dispense`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     })
@@ -721,12 +723,18 @@ const executeAddDrug = async () => {
   try {
     const token = authToken.value
     
-    // Get hospital ID from current user
-    const hospitalId = currentUser.value?.hospital_id
+    // Get hospital ID from current user, or use first available hospital
+    let hospitalId = currentUser.value?.hospital_id
     
     if (!hospitalId) {
-      alert('Unable to determine hospital. Please ensure you are assigned to a hospital.')
-      return
+      // If user doesn't have hospital assigned, use first available hospital
+      if (hospitals.value && hospitals.value.length > 0) {
+        hospitalId = hospitals.value[0].id
+        console.log(`Using first available hospital: ${hospitals.value[0].name} (ID: ${hospitalId})`)
+      } else {
+        alert('No hospitals available. Please ensure hospitals are configured in the system.')
+        return
+      }
     }
     
     // Create new inventory entry
@@ -739,6 +747,7 @@ const executeAddDrug = async () => {
       body: JSON.stringify({
         hospital_id: hospitalId,
         atc_drug_id: presc.atc_drug_id,
+        drug_name: presc.medication, // Send medication name for lookup
         stock_quantity: initialStock,
         unit_type: 'tablets',
         batch_number: 'AUTO-' + Date.now().toString().slice(-6),
