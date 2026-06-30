@@ -282,24 +282,9 @@
             </div>
           </div>
 
-          <!-- Current Form Values Display -->
-          <div class="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
-            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Current Lab Result Values</h4>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-              <div>
-                <p class="text-gray-500 dark:text-gray-400">Sputum Smear: <span :class="['font-medium', form.sputum_smear_test === 'Positive' ? 'text-red-600 dark:text-red-400' : form.sputum_smear_test === 'Negative' ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-gray-300']">{{ form.sputum_smear_test }}</span></p>
-              </div>
-              <div>
-                <p class="text-gray-500 dark:text-gray-400">GeneXpert: <span :class="['font-medium', form.genexpert_test === 'Positive' ? 'text-red-600 dark:text-red-400' : form.genexpert_test === 'Negative' ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-gray-300']">{{ form.genexpert_test }}</span></p>
-              </div>
-              <div>
-                <p class="text-gray-500 dark:text-gray-400">Chest X-ray: <span :class="['font-medium', form.chest_xray === 'Abnormal' ? 'text-red-600 dark:text-red-400' : form.chest_xray === 'Normal' ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-gray-300']">{{ form.chest_xray }}</span></p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Completed Lab Tests from Technicians -->
+          <!-- Patient's Lab Results from Database -->
           <div v-if="patientLabTests.length > 0" class="space-y-4">
+            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Patient's Lab Results</h4>
             <div v-for="test in patientLabTests" :key="test.id" class="p-4 rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
               <div class="flex justify-between items-start mb-2">
                 <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ test.test_type }}</h4>
@@ -326,8 +311,20 @@
             <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
-            <p>No completed lab tests found for this patient</p>
+            <p>No lab results found for this patient</p>
             <p class="text-xs mt-1">Request a new lab test below</p>
+          </div>
+
+          <!-- Drug Resistance Info (if available) -->
+          <div v-if="form.drug_resistance" class="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
+            <div class="flex items-center gap-2 mb-2">
+              <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+              <h4 class="text-sm font-semibold text-amber-800 dark:text-amber-300">Drug Resistance Information</h4>
+            </div>
+            <p class="text-sm text-amber-700 dark:text-amber-400">{{ form.drug_resistance }}</p>
+            <p class="text-xs text-amber-600 dark:text-amber-500 mt-1">This information will be used to adjust the treatment regimen.</p>
           </div>
 
           <!-- Request New Lab Test -->
@@ -626,7 +623,7 @@
               </div>
             </div>
 
-            <!-- Detailed Dosage Breakdown -->
+            <!-- Detailed Dosage Breakdown - Per Drug -->
             <div class="p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-300 dark:border-green-700 mb-4">
               <div class="flex items-center gap-2 mb-4">
                 <div class="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center">
@@ -634,29 +631,66 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                   </svg>
                 </div>
-                <p class="text-base font-bold text-green-800 dark:text-green-300">Dosage Breakdown</p>
+                <p class="text-base font-bold text-green-800 dark:text-green-300">Dosage Breakdown by Drug</p>
               </div>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700">
-                  <p class="text-xs text-gray-500 dark:text-gray-400 uppercase">Dosage</p>
-                  <p class="text-lg font-bold text-gray-900 dark:text-white">{{ calculatedDosage.dosageMg }} <span class="text-sm font-normal">mg</span></p>
-                </div>
-                <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700">
-                  <p class="text-xs text-gray-500 dark:text-gray-400 uppercase">Frequency</p>
-                  <p class="text-lg font-bold text-gray-900 dark:text-white">{{ calculatedDosage.timesPerDay }} <span class="text-sm font-normal">times/day</span></p>
-                </div>
-                <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700">
-                  <p class="text-xs text-gray-500 dark:text-gray-400 uppercase">Duration</p>
-                  <p class="text-lg font-bold text-gray-900 dark:text-white">{{ calculatedDosage.durationDays }} <span class="text-sm font-normal">days</span></p>
-                </div>
-                <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700">
-                  <p class="text-xs text-gray-500 dark:text-gray-400 uppercase">Total Tablets</p>
-                  <p class="text-lg font-bold text-green-600 dark:text-green-400">{{ calculatedDosage.totalTablets }}</p>
+              
+              <!-- Display individual drugs if available -->
+              <div v-if="diagnosisResult.treatment_recommendation?.medicines && diagnosisResult.treatment_recommendation.medicines.length > 0" class="space-y-3">
+                <div v-for="(med, index) in diagnosisResult.treatment_recommendation.medicines" :key="index" class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700">
+                  <div class="flex justify-between items-start mb-2">
+                    <p class="font-semibold text-gray-900 dark:text-white">{{ med.name }}</p>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full" :class="med.phase === 'intensive' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300' : med.phase === 'continuation' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300'">
+                      {{ med.phase === 'intensive' ? 'Intensive' : med.phase === 'continuation' ? 'Continuation' : 'Continuous' }}
+                    </span>
+                  </div>
+                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                    <div>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Dosage</p>
+                      <p class="font-medium text-gray-900 dark:text-white">{{ med.dosage_mg }} mg</p>
+                    </div>
+                    <div>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Frequency</p>
+                      <p class="font-medium text-gray-900 dark:text-white">{{ med.frequency }}</p>
+                    </div>
+                    <div>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Duration</p>
+                      <p class="font-medium text-gray-900 dark:text-white">{{ med.duration_days }} days</p>
+                    </div>
+                    <div>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Total Tablets</p>
+                      <p class="font-medium text-green-600 dark:text-green-400">{{ med.total_tablets }}</p>
+                    </div>
+                  </div>
+                  <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    {{ med.tablets_per_dose }} tablet(s) per dose
+                  </div>
                 </div>
               </div>
-              <div class="mt-3 p-3 rounded-lg bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-600">
-                <p class="text-sm font-semibold text-green-800 dark:text-green-300">Tablets per Dose: {{ calculatedDosage.tabletsPerDose }}</p>
-                <p class="text-xs text-green-700 dark:text-green-400 mt-1">Based on {{ calculatedDosage.tabletStrength }}mg tablet strength</p>
+              
+              <!-- Fallback to single calculation if no detailed medicines -->
+              <div v-else>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase">Dosage</p>
+                    <p class="text-lg font-bold text-gray-900 dark:text-white">{{ calculatedDosage.dosageMg }} <span class="text-sm font-normal">mg</span></p>
+                  </div>
+                  <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase">Frequency</p>
+                    <p class="text-lg font-bold text-gray-900 dark:text-white">{{ calculatedDosage.timesPerDay }} <span class="text-sm font-normal">times/day</span></p>
+                  </div>
+                  <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase">Duration</p>
+                    <p class="text-lg font-bold text-gray-900 dark:text-white">{{ calculatedDosage.durationDays }} <span class="text-sm font-normal">days</span></p>
+                  </div>
+                  <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase">Total Tablets</p>
+                    <p class="text-lg font-bold text-green-600 dark:text-green-400">{{ calculatedDosage.totalTablets }}</p>
+                  </div>
+                </div>
+                <div class="mt-3 p-3 rounded-lg bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-600">
+                  <p class="text-sm font-semibold text-green-800 dark:text-green-300">Tablets per Dose: {{ calculatedDosage.tabletsPerDose }}</p>
+                  <p class="text-xs text-green-700 dark:text-green-400 mt-1">Based on {{ calculatedDosage.tabletStrength }}mg tablet strength</p>
+                </div>
               </div>
             </div>
 
@@ -869,7 +903,7 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.575-7.027M17 17v5h-5m10-3a7.004.004 0 00-7.027-4.576"></path>
             </svg>
-            Start New Diagnosis
+            <span>Start New Diagnosis</span>
           </button>
         </div>
       </div>
@@ -1347,34 +1381,82 @@ const autoCreatePrescription = async (diagnosisData: any) => {
   try {
     const token = authToken.value;
     const treatment = diagnosisData.treatment_recommendation;
-    const dosage = calculatedDosage.value;
     
-    const prescriptionData = {
-      patient_id: selectedPatientId.value,
-      diagnosis_id: null,
-      medication: treatment?.drugs || 'TB Treatment',
-      dosage: treatment?.dosage || '300mg daily',
-      dosage_mg: dosage.dosageMg,
-      frequency: dosage.timesPerDay === 1 ? '1 time daily' : dosage.timesPerDay === 2 ? '2 times daily' : `${dosage.timesPerDay} times daily`,
-      duration_days: dosage.durationDays,
-      duration: treatment?.duration || '6 months',
-      risk_level: diagnosisData.symptom_analysis?.risk_level
-    };
+    // Check if we have detailed medicines with dosages
+    const medicines = treatment?.medicines;
+    
+    if (medicines && medicines.length > 0) {
+      // Create individual prescriptions for each drug sequentially to avoid database deadlock
+      let successCount = 0;
+      for (const med of medicines) {
+        const prescriptionData = {
+          patient_id: selectedPatientId.value,
+          diagnosis_id: null,
+          medication: med.name,
+          dosage: `${med.dosage_mg}mg ${med.frequency}`,
+          dosage_mg: med.dosage_mg,
+          frequency: med.frequency,
+          duration_days: med.duration_days,
+          duration: `${med.phase_duration_months} months (${med.phase})`,
+          risk_level: diagnosisData.symptom_analysis?.risk_level,
+          tablets_per_dose: med.tablets_per_dose,
+          total_tablets: med.total_tablets
+        };
 
-    const response = await fetch(`${API_BASE}/prescriptions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(prescriptionData)
-    });
+        try {
+          const response = await fetch(`${API_BASE}/prescriptions`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(prescriptionData)
+          });
 
-    if (response.ok) {
-      prescriptionCreated.value = true;
-      console.log('Prescription created automatically');
+          if (response.ok) {
+            successCount++;
+          } else {
+            console.error(`Failed to create prescription for ${med.name}`);
+          }
+        } catch (error) {
+          console.error(`Error creating prescription for ${med.name}:`, error);
+        }
+      }
+      
+      if (successCount > 0) {
+        prescriptionCreated.value = true;
+        console.log(`Created ${successCount}/${medicines.length} prescriptions successfully`);
+      }
     } else {
-      console.error('Failed to auto-create prescription');
+      // Fallback to single prescription with calculated dosage
+      const dosage = calculatedDosage.value;
+      const prescriptionData = {
+        patient_id: selectedPatientId.value,
+        diagnosis_id: null,
+        medication: treatment?.drugs || 'TB Treatment',
+        dosage: treatment?.dosage || '300mg daily',
+        dosage_mg: dosage.dosageMg,
+        frequency: dosage.timesPerDay === 1 ? '1 time daily' : dosage.timesPerDay === 2 ? '2 times daily' : `${dosage.timesPerDay} times daily`,
+        duration_days: dosage.durationDays,
+        duration: treatment?.duration || '6 months',
+        risk_level: diagnosisData.symptom_analysis?.risk_level
+      };
+
+      const response = await fetch(`${API_BASE}/prescriptions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(prescriptionData)
+      });
+
+      if (response.ok) {
+        prescriptionCreated.value = true;
+        console.log('Prescription created automatically');
+      } else {
+        console.error('Failed to auto-create prescription');
+      }
     }
   } catch (error) {
     console.error('Error auto-creating prescription:', error);

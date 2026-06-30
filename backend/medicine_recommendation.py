@@ -4,19 +4,29 @@ Maps model predictions to required TB medicines based on WHO guidelines.
 """
 from models.models import ATCDrug, PharmacyInventory, Patient, Hospital, db
 
-# WHO TB Treatment Guidelines
+# WHO TB Treatment Guidelines with Drug Dosages
 TB_REGIMENS = {
     'drug_sensitive': {
         'name': 'Drug-Sensitive TB (DS-TB)',
         'phase1': {
             'name': 'Intensive Phase (2 months)',
-            'medicines': ['Isoniazid', 'Rifampicin', 'Pyrazinamide', 'Ethambutol'],
-            'abbreviation': 'HRZE'
+            'medicines': [
+                {'name': 'Isoniazid', 'dosage_mg': 300, 'frequency': 'daily', 'tablets_per_dose': 1},
+                {'name': 'Rifampicin', 'dosage_mg': 600, 'frequency': 'daily', 'tablets_per_dose': 2},
+                {'name': 'Pyrazinamide', 'dosage_mg': 2000, 'frequency': 'daily', 'tablets_per_dose': 4},
+                {'name': 'Ethambutol', 'dosage_mg': 1200, 'frequency': 'daily', 'tablets_per_dose': 3}
+            ],
+            'abbreviation': 'HRZE',
+            'duration_months': 2
         },
         'phase2': {
             'name': 'Continuation Phase (4 months)',
-            'medicines': ['Isoniazid', 'Rifampicin'],
-            'abbreviation': 'HR'
+            'medicines': [
+                {'name': 'Isoniazid', 'dosage_mg': 300, 'frequency': 'daily', 'tablets_per_dose': 1},
+                {'name': 'Rifampicin', 'dosage_mg': 600, 'frequency': 'daily', 'tablets_per_dose': 2}
+            ],
+            'abbreviation': 'HR',
+            'duration_months': 4
         },
         'duration_months': 6,
         'description': 'Standard 6-month regimen for drug-sensitive TB (2HRZE/4HR)'
@@ -25,20 +35,32 @@ TB_REGIMENS = {
         'name': 'Multidrug-Resistant TB (MDR-TB)',
         'phase1': {
             'name': 'Intensive Phase (6-9 months)',
-            'medicines': ['Isoniazid', 'Rifampicin', 'Pyrazinamide', 'Ethambutol'],
-            'abbreviation': 'HRZE'
+            'medicines': [
+                {'name': 'Isoniazid', 'dosage_mg': 300, 'frequency': 'daily', 'tablets_per_dose': 1},
+                {'name': 'Rifampicin', 'dosage_mg': 600, 'frequency': 'daily', 'tablets_per_dose': 2},
+                {'name': 'Pyrazinamide', 'dosage_mg': 2000, 'frequency': 'daily', 'tablets_per_dose': 4},
+                {'name': 'Ethambutol', 'dosage_mg': 1200, 'frequency': 'daily', 'tablets_per_dose': 3}
+            ],
+            'abbreviation': 'HRZE',
+            'duration_months': 9
         },
         'phase2': {
             'name': 'Continuation Phase (12-18 months)',
-            'medicines': ['Isoniazid', 'Rifampicin'],
-            'abbreviation': 'HR'
+            'medicines': [
+                {'name': 'Isoniazid', 'dosage_mg': 300, 'frequency': 'daily', 'tablets_per_dose': 1},
+                {'name': 'Rifampicin', 'dosage_mg': 600, 'frequency': 'daily', 'tablets_per_dose': 2}
+            ],
+            'abbreviation': 'HR',
+            'duration_months': 18
         },
         'duration_months': 18,
         'description': 'Extended regimen for MDR-TB (6-9HRZE/12-18HR)'
     },
     'latent_tb': {
         'name': 'Latent TB Infection',
-        'medicines': ['Isoniazid'],
+        'medicines': [
+            {'name': 'Isoniazid', 'dosage_mg': 300, 'frequency': 'daily', 'tablets_per_dose': 1}
+        ],
         'duration_months': 6,
         'description': 'Isoniazid preventive therapy (6H)'
     },
@@ -46,13 +68,23 @@ TB_REGIMENS = {
         'name': 'TB with HIV Co-infection',
         'phase1': {
             'name': 'Intensive Phase (2 months)',
-            'medicines': ['Isoniazid', 'Rifampicin', 'Pyrazinamide', 'Ethambutol'],
-            'abbreviation': 'HRZE'
+            'medicines': [
+                {'name': 'Isoniazid', 'dosage_mg': 300, 'frequency': 'daily', 'tablets_per_dose': 1},
+                {'name': 'Rifampicin', 'dosage_mg': 600, 'frequency': 'daily', 'tablets_per_dose': 2},
+                {'name': 'Pyrazinamide', 'dosage_mg': 2000, 'frequency': 'daily', 'tablets_per_dose': 4},
+                {'name': 'Ethambutol', 'dosage_mg': 1200, 'frequency': 'daily', 'tablets_per_dose': 3}
+            ],
+            'abbreviation': 'HRZE',
+            'duration_months': 2
         },
         'phase2': {
             'name': 'Continuation Phase (4 months)',
-            'medicines': ['Isoniazid', 'Rifampicin'],
-            'abbreviation': 'HR'
+            'medicines': [
+                {'name': 'Isoniazid', 'dosage_mg': 300, 'frequency': 'daily', 'tablets_per_dose': 1},
+                {'name': 'Rifampicin', 'dosage_mg': 600, 'frequency': 'daily', 'tablets_per_dose': 2}
+            ],
+            'abbreviation': 'HR',
+            'duration_months': 4
         },
         'duration_months': 6,
         'description': 'Standard regimen with ART within 2-8 weeks'
@@ -61,13 +93,23 @@ TB_REGIMENS = {
         'name': 'Extrapulmonary TB',
         'phase1': {
             'name': 'Intensive Phase (2 months)',
-            'medicines': ['Isoniazid', 'Rifampicin', 'Pyrazinamide', 'Ethambutol'],
-            'abbreviation': 'HRZE'
+            'medicines': [
+                {'name': 'Isoniazid', 'dosage_mg': 300, 'frequency': 'daily', 'tablets_per_dose': 1},
+                {'name': 'Rifampicin', 'dosage_mg': 600, 'frequency': 'daily', 'tablets_per_dose': 2},
+                {'name': 'Pyrazinamide', 'dosage_mg': 2000, 'frequency': 'daily', 'tablets_per_dose': 4},
+                {'name': 'Ethambutol', 'dosage_mg': 1200, 'frequency': 'daily', 'tablets_per_dose': 3}
+            ],
+            'abbreviation': 'HRZE',
+            'duration_months': 2
         },
         'phase2': {
             'name': 'Continuation Phase (7-10 months)',
-            'medicines': ['Isoniazid', 'Rifampicin'],
-            'abbreviation': 'HR'
+            'medicines': [
+                {'name': 'Isoniazid', 'dosage_mg': 300, 'frequency': 'daily', 'tablets_per_dose': 1},
+                {'name': 'Rifampicin', 'dosage_mg': 600, 'frequency': 'daily', 'tablets_per_dose': 2}
+            ],
+            'abbreviation': 'HR',
+            'duration_months': 10
         },
         'duration_months': 9,
         'description': 'Extended regimen for extrapulmonary TB (2HRZE/7-10HR)'
@@ -96,7 +138,7 @@ def get_recommended_medicines(infection_type, risk_score=None, drug_resistance=N
         hiv_status: HIV status (Yes/No)
     
     Returns:
-        Dictionary with regimen info and required medicines
+        Dictionary with regimen info and required medicines with dosages
     """
     # Determine regimen based on infection type
     if infection_type in INFECTION_REGIMEN_MAP:
@@ -114,17 +156,32 @@ def get_recommended_medicines(infection_type, risk_score=None, drug_resistance=N
     
     regimen = TB_REGIMENS[regimen_key]
     
-    # Get all unique medicines from all phases
+    # Get all medicines with their dosages from all phases
     all_medicines = []
     if 'phase1' in regimen:
-        all_medicines.extend(regimen['phase1']['medicines'])
+        for med in regimen['phase1']['medicines']:
+            med_copy = med.copy()
+            med_copy['phase'] = 'intensive'
+            med_copy['phase_duration_months'] = regimen['phase1']['duration_months']
+            all_medicines.append(med_copy)
     if 'phase2' in regimen:
-        all_medicines.extend(regimen['phase2']['medicines'])
+        for med in regimen['phase2']['medicines']:
+            med_copy = med.copy()
+            med_copy['phase'] = 'continuation'
+            med_copy['phase_duration_months'] = regimen['phase2']['duration_months']
+            all_medicines.append(med_copy)
     else:
-        all_medicines.extend(regimen.get('medicines', []))
+        for med in regimen.get('medicines', []):
+            med_copy = med.copy()
+            med_copy['phase'] = 'continuous'
+            med_copy['phase_duration_months'] = regimen['duration_months']
+            all_medicines.append(med_copy)
     
-    # Remove duplicates
-    all_medicines = list(set(all_medicines))
+    # Calculate total tablets for each drug
+    for med in all_medicines:
+        days = med['phase_duration_months'] * 30
+        med['duration_days'] = days
+        med['total_tablets'] = med['tablets_per_dose'] * days
     
     return {
         'regimen': regimen,
@@ -138,7 +195,7 @@ def check_medicine_availability(hospital_id, medicine_names):
     
     Args:
         hospital_id: Hospital ID
-        medicine_names: List of medicine names to check
+        medicine_names: List of medicine names (strings) or medicine dicts with 'name' field
     
     Returns:
         Dictionary with availability status for each medicine
@@ -152,7 +209,16 @@ def check_medicine_availability(hospital_id, medicine_names):
     
     availability = {}
  
-    for medicine_name in medicine_names:
+    for medicine in medicine_names:
+        # Handle both string names and dict objects with 'name' field
+        if isinstance(medicine, dict):
+            medicine_name = medicine.get('name', '')
+        else:
+            medicine_name = medicine
+        
+        if not medicine_name:
+            continue
+            
         drug = ATCDrug.query.filter(ATCDrug.drug_name.ilike(f'%{medicine_name}%')).first()
         
         if not drug:

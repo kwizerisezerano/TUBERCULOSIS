@@ -3986,6 +3986,7 @@ def prescriptions():
             recalculate_risk_on_prescription(presc.patient_id)
         except Exception as e:
             print(f"Error recalculating risk score: {e}")
+            # Don't fail the prescription creation if risk recalculation fails
         
         # Create audit log
         audit = AuditLog(
@@ -3997,7 +3998,13 @@ def prescriptions():
         )
         db.session.add(audit)
         
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error committing prescription: {e}")
+            return jsonify({"msg": "Failed to create prescription due to database error"}), 500
+        
         return jsonify(presc.to_dict()), 201
 
 
@@ -4927,6 +4934,27 @@ def diagnose():
         patient.hiv or 'No',
         patient.drug_resistance or 'No'
     ), lang=lang)
+
+    # Get detailed prescription recommendation with drug dosages
+    from medicine_recommendation import get_prescription_recommendation
+    
+    # Determine infection type for prescription recommendation
+    infection_type = None
+    if 'pulmonary' in tb_analysis['who_category'].lower():
+        infection_type = 'pulmonary_positive'
+    elif 'extrapulmonary' in tb_analysis['who_category'].lower():
+        infection_type = 'extrapulmonary'
+    elif 'latent' in tb_analysis['who_category'].lower():
+        infection_type = 'latent'
+    elif patient.hiv == 'Yes':
+        infection_type = 'tb_hiv'
+    
+    prescription_recommendation = get_prescription_recommendation(patient.id, infection_type)
+    
+    # Extract detailed medicines if available
+    detailed_medicines = []
+    if prescription_recommendation and 'medicines' in prescription_recommendation:
+        detailed_medicines = prescription_recommendation['medicines']
     resistance_profile = determine_resistance_profile(
         patient.drug_resistance or 'No',
         patient.genexpert_test or 'Unknown',
@@ -5064,6 +5092,7 @@ def diagnose():
         "guideline_source": treatment_plan["guideline_source"],
         "decision_basis": treatment_plan["decision_basis"],
         "treatment_options": treatment_plan["options"],
+        "medicines": detailed_medicines if detailed_medicines else [],
     }
 
     if 'CONFIRMED' in tb_analysis['who_category'] or 'URGENT' in urgency or 'CRITICAL' in urgency:

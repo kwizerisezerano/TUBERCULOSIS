@@ -437,7 +437,13 @@ const fetchPendingPrescriptions = async () => {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     const data = await response.json()
-    pendingPrescriptions.value = (data.prescriptions || []).filter(p => p.status !== 'dispensed')
+    const prescriptions = (data.prescriptions || []).filter(p => p.status !== 'dispensed')
+    pendingPrescriptions.value = prescriptions
+    
+    // Auto-check stock for all prescriptions
+    for (const presc of prescriptions) {
+      await checkStock(presc)
+    }
   } catch (error) {
     console.error('Error fetching prescriptions:', error)
   }
