@@ -259,8 +259,17 @@ def seed_users():
             db.session.add(user)
             added += 1
         
+        # Set passwords for existing patients!
+        patients = Patient.query.all()
+        patients_updated = 0
+        for patient in patients:
+            if not patient.password:
+                patient.set_password("Patient123!")
+                db.session.add(patient)
+                patients_updated +=1
+        
         db.session.commit()
-        return {"added": added, "updated": updated, "total": User.query.count()}
+        return {"added": added, "updated": updated, "total": User.query.count(), "patients_with_passwords_set": patients_updated}
 
 def seed_sample_data():
     # Import app only when needed

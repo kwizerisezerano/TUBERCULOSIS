@@ -87,6 +87,24 @@
                   />
                 </div>
               </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Or Enter Patient ID Manually</label>
+                <div class="flex gap-2">
+                  <input
+                    v-model="manualPatientId"
+                    type="text"
+                    class="flex-1 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 outline-none"
+                    placeholder="e.g., PAT-1000"
+                  />
+                  <button
+                    @click="loadPatientByManualId"
+                    :disabled="!manualPatientId || loadingManualPatient"
+                    class="px-4 py-3 rounded-xl bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition"
+                  >
+                    {{ loadingManualPatient ? 'Loading...' : 'Find' }}
+                  </button>
+                </div>
+              </div>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Patient</label>
@@ -1179,7 +1197,7 @@
 <script setup lang="ts">
 import DashboardLayout from '~/components/DashboardLayout.vue';
 import { useAuth } from '~/composables/useAuth';
-const { getPatients, diagnose, getDiagnoses } = useApi();
+const { getPatients, diagnose, getDiagnoses, getPatientById } = useApi();
 const { authToken } = useAuth();
 
 const symptomsList = [
@@ -1209,6 +1227,8 @@ const patientsList = ref<any[]>([]);
 const patientSearch = ref('');
 const selectedPatientId = ref<string | number | null>(null);
 const selectedPatient = ref<any>(null);
+const manualPatientId = ref('');
+const loadingManualPatient = ref(false);
 const diagnoses = ref<any[]>([]);
 const isLoading = ref(false);
 const diagnosisResult = ref<any>(null);
@@ -1497,6 +1517,45 @@ const loadPatient = async () => {
   
   // Load lab tests for this patient
   await fetchPatientLabTests();
+};
+
+const loadPatientByManualId = async () => {
+  if (!manualPatientId.value) return;
+  loadingManualPatient.value = true;
+  try {
+    // First try to search patients list by patient_id
+    let patient = patientsList.value.find(p => p.patient_id.toLowerCase() === manualPatientId.value.toLowerCase());
+    if (!patient) {
+      // If not found in list, try to fetch directly from API by searching
+      const searchRes = await getPatients(1, 10, manualPatientId.value);
+      const searchPatients = (searchRes as any).patients || [];
+      patient = searchPatients.find(p => p.patient_id.toLowerCase() === manualPatientId.value.toLowerCase());
+      
+      if (patient && !patientsList.value.find(p => p.id === patient.id)) {
+        patientsList.value.push(patient);
+      }
+    }
+    
+    if (patient) {
+      selectedPatientId.value = patient.id;
+      selectedPatient.value = patient;
+      Object.keys(form.value).forEach((key) => {
+        if (patient.hasOwnProperty(key)) {
+          form.value[key as keyof typeof form.value] = patient[key];
+        }
+      });
+      // Auto-populate drug resistance and lab tests
+      await fetchPatientDrugResistance();
+      await fetchPatientLabTests();
+    } else {
+      alert('Patient not found. Please check the Patient ID and try again.');
+    }
+  } catch (e) {
+    console.error('Failed to load patient by ID', e);
+    alert('Failed to find patient. Please check your network connection or contact support.');
+  } finally {
+    loadingManualPatient.value = false;
+  }
 };
 
 const fetchPatientDrugResistance = async () => {

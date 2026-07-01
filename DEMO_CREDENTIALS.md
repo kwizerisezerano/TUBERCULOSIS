@@ -69,7 +69,15 @@
     - Password: Admin123!
     - Role: hospital_admin
 
+## Patient Demo Credentials
+- **Patient 1**: Patient ID = `PAT-1000`, Password = `Patient123!`
+- **Patient 2**: Patient ID = `PAT-1001`, Password = `Patient123!`
+- **Patient 3**: Patient ID = `PAT-1002`, Password = `Patient123!`
+- **Patient 4**: Patient ID = `PAT-1003`, Password = `Patient123!`
+- **Patient 5**: Patient ID = `PAT-1004`, Password = `Patient123!`
+
 ## Instructions
 1. Frontend is at http://localhost:3001
 2. Backend API is at http://127.0.0.1:5000
 3. Use these credentials to log in to the system
+4. For patients: switch login type to "Patient" and use Patient ID + Password

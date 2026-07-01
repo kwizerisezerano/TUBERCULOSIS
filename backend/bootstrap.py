@@ -53,6 +53,7 @@ from seed_users import seed_all
 from seed_facilities_and_inventory import seed_facilities, seed_pharmacy_inventory
 from add_prescription_dosage_fields import add_prescription_fields
 from seed_lab_tests import seed_lab_tests
+from seed_patient_passwords import main as seed_patient_passwords_main
 
 
 MANAGED_MODELS = [Hospital, User, Patient, Diagnosis, Treatment, Alert, ExternalDatasetRow, LabTest, Prescription, AuditLog, ATCDrug, DetailedLabResult, AntibioticResistance, PharmacyInventory, PatientConsent]
@@ -302,6 +303,9 @@ def bootstrap(import_data_enabled=True, seed_enabled=True, train_enabled=True, r
         
         print("[2.85/4] Seeding lab tests...")
         seed_lab_tests()
+        
+        print("[2.9/4] Setting patient passwords for demo login...")
+        seed_patient_passwords_main()
     else:
         print("[2/4] Skipping user/sample data seeding.")
 

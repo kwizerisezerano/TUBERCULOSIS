@@ -451,6 +451,7 @@ class Patient(db.Model):
         return {
             "id": self.id,
             "patient_id": self.patient_id,
+            "role": "patient",
             "hospital_id": primary_hospital.id if primary_hospital else None,
             "hospital": primary_hospital.to_dict() if primary_hospital else None,
             "hospitals": [h.to_dict() for h in self.hospitals],

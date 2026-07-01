@@ -116,7 +116,7 @@
                 placeholder="e.g., SYM2024000001"
               />
             </div>
-            <div>
+            <div v-if="loginType === 'clinician'">
               <label for="password" class="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">Password</label>
               <div class="relative">
                 <input
@@ -160,13 +160,23 @@
           <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700">
             <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-3 sm:mb-4 font-semibold uppercase tracking-wide">Demo Credentials</p>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button v-for="cred in credentials" :key="cred.email" @click="email = cred.email; password = cred.pwd; showPwd = true" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-xs overflow-hidden">
-                <div class="text-left min-w-0 flex-1 overflow-hidden">
-                  <span class="font-semibold text-gray-700 dark:text-gray-300 block truncate text-[11px]">{{ cred.role }}</span>
-                  <span class="text-gray-400 dark:text-gray-500 text-[9px] truncate block">{{ cred.email }}</span>
-                </div>
-                <span class="text-primary-600 dark:text-primary-400 font-mono text-[9px] shrink-0">{{ cred.pwd }}</span>
-              </button>
+              <template v-if="loginType === 'patient'">
+                <button v-for="cred in patientCredentials" :key="cred.patient_id" @click="patientId = cred.patient_id" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-xs overflow-hidden">
+                  <div class="text-left min-w-0 flex-1 overflow-hidden">
+                    <span class="font-semibold text-gray-700 dark:text-gray-300 block truncate text-[11px]">{{ cred.role }}</span>
+                    <span class="text-gray-400 dark:text-gray-500 text-[9px] truncate block">{{ cred.patient_id }}</span>
+                  </div>
+                </button>
+              </template>
+              <template v-else>
+                <button v-for="cred in credentials" :key="cred.email" @click="email = cred.email; password = cred.pwd; showPwd = true" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-xs overflow-hidden">
+                  <div class="text-left min-w-0 flex-1 overflow-hidden">
+                    <span class="font-semibold text-gray-700 dark:text-gray-300 block truncate text-[11px]">{{ cred.role }}</span>
+                    <span class="text-gray-400 dark:text-gray-500 text-[9px] truncate block">{{ cred.email }}</span>
+                  </div>
+                  <span class="text-primary-600 dark:text-primary-400 font-mono text-[9px] shrink-0">{{ cred.pwd }}</span>
+                </button>
+              </template>
             </div>
           </div>
         </div>
@@ -229,27 +239,56 @@ const stats = [
 ];
 
 const credentials = [
-  { role: 'System Admin', email: 'divinekageruka@gmail.com', pwd: 'Admin123!' },
-  { role: 'Hospital Admin', email: 'igiclarisse10@gmail.com', pwd: 'Admin123!' },
-  { role: 'Doctor', email: 'igiranezac459@gmail.com', pwd: 'Doctor123!' },
-  { role: 'Lab Technician', email: 'clarisseigiraneza56@gmail.com', pwd: 'LabTech123!' },
-  { role: 'Pharmacist', email: 'clarisseigiraneza915@gmail.com', pwd: 'Pharm123!' },
-  { role: 'Doctor (Hosp 2)', email: 'doctor2@hospital2.com', pwd: 'Doctor123!' },
-  { role: 'Doctor (Hosp 3)', email: 'doctor3@hospital3.com', pwd: 'Doctor123!' },
-  { role: 'Lab Tech (Hosp 2)', email: 'labtech2@hospital2.com', pwd: 'LabTech123!' },
-  { role: 'Lab Tech (Hosp 3)', email: 'labtech3@hospital3.com', pwd: 'LabTech123!' },
-  { role: 'Pharmacist (Hosp 2)', email: 'pharmacist2@hospital2.com', pwd: 'Pharm123!' },
-  { role: 'Pharmacist (Hosp 3)', email: 'pharmacist3@hospital3.com', pwd: 'Pharm123!' },
-  { role: 'Hospital Admin (Hosp 2)', email: 'admin2@hospital2.com', pwd: 'Admin123!' },
-  { role: 'Hospital Admin (Hosp 3)', email: 'admin3@hospital3.com', pwd: 'Admin123!' }
+    { role: 'System Admin', email: 'divinekageruka@gmail.com', pwd: 'Admin123!' },
+    { role: 'Hospital Admin', email: 'igiclarisse10@gmail.com', pwd: 'Admin123!' },
+    { role: 'Doctor', email: 'igiranezac459@gmail.com', pwd: 'Doctor123!' },
+    { role: 'Lab Technician', email: 'clarisseigiraneza56@gmail.com', pwd: 'LabTech123!' },
+    { role: 'Pharmacist', email: 'clarisseigiraneza915@gmail.com', pwd: 'Pharm123!' },
+    { role: 'Doctor (Hosp 2)', email: 'doctor2@hospital2.com', pwd: 'Doctor123!' },
+    { role: 'Doctor (Hosp 3)', email: 'doctor3@hospital3.com', pwd: 'Doctor123!' },
+    { role: 'Lab Tech (Hosp 2)', email: 'labtech2@hospital2.com', pwd: 'LabTech123!' },
+    { role: 'Lab Tech (Hosp 3)', email: 'labtech3@hospital3.com', pwd: 'LabTech123!' },
+    { role: 'Pharmacist (Hosp 2)', email: 'pharmacist2@hospital2.com', pwd: 'Pharm123!' },
+    { role: 'Pharmacist (Hosp 3)', email: 'pharmacist3@hospital3.com', pwd: 'Pharm123!' },
+    { role: 'Hospital Admin (Hosp 2)', email: 'admin2@hospital2.com', pwd: 'Admin123!' },
+    { role: 'Hospital Admin (Hosp 3)', email: 'admin3@hospital3.com', pwd: 'Admin123!' }
 ];
+
+const patientCredentials = ref([
+    { role: 'Loading Patients...', patient_id: '...', pwd: 'Patient123!' }
+]);
+
+const fetchDemoPatients = async () => {
+  try {
+    const response = await $fetch('http://127.0.0.1:5000/api/demo/patients');
+    if (response.patients && response.patients.length > 0) {
+      patientCredentials.value = response.patients.map((p: any) => ({
+        role: `${p.first_name || 'Patient'} ${p.last_name || ''}`.trim(),
+        patient_id: p.patient_id,
+        pwd: 'Patient123!'
+      }));
+    } else {
+      patientCredentials.value = [
+        { role: 'Demo Patient 1', patient_id: 'SYM2024000001', pwd: 'Patient123!' },
+        { role: 'Demo Patient 2', patient_id: 'SYM2024000002', pwd: 'Patient123!' }
+      ];
+    }
+  } catch (err) {
+    console.error(err);
+    patientCredentials.value = [
+      { role: 'Demo Patient 1', patient_id: 'SYM2024000001', pwd: 'Patient123!' }
+    ];
+  }
+};
+
+fetchDemoPatients();
 
 const handleLogin = async () => {
   isLoading.value = true;
   error.value = '';
   
   if (loginType.value === 'patient') {
-    const result = await login(patientId.value, password.value, 'patient');
+    const result = await login(patientId.value, 'dummy-password', 'patient');
     if (result.success) {
       router.push('/patient-portal');
     } else {

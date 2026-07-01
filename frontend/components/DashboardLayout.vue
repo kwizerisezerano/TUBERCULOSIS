@@ -79,14 +79,14 @@ const showAlerts = ref(false);
 const unreadCount = ref(0);
 const alerts = ref<any[]>([]);
 
-const { currentUser } = useAuth();
+const { currentUser, authToken } = useAuth();
 
 const fetchAlerts = async () => {
   try {
-    const token = localStorage.getItem('token');
+    if (!authToken.value) return;
     const response = await fetch('http://127.0.0.1:5000/api/alerts?unread_only=true&per_page=5', {
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${authToken.value}`
       }
     });
     const data = await response.json();
@@ -98,10 +98,10 @@ const fetchAlerts = async () => {
 
 const fetchUnreadCount = async () => {
   try {
-    const token = localStorage.getItem('token');
+    if (!authToken.value) return;
     const response = await fetch('http://127.0.0.1:5000/api/alerts/unread-count', {
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${authToken.value}`
       }
     });
     const data = await response.json();
@@ -113,11 +113,11 @@ const fetchUnreadCount = async () => {
 
 const markAsRead = async (alertId: number) => {
   try {
-    const token = localStorage.getItem('token');
+    if (!authToken.value) return;
     await fetch(`http://127.0.0.1:5000/api/alerts/${alertId}/read`, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${authToken.value}`
       }
     });
     await fetchAlerts();
@@ -144,13 +144,16 @@ onMounted(() => {
   if (!currentUser.value) {
     navigateTo('/');
   } else {
-    fetchUnreadCount();
-    fetchAlerts();
-    // Refresh alerts every 30 seconds
-    setInterval(() => {
+    // If user is patient, don't fetch alerts
+    if (currentUser.value.role !== 'patient') {
       fetchUnreadCount();
       fetchAlerts();
-    }, 30000);
+      // Refresh alerts every 30 seconds
+      setInterval(() => {
+        fetchUnreadCount();
+        fetchAlerts();
+      }, 30000);
+    }
   }
 });
 </script>

@@ -44,11 +44,11 @@
       <button @click="showLogoutModal = true" class="w-full p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors text-left">
         <div class="flex items-center gap-3">
           <div class="h-10 w-10 rounded-full bg-primary-600 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
-            {{ currentUser?.username.charAt(0).toUpperCase() }}
+            {{ userInitial }}
           </div>
           <div class="flex-1 min-w-0">
-            <p class="font-semibold text-gray-900 dark:text-white text-sm truncate">{{ currentUser?.username }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ currentUser?.email }}</p>
+            <p class="font-semibold text-gray-900 dark:text-white text-sm truncate">{{ userDisplayName }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ userSubtext }}</p>
           </div>
           <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
@@ -90,23 +90,47 @@ const emit = defineEmits<{
   close: [];
 }>();
 
-const { userRole, currentUser, logout } = useAuth();
+const { userRole, currentUser, logout, authToken } = useAuth();
 const route = useRoute();
 
 const showLogoutModal = ref(false);
 const unreadAlertCount = ref(0);
 
+const userInitial = computed(() => {
+  if (userRole.value === 'patient') {
+    return currentUser.value?.first_name?.charAt(0).toUpperCase() || 'P';
+  } else {
+    return currentUser.value?.username?.charAt(0).toUpperCase() || 'U';
+  }
+});
+
+const userDisplayName = computed(() => {
+  if (userRole.value === 'patient') {
+    return `${currentUser.value?.first_name || ''} ${currentUser.value?.last_name || ''}`.trim() || 'Patient';
+  } else {
+    return currentUser.value?.username || 'User';
+  }
+});
+
+const userSubtext = computed(() => {
+  if (userRole.value === 'patient') {
+    return currentUser.value?.patient_id || '';
+  } else {
+    return currentUser.value?.email || '';
+  }
+});
+
 // Fetch unread alert count
 const fetchAlertCount = async () => {
   try {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      const response = await fetch('http://127.0.0.1:5000/api/alerts?unread_only=true', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      unreadAlertCount.value = data.unread_count || 0;
+    if (!authToken.value || userRole.value === 'patient') {
+      return;
     }
+    const response = await fetch('http://127.0.0.1:5000/api/alerts/unread-count', {
+      headers: { 'Authorization': `Bearer ${authToken.value}` }
+    });
+    const data = await response.json();
+    unreadAlertCount.value = data.unread_count || 0;
   } catch (error) {
     console.error('Failed to fetch alert count:', error);
   }
@@ -114,9 +138,11 @@ const fetchAlertCount = async () => {
 
 // Fetch alert count on mount and periodically
 onMounted(() => {
-  fetchAlertCount();
-  const interval = setInterval(fetchAlertCount, 30000); // Refresh every 30 seconds
-  onUnmounted(() => clearInterval(interval));
+  if (userRole.value !== 'patient') {
+    fetchAlertCount();
+    const interval = setInterval(fetchAlertCount, 30000); // Refresh every 30 seconds
+    onUnmounted(() => clearInterval(interval));
+  }
 });
 
 const isActive = (path: string) => route.path === path || route.path.startsWith(path + '/');
@@ -139,7 +165,8 @@ const formatRole = (role: string | null) => {
       doctor: 'Doctor',
       lab_technician: 'Lab Technician',
       pharmacist: 'Pharmacist',
-      hospital_admin: 'Hospital Admin'
+      hospital_admin: 'Hospital Admin',
+      patient: 'Patient'
   };
   return roleMap[role] || role.charAt(0).toUpperCase() + role.slice(1);
 };
@@ -148,6 +175,12 @@ const navItems = computed(() => {
   const role = userRole.value;
 
   const allItems = [
+    {
+      path: '/patient-portal',
+      label: 'Patient Portal',
+      icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>`,
+      roles: ['patient']
+    },
     {
       path: '/dashboard',
       label: 'Dashboard',
