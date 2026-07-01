@@ -1,0 +1,178 @@
+{
+  "tb_status": {
+    "accuracy": 0.9931444832492562,
+    "feature_names": [
+      "age",
+      "weight",
+      "gender_male",
+      "gender_female",
+      "gender_other",
+      "persistent_cough_duration_weeks",
+      "contact_with_tb_patient_yes",
+      "previous_tb_treatment_yes",
+      "smoking_current",
+      "smoking_former",
+      "alcohol_regular",
+      "oxygen_saturation_spo2",
+      "has_fever",
+      "has_cough",
+      "has_weight_loss",
+      "has_night_sweats",
+      "has_chest_pain",
+      "has_blood",
+      "has_fatigue",
+      "has_shortness_of_breath",
+      "sputum_positive",
+      "genexpert_positive",
+      "chest_xray_abnormal",
+      "hiv_yes",
+      "diabetes_yes"
+    ],
+    "feature_importances": {
+      "age": 4.74,
+      "weight": 1.0,
+      "gender_male": 0.65,
+      "gender_female": 0.95,
+      "gender_other": 0.02,
+      "persistent_cough_duration_weeks": 5.88,
+      "contact_with_tb_patient_yes": 0.19,
+      "previous_tb_treatment_yes": 0.1,
+      "smoking_current": 0.06,
+      "smoking_former": 0.11,
+      "alcohol_regular": 0.06,
+      "oxygen_saturation_spo2": 3.6,
+      "has_fever": 1.52,
+      "has_cough": 2.77,
+      "has_weight_loss": 1.29,
+      "has_night_sweats": 0.43,
+      "has_chest_pain": 0.44,
+      "has_blood": 1.48,
+      "has_fatigue": 0.48,
+      "has_shortness_of_breath": 0.52,
+      "sputum_positive": 24.31,
+      "genexpert_positive": 29.23,
+      "chest_xray_abnormal": 20.13,
+      "hiv_yes": 0.02,
+      "diabetes_yes": 0.02
+    },
+    "model_params": {
+      "model_type": "RandomForestClassifier",
+      "n_estimators": 300,
+      "max_depth": 14,
+      "min_samples_split": 5,
+      "min_samples_leaf": 2,
+      "class_weight": "balanced",
+      "random_state": 42
+    },
+    "classes": [
+      "No",
+      "Yes"
+    ],
+    "class_counts": {
+      "No": 19327,
+      "Yes": 8864
+    },
+    "model_path": "C:\\Users\\Kwizera\\OneDrive\\Desktop\\TUBERCULOSIS\\backend\\models\\tb_status_model.pkl",
+    "encoder_path": "C:\\Users\\Kwizera\\OneDrive\\Desktop\\TUBERCULOSIS\\backend\\models\\tb_status_label_encoder.pkl",
+    "classification_report": "              precision    recall  f1-score   support\n\n          No       0.99      0.99      0.99      3866\n         Yes       0.99      0.99      0.99      3865\n\n    accuracy                           0.99      7731\n   macro avg       0.99      0.99      0.99      7731\nweighted avg       0.99      0.99      0.99      7731\n",
+    "confusion_matrix": [
+      [
+        3843,
+        23
+      ],
+      [
+        30,
+        3835
+      ]
+    ],
+    "n_samples": 28191
+  },
+  "drug_resistance": {
+    "accuracy": 0.9796028880866426,
+    "feature_names": [
+      "age",
+      "weight",
+      "gender_male",
+      "gender_female",
+      "gender_other",
+      "persistent_cough_duration_weeks",
+      "contact_with_tb_patient_yes",
+      "previous_tb_treatment_yes",
+      "smoking_current",
+      "smoking_former",
+      "alcohol_regular",
+      "oxygen_saturation_spo2",
+      "has_fever",
+      "has_cough",
+      "has_weight_loss",
+      "has_night_sweats",
+      "has_chest_pain",
+      "has_blood",
+      "has_fatigue",
+      "has_shortness_of_breath",
+      "sputum_positive",
+      "genexpert_positive",
+      "chest_xray_abnormal",
+      "hiv_yes",
+      "diabetes_yes"
+    ],
+    "feature_importances": {
+      "age": 1.8,
+      "weight": 12.66,
+      "gender_male": 1.08,
+      "gender_female": 1.01,
+      "gender_other": 0.13,
+      "persistent_cough_duration_weeks": 6.21,
+      "contact_with_tb_patient_yes": 0.73,
+      "previous_tb_treatment_yes": 0.28,
+      "smoking_current": 0.58,
+      "smoking_former": 0.42,
+      "alcohol_regular": 0.48,
+      "oxygen_saturation_spo2": 39.9,
+      "has_fever": 4.03,
+      "has_cough": 0.95,
+      "has_weight_loss": 3.09,
+      "has_night_sweats": 0.36,
+      "has_chest_pain": 0.37,
+      "has_blood": 0.19,
+      "has_fatigue": 1.51,
+      "has_shortness_of_breath": 0.58,
+      "sputum_positive": 3.21,
+      "genexpert_positive": 8.9,
+      "chest_xray_abnormal": 11.02,
+      "hiv_yes": 0.31,
+      "diabetes_yes": 0.22
+    },
+    "model_params": {
+      "model_type": "RandomForestClassifier",
+      "n_estimators": 300,
+      "max_depth": 14,
+      "min_samples_split": 5,
+      "min_samples_leaf": 2,
+      "class_weight": "balanced",
+      "random_state": 42
+    },
+    "classes": [
+      "No",
+      "Yes"
+    ],
+    "class_counts": {
+      "No": 27699,
+      "Yes": 491
+    },
+    "model_path": "C:\\Users\\Kwizera\\OneDrive\\Desktop\\TUBERCULOSIS\\backend\\models\\drug_resistance_model.pkl",
+    "encoder_path": "C:\\Users\\Kwizera\\OneDrive\\Desktop\\TUBERCULOSIS\\backend\\models\\drug_resistance_label_encoder.pkl",
+    "classification_report": "              precision    recall  f1-score   support\n\n          No       1.00      0.96      0.98      5540\n         Yes       0.96      1.00      0.98      5540\n\n    accuracy                           0.98     11080\n   macro avg       0.98      0.98      0.98     11080\nweighted avg       0.98      0.98      0.98     11080\n",
+    "confusion_matrix": [
+      [
+        5338,
+        202
+      ],
+      [
+        24,
+        5516
+      ]
+    ],
+    "n_samples": 28190
+  }
+}

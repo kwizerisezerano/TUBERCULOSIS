@@ -52,6 +52,7 @@ from models.train_model import train_models_from_database
 from seed_users import seed_all
 from seed_facilities_and_inventory import seed_facilities, seed_pharmacy_inventory
 from add_prescription_dosage_fields import add_prescription_fields
+from seed_lab_tests import seed_lab_tests
 
 
 MANAGED_MODELS = [Hospital, User, Patient, Diagnosis, Treatment, Alert, ExternalDatasetRow, LabTest, Prescription, AuditLog, ATCDrug, DetailedLabResult, AntibioticResistance, PharmacyInventory, PatientConsent]
@@ -119,27 +120,144 @@ def ensure_schema_compatibility():
     inspector = inspect(db.engine)
     existing_tables = set(inspector.get_table_names())
     quote = db.engine.dialect.identifier_preparer.quote
+    
+    # Determine database type from dialect
+    database_type = os.getenv("DATABASE_TYPE", "").lower()
+    if not database_type:
+        if "mysql" in db.engine.dialect.name:
+            database_type = "mysql"
+        elif "postgres" in db.engine.dialect.name:
+            database_type = "postgresql"
+        else:
+            database_type = "sqlite"
 
     for model in MANAGED_MODELS:
         table = model.__table__
         if table.name not in existing_tables:
             continue
 
-        existing_columns = {column["name"] for column in inspector.get_columns(table.name)}
+        existing_columns = {column["name"]: column for column in inspector.get_columns(table.name)}
         for column in table.columns:
-            if column.name in existing_columns or column.primary_key:
-                continue
-
-            compiled_type = column.type.compile(dialect=db.engine.dialect)
-            nullable_sql = "" if column.nullable else " NOT NULL"
-            statement = (
-                f"ALTER TABLE {quote(table.name)} "
-                f"ADD COLUMN {quote(column.name)} {compiled_type}{nullable_sql}"
-            )
-            db.session.execute(text(statement))
-            db.session.commit()
+            if column.name not in existing_columns and not column.primary_key:
+                compiled_type = column.type.compile(dialect=db.engine.dialect)
+                nullable_sql = "" if column.nullable else " NOT NULL"
+                statement = (
+                    f"ALTER TABLE {quote(table.name)} "
+                    f"ADD COLUMN {quote(column.name)} {compiled_type}{nullable_sql}"
+                )
+                db.session.execute(text(statement))
+                db.session.commit()
+            
+            # Special case: Ensure Alert.hospital_id is nullable
+            if table.name == "alert" and column.name == "hospital_id":
+                existing_col = existing_columns.get("hospital_id")
+                if existing_col and existing_col.get("nullable") is False:
+                    print(f"      Updating {table.name}.{column.name} to be nullable...")
+                    if database_type == "mysql":
+                        statement = f"ALTER TABLE {quote(table.name)} MODIFY COLUMN {quote(column.name)} INT NULL"
+                    elif database_type == "postgresql":
+                        statement = f"ALTER TABLE {quote(table.name)} ALTER COLUMN {quote(column.name)} DROP NOT NULL"
+                    else:  # sqlite
+                        # SQLite doesn't support ALTER COLUMN MODIFY, we'd need to recreate table
+                        # But for simplicity, we'll skip for sqlite as it's more flexible
+                        pass
+                    if database_type in ["mysql", "postgresql"]:
+                        db.session.execute(text(statement))
+                        db.session.commit()
 
         inspector = inspect(db.engine)
+
+
+def seed_alerts():
+    """Seed sample alerts for testing purposes."""
+    with app.app_context():
+        # Get first hospital and patient
+        hospital = Hospital.query.first()
+        patient = Patient.query.first()
+        
+        if not hospital or not patient:
+            print("      Skipping alert seeding: no hospital or patient available.")
+            return 0
+        
+        # Check if alerts already exist
+        existing_alerts = Alert.query.count()
+        if existing_alerts > 0:
+            print(f"      Found {existing_alerts} existing alerts. Skipping seeding.")
+            return 0
+        
+        # Create sample alerts
+        alerts_data = [
+            {
+                "patient_id": patient.id,
+                "hospital_id": hospital.id,
+                "alert_type": "mdr_tb_suspected",
+                "message": f"MDR-TB Suspected: Patient {patient.patient_id} shows signs of multidrug-resistant TB. Immediate DST and treatment review required.",
+                "severity": "critical",
+                "is_read": False
+            },
+            {
+                "patient_id": patient.id,
+                "hospital_id": hospital.id,
+                "alert_type": "treatment_failure_risk",
+                "message": f"Treatment Failure Risk Alert: Patient {patient.patient_id} has 85.2% probability of treatment failure. Consider regimen adjustment.",
+                "severity": "critical",
+                "is_read": False
+            },
+            {
+                "patient_id": patient.id,
+                "hospital_id": hospital.id,
+                "alert_type": "critical_lab_result",
+                "message": f"Critical Lab Result Available: GeneXpert for patient {patient.patient_id}. Results: MTB DETECTED, RIF RESISTANCE DETECTED.",
+                "severity": "critical",
+                "is_read": True
+            },
+            {
+                "patient_id": patient.id,
+                "hospital_id": hospital.id,
+                "alert_type": "antibiotic_misuse",
+                "message": f"Antibiotic Misuse Detected: Overprescription for patient {patient.patient_id}. Review medication history.",
+                "severity": "high",
+                "is_read": False
+            },
+            {
+                "patient_id": None,
+                "hospital_id": hospital.id,
+                "alert_type": "low_stock",
+                "message": f"Low Stock Alert: Isoniazid at {hospital.name}. Current: 5, Threshold: 10",
+                "severity": "high",
+                "is_read": False
+            }
+        ]
+        
+        for alert_data in alerts_data:
+            alert = Alert(**alert_data)
+            db.session.add(alert)
+        
+        db.session.commit()
+        return len(alerts_data)
+
+
+def ensure_patients_have_hospitals():
+    """Ensure every patient is associated with at least one hospital"""
+    with app.app_context():
+        hospitals = Hospital.query.all()
+        if not hospitals:
+            default_hospital = get_or_create_default_hospital()
+            hospitals = [default_hospital]
+        
+        patients_without_hospitals = Patient.query.filter(~Patient.hospitals.any()).all()
+        if patients_without_hospitals:
+            import random
+            for patient in patients_without_hospitals:
+                # Assign to 1-3 random hospitals
+                num_hospitals = random.randint(1, min(3, len(hospitals)))
+                assigned_hospitals = random.sample(hospitals, num_hospitals)
+                for hospital in assigned_hospitals:
+                    patient.hospitals.append(hospital)
+            
+            db.session.commit()
+            return len(patients_without_hospitals)
+        return 0
 
 
 def bootstrap(import_data_enabled=True, seed_enabled=True, train_enabled=True, reset_database=True):
@@ -164,6 +282,7 @@ def bootstrap(import_data_enabled=True, seed_enabled=True, train_enabled=True, r
         add_prescription_fields()
         print("      Prescription dosage fields added.")
 
+    alerts_added = 0
     if seed_enabled:
         print("[2/4] Seeding healthcare centers, laboratories, pharmacies...")
         with app.app_context():
@@ -175,6 +294,14 @@ def bootstrap(import_data_enabled=True, seed_enabled=True, train_enabled=True, r
         seed_result = seed_all()
         print(f"      Users in database: {seed_result['users']['total']} (added {seed_result['users']['added']}).")
         print(f"      Sample data added: {seed_result['sample_data']}")
+        
+        print("[2.75/4] Seeding sample alerts...")
+        alerts_added = seed_alerts()
+        if alerts_added > 0:
+            print(f"      Alerts added: {alerts_added}")
+        
+        print("[2.85/4] Seeding lab tests...")
+        seed_lab_tests()
     else:
         print("[2/4] Skipping user/sample data seeding.")
 
@@ -189,6 +316,11 @@ def bootstrap(import_data_enabled=True, seed_enabled=True, train_enabled=True, r
             import_medicine_dataset()
             import_amr_dataset()
         print("      New dataset import finished.")
+        
+        print("[3.75/4] Ensuring patients have hospital associations...")
+        patients_fixed = ensure_patients_have_hospitals()
+        if patients_fixed > 0:
+            print(f"      Fixed {patients_fixed} patients without hospital associations.")
     else:
         print("[3/4] Skipping dataset import.")
 
@@ -211,6 +343,7 @@ def bootstrap(import_data_enabled=True, seed_enabled=True, train_enabled=True, r
             "training_result": training_result,
             "detailed_lab_results": DetailedLabResult.query.count(),
             "antibiotic_resistance_records": AntibioticResistance.query.count(),
+            "alerts": Alert.query.count(),
         }
 
     print("=" * 60)
@@ -220,6 +353,7 @@ def bootstrap(import_data_enabled=True, seed_enabled=True, train_enabled=True, r
     print(f"Users available: {summary['users']}")
     print(f"Detailed lab results: {summary['detailed_lab_results']}")
     print(f"Antibiotic resistance records: {summary['antibiotic_resistance_records']}")
+    print(f"Alerts available: {summary['alerts']}")
     print("=" * 60)
     return summary
 

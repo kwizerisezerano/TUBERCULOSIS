@@ -1,19 +1,5 @@
 
-import type { User } from './useAuth';
-
-export interface Patient {
-  id: number;
-  patient_id: string;
-  first_name: string;
-  last_name: string;
-  age: number;
-  gender: string;
-  city: string;
-  symptoms: string;
-  tb_risk_score?: number;
-  tb_risk_level?: string;
-  tb_type?: string;
-}
+import type { User, Patient } from './useAuth';
 
 export interface DetailedLabResult {
   id: number;
@@ -84,6 +70,11 @@ export const useApi = () => {
     diagnose: (data: any) => request('/diagnose', { method: 'POST', body: data }),
     getDiagnoses: (page = 1, perPage = 20) => request(`/diagnoses?page=${page}&per_page=${perPage}`),
     getAtcDrugs: (page = 1, perPage = 20) => request(`/atc-drugs?page=${page}&per_page=${perPage}`),
+    getAntibiotics: (search = '', limit = 50) => {
+      let url = `/atc-drugs/antibiotics?limit=${limit}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      return request(url);
+    },
     getAlerts: (page = 1, perPage = 20, unreadOnly = false) => {
       let url = `/alerts?page=${page}&per_page=${perPage}`;
       if (unreadOnly) url += `&unread_only=true`;
@@ -104,6 +95,17 @@ export const useApi = () => {
     getAllLabTests: () => request('/lab-tests'),
     updateLabTestStatus: (id: number, status: string) => request(`/lab-tests/${id}`, { method: 'PUT', body: { status } }),
     submitLabTestResult: (id: number, data: any) => request(`/lab-tests/${id}/submit-result`, { method: 'POST', body: data }),
+    // New antimicrobial stewardship methods
+    validatePrescription: (data: any) => request('/prescriptions/validate', { method: 'POST', body: data }),
+    recommendAntibiotics: (data: any) => request('/prescriptions/recommend', { method: 'POST', body: data }),
+    antibioticAssessment: (patientId: number, data: any) => request(`/patients/${patientId}/antibiotic-assessment`, { method: 'POST', body: data }),
+    // Patient consent
+    getPatientConsent: (patientId: number) => request(`/patients/${patientId}/consent`),
+    updatePatientConsent: (patientId: number, data: any) => request(`/patients/${patientId}/consent`, { method: 'POST', body: data }),
+    // Audit logs (admin only)
+    getAuditLogs: (page = 1, perPage = 20) => request(`/audit-logs?page=${page}&per_page=${perPage}`),
+    verifyAuditIntegrity: () => request('/audit-logs/verify-integrity'),
+    getAuditChain: () => request('/audit-logs/chain'),
   };
 };
 

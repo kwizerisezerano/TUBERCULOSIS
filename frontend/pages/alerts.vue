@@ -7,15 +7,15 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
           <p class="text-gray-500 dark:text-gray-400 text-sm">Total Alerts</p>
-          <p class="text-3xl font-bold text-gray-900 dark:text-white mt-1">{{ alerts.length }}</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-white mt-1">{{ dashboard.alert_stats?.total || alerts.length }}</p>
         </div>
         <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
           <p class="text-gray-500 dark:text-gray-400 text-sm">Unread</p>
-          <p class="text-3xl font-bold text-red-600 dark:text-red-400 mt-1">{{ unreadCount }}</p>
+          <p class="text-3xl font-bold text-red-600 dark:text-red-400 mt-1">{{ dashboard.alert_stats?.unread || unreadCount }}</p>
         </div>
         <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
           <p class="text-gray-500 dark:text-gray-400 text-sm">Critical</p>
-          <p class="text-3xl font-bold text-orange-600 dark:text-orange-400 mt-1">{{ criticalCount }}</p>
+          <p class="text-3xl font-bold text-orange-600 dark:text-orange-400 mt-1">{{ dashboard.alert_stats?.critical || criticalCount }}</p>
         </div>
       </div>
 
@@ -25,7 +25,7 @@
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white">All Alerts</h2>
           <button 
             @click="markAllRead" 
-            v-if="unreadCount > 0"
+            v-if="(dashboard.alert_stats?.unread || unreadCount) > 0"
             class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition"
           >
             Mark All as Read
@@ -77,7 +77,10 @@
 import { ref, computed, onMounted } from 'vue';
 import DashboardLayout from '~/components/DashboardLayout.vue';
 
+const { getAlerts, markAlertRead, getDashboardStats } = useApi();
+
 const alerts = ref<any[]>([]);
+const dashboard = ref<any>({});
 const loading = ref(false);
 
 const unreadCount = computed(() => alerts.value.filter(a => !a.is_read).length);
@@ -86,12 +89,12 @@ const criticalCount = computed(() => alerts.value.filter(a => a.severity === 'cr
 const fetchAlerts = async () => {
   loading.value = true;
   try {
-    const token = localStorage.getItem('auth_token');
-    const response = await fetch('http://127.0.0.1:5000/api/alerts', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const data = await response.json();
-    alerts.value = data.alerts || [];
+    const [alertsRes, dashboardRes] = await Promise.all([
+      getAlerts(1, 100, false),
+      getDashboardStats()
+    ]);
+    alerts.value = alertsRes.alerts || [];
+    dashboard.value = dashboardRes;
   } catch (error) {
     console.error('Failed to fetch alerts:', error);
   } finally {
@@ -103,12 +106,11 @@ const markAsRead = async (alert: any) => {
   if (alert.is_read) return;
   
   try {
-    const token = localStorage.getItem('auth_token');
-    await fetch(`http://127.0.0.1:5000/api/alerts/${alert.id}/read`, {
-      method: 'PUT',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    await markAlertRead(alert.id);
     alert.is_read = true;
+    // Refresh stats
+    const dashboardRes = await getDashboardStats();
+    dashboard.value = dashboardRes;
   } catch (error) {
     console.error('Failed to mark alert as read:', error);
   }
@@ -116,14 +118,13 @@ const markAsRead = async (alert: any) => {
 
 const markAllRead = async () => {
   try {
-    const token = localStorage.getItem('auth_token');
     for (const alert of alerts.value.filter(a => !a.is_read)) {
-      await fetch(`http://127.0.0.1:5000/api/alerts/${alert.id}/read`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await markAlertRead(alert.id);
       alert.is_read = true;
     }
+    // Refresh stats
+    const dashboardRes = await getDashboardStats();
+    dashboard.value = dashboardRes;
   } catch (error) {
     console.error('Failed to mark all alerts as read:', error);
   }

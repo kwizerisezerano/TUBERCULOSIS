@@ -1,9 +1,10 @@
 import os
 import pandas as pd
-from app import app, db
-from models.models import Hospital, Patient, ATCDrug
+# Defer app import to avoid circular dependency during bootstrap
+from models.models import Hospital, Patient, ATCDrug, db
+from utils.data_validator import DataValidator
 
-def import_healthcare_dataset():
+def import_healthcare_dataset(fast_mode=False):
     """Import healthcare_dataset.csv for multi-hospital simulation"""
     csv_path = os.path.join(os.path.dirname(__file__), '..', 'NEWDATASETS', 'healthcare_dataset.csv', 'healthcare_dataset.csv')
     
@@ -13,8 +14,26 @@ def import_healthcare_dataset():
     
     print("=== Importing Healthcare Dataset ===")
     df = pd.read_csv(csv_path)
+    if fast_mode and len(df) > 5000:
+        df = df.sample(n=5000, random_state=42)
+        print(f"⚡ Fast mode: Limited to {len(df)} rows")
     print(f"📊 Found {len(df)} rows")
     print(f"📋 Columns: {list(df.columns)}")
+    
+    # Validate data quality
+    print("📊 Data Quality Check:")
+    validator = DataValidator('patient')
+    df, validation_report = validator.validate_dataframe(df, unique_key='Name')
+    print(f"  - Rows with missing Name: {df['Name'].isna().sum()}")
+    print(f"  - Rows with missing Age: {df['Age'].isna().sum()}")
+    print(f"  - Rows with missing Gender: {df['Gender'].isna().sum()}")
+    print(f"  - Rows with missing Hospital: {df['Hospital'].isna().sum()}")
+    
+    if validation_report['duplicates'] > 0:
+        print(f"  ⚠️  Removed {validation_report['duplicates']} duplicate records")
+    
+    if validation_report['missing_critical'] > 0:
+        print(f"  ⚠️  Found {validation_report['missing_critical']} missing critical values")
     
     # Validate required columns
     required_cols = ['Hospital', 'Name', 'Age', 'Gender']
@@ -22,13 +41,6 @@ def import_healthcare_dataset():
     if missing_cols:
         print(f"❌ Missing required columns: {missing_cols}")
         return
-    
-    # Data quality check
-    print(f"📊 Data Quality Check:")
-    print(f"  - Rows with missing Name: {df['Name'].isna().sum()}")
-    print(f"  - Rows with missing Age: {df['Age'].isna().sum()}")
-    print(f"  - Rows with missing Gender: {df['Gender'].isna().sum()}")
-    print(f"  - Rows with missing Hospital: {df['Hospital'].isna().sum()}")
     
     # Extract unique hospitals
     unique_hospitals = df['Hospital'].unique()
@@ -141,10 +153,10 @@ def import_healthcare_dataset():
             else:
                 antibiotic_usage_history = f"Medication: {str(medication)}"
             
-            # Create patient
+            # Create patient (without hospital_id - use many-to-many relationship)
             patient = Patient(
                 patient_id=patient_id,
-                hospital_id=hospital_id,
+                password='Patient123!',  # Default password for imported patients
                 first_name=first_name,
                 last_name=last_name,
                 age=age,
@@ -162,6 +174,12 @@ def import_healthcare_dataset():
                 has_fatigue='Yes' if 'Fatigue' in medical_condition else 'No',
                 has_shortness_of_breath='Yes' if 'Breath' in medical_condition else 'No'
             )
+            
+            # Add hospital relationship using many-to-many
+            hospital = Hospital.query.get(hospital_id)
+            if hospital:
+                patient.hospitals.append(hospital)
+            
             db.session.add(patient)
             patients_imported += 1
             
@@ -181,7 +199,7 @@ def import_healthcare_dataset():
     print(f"✅ Total hospitals in system: {Hospital.query.count()}")
     print(f"✅ Total patients in system: {Patient.query.count()}")
 
-def import_medicine_dataset():
+def import_medicine_dataset(fast_mode=False):
     """Import medicine_dataset.csv to expand ATC drug database"""
     csv_path = os.path.join(os.path.dirname(__file__), '..', 'NEWDATASETS', 'medicine_dataset.csv', 'medicine_dataset.csv')
     
@@ -191,6 +209,9 @@ def import_medicine_dataset():
     
     print("\n=== Importing Medicine Dataset ===")
     df = pd.read_csv(csv_path)
+    if fast_mode and len(df) > 2000:
+        df = df.sample(n=2000, random_state=42)
+        print(f"⚡ Fast mode: Limited to {len(df)} rows")
     print(f"📊 Found {len(df)} medicine records")
     print(f"📋 Columns: {list(df.columns)}")
     
@@ -278,7 +299,7 @@ def import_medicine_dataset():
     print(f"❌ Errors: {error_medicines} medicines")
     print(f"✅ Total ATC drugs in system: {ATCDrug.query.count()}")
 
-def import_amr_dataset():
+def import_amr_dataset(fast_mode=False):
     """Import Kaggle_AMR_Dataset_v1.0.csv for enhanced antibiogram"""
     csv_path = os.path.join(os.path.dirname(__file__), '..', 'NEWDATASETS', 'Kaggle_AMR_Dataset_v1.0 (1).csv')
     
@@ -292,6 +313,9 @@ def import_amr_dataset():
     
     print("\n=== Importing AMR Dataset ===")
     df = pd.read_csv(csv_path)
+    if fast_mode and len(df) > 2000:
+        df = df.sample(n=2000, random_state=42)
+        print(f"⚡ Fast mode: Limited to {len(df)} rows")
     print(f"📊 Found {len(df)} AMR records")
     print(f"📋 Columns: {list(df.columns)}")
     
@@ -449,6 +473,8 @@ def import_amr_dataset():
     print(f"✅ Total AMR records in system: {AntibioticResistance.query.count()}")
 
 if __name__ == "__main__":
+    # Import app only when running directly
+    from app import app
     with app.app_context():
         print("Starting new dataset import...")
         import_healthcare_dataset()

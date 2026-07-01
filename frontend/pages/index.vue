@@ -71,8 +71,28 @@
             </div>
           </div>
 
+          <!-- Login Type Toggle -->
+          <div class="flex gap-2 p-1 bg-gray-100 dark:bg-gray-900 rounded-xl">
+            <button
+              type="button"
+              @click="loginType = 'clinician'"
+              :class="loginType === 'clinician' ? 'bg-white dark:bg-gray-800 shadow-sm' : 'text-gray-500 dark:text-gray-400'"
+              class="flex-1 py-2 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all"
+            >
+              Clinician
+            </button>
+            <button
+              type="button"
+              @click="loginType = 'patient'"
+              :class="loginType === 'patient' ? 'bg-white dark:bg-gray-800 shadow-sm' : 'text-gray-500 dark:text-gray-400'"
+              class="flex-1 py-2 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all"
+            >
+              Patient
+            </button>
+          </div>
+
           <form @submit.prevent="handleLogin" class="space-y-4 sm:space-y-5">
-            <div>
+            <div v-if="loginType === 'clinician'">
               <label for="email" class="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">Email Address</label>
               <input
                 id="email"
@@ -82,6 +102,18 @@
                 autocomplete="email"
                 class="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all text-sm sm:text-base"
                 placeholder="you@hospital.com"
+              />
+            </div>
+            <div v-else>
+              <label for="patientId" class="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">Patient ID</label>
+              <input
+                id="patientId"
+                v-model="patientId"
+                type="text"
+                required
+                autocomplete="username"
+                class="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all text-sm sm:text-base"
+                placeholder="e.g., SYM2024000001"
               />
             </div>
             <div>
@@ -127,13 +159,13 @@
           <!-- Quick Credentials -->
           <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700">
             <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-3 sm:mb-4 font-semibold uppercase tracking-wide">Demo Credentials</p>
-            <div class="space-y-1.5 sm:space-y-2">
-              <button v-for="cred in credentials" :key="cred.role" @click="email = cred.email; password = cred.pwd; showPwd = true" class="w-full flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-3 rounded-xl bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-xs sm:text-sm overflow-hidden">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button v-for="cred in credentials" :key="cred.email" @click="email = cred.email; password = cred.pwd; showPwd = true" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-xs overflow-hidden">
                 <div class="text-left min-w-0 flex-1 overflow-hidden">
-                  <span class="font-semibold text-gray-700 dark:text-gray-300 block truncate">{{ cred.role }}</span>
-                  <span class="text-gray-400 dark:text-gray-500 text-[10px] sm:text-xs truncate block">{{ cred.email }}</span>
+                  <span class="font-semibold text-gray-700 dark:text-gray-300 block truncate text-[11px]">{{ cred.role }}</span>
+                  <span class="text-gray-400 dark:text-gray-500 text-[9px] truncate block">{{ cred.email }}</span>
                 </div>
-                <span class="text-primary-600 dark:text-primary-400 font-mono text-[10px] sm:text-xs shrink-0">{{ cred.pwd }}</span>
+                <span class="text-primary-600 dark:text-primary-400 font-mono text-[9px] shrink-0">{{ cred.pwd }}</span>
               </button>
             </div>
           </div>
@@ -154,7 +186,9 @@ const router = useRouter();
 
 if (isLoggedIn.value) router.push('/dashboard');
 
+const loginType = ref('clinician');
 const email = ref('');
+const patientId = ref('');
 const password = ref('');
 const showPwd = ref(false);
 const isLoading = ref(false);
@@ -199,17 +233,35 @@ const credentials = [
   { role: 'Hospital Admin', email: 'igiclarisse10@gmail.com', pwd: 'Admin123!' },
   { role: 'Doctor', email: 'igiranezac459@gmail.com', pwd: 'Doctor123!' },
   { role: 'Lab Technician', email: 'clarisseigiraneza56@gmail.com', pwd: 'LabTech123!' },
-  { role: 'Pharmacist', email: 'clarisseigiraneza915@gmail.com', pwd: 'Pharm123!' }
+  { role: 'Pharmacist', email: 'clarisseigiraneza915@gmail.com', pwd: 'Pharm123!' },
+  { role: 'Doctor (Hosp 2)', email: 'doctor2@hospital2.com', pwd: 'Doctor123!' },
+  { role: 'Doctor (Hosp 3)', email: 'doctor3@hospital3.com', pwd: 'Doctor123!' },
+  { role: 'Lab Tech (Hosp 2)', email: 'labtech2@hospital2.com', pwd: 'LabTech123!' },
+  { role: 'Lab Tech (Hosp 3)', email: 'labtech3@hospital3.com', pwd: 'LabTech123!' },
+  { role: 'Pharmacist (Hosp 2)', email: 'pharmacist2@hospital2.com', pwd: 'Pharm123!' },
+  { role: 'Pharmacist (Hosp 3)', email: 'pharmacist3@hospital3.com', pwd: 'Pharm123!' },
+  { role: 'Hospital Admin (Hosp 2)', email: 'admin2@hospital2.com', pwd: 'Admin123!' },
+  { role: 'Hospital Admin (Hosp 3)', email: 'admin3@hospital3.com', pwd: 'Admin123!' }
 ];
 
 const handleLogin = async () => {
   isLoading.value = true;
   error.value = '';
-  const result = await login(email.value, password.value);
-  if (result.success) {
-    router.push('/dashboard');
+  
+  if (loginType.value === 'patient') {
+    const result = await login(patientId.value, password.value, 'patient');
+    if (result.success) {
+      router.push('/patient-portal');
+    } else {
+      error.value = result.error || 'Invalid patient ID or password';
+    }
   } else {
-    error.value = result.error || 'Invalid email or password';
+    const result = await login(email.value, password.value, 'clinician');
+    if (result.success) {
+      router.push('/dashboard');
+    } else {
+      error.value = result.error || 'Invalid email or password';
+    }
   }
   isLoading.value = false;
 };

@@ -55,7 +55,9 @@ from models.train_model import preprocess_symptoms, get_patient_features, train_
 from risk_scoring import recalculate_risk_on_lab_result, recalculate_risk_on_prescription, recalculate_risk_on_diagnosis
 from utils.security import encrypt_data, decrypt_data, hash_password, verify_password
 
-load_dotenv()
+# Only load .env if DATABASE_TYPE is not already set (to avoid overriding bootstrap.py settings)
+if not os.getenv("DATABASE_TYPE"):
+    load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
@@ -71,12 +73,14 @@ def role_required(*roles):
         @wraps(fn)
         def wrapper(*args, **kwargs):
             from flask_jwt_extended import get_jwt_identity
-            user_id = get_jwt_identity()
-            user = User.query.get(user_id)
-            if not user or user.role not in roles:
-                lang = get_request_lang()
-                return jsonify({"msg": I18N["ACCESS_DENIED"][lang]}), 403
-            return fn(*args, **kwargs)
+            try:
+                user_id = get_jwt_identity()
+                user = User.query.get(user_id)
+                if not user or user.role not in roles:
+                    return jsonify({"msg": "Access denied. Insufficient permissions."}), 403
+                return fn(*args, **kwargs)
+            except Exception as e:
+                return jsonify({"msg": "Authentication required"}), 401
         return wrapper
     return decorator
 
@@ -1939,7 +1943,8 @@ def localize_payload(value, lang=None):
     return value
 
 # Database configuration - supports multiple databases
-DATABASE_TYPE = os.getenv('DATABASE_TYPE', 'sqlite')
+# Use already-set DATABASE_TYPE from bootstrap.py if available, otherwise load from env
+DATABASE_TYPE = os.environ.get('DATABASE_TYPE') or os.getenv('DATABASE_TYPE', 'sqlite')
 
 if DATABASE_TYPE == 'mysql':
     DB_USER = os.getenv('DB_USER', 'root')
@@ -1960,6 +1965,14 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
+
+# Register FHIR endpoints for hospital interoperability
+from fhir_routes import fhir_bp
+app.register_blueprint(fhir_bp)
+
+# Register consent management endpoints
+from consent_routes import consent_bp
+app.register_blueprint(consent_bp)
 
 # JWT Configuration
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'tb-diagnostic-super-secret-key-2024')
@@ -2647,7 +2660,7 @@ def role_required(*allowed_roles):
             user = get_current_user_from_jwt()
             
             if not user or user.role not in allowed_roles:
-                return jsonify({"msg": tr("ACCESS_DENIED")}), 403
+                return jsonify({"msg": "Access denied. Insufficient permissions."}), 403
             return f(*args, **kwargs)
         decorated_function.__name__ = f.__name__
         return decorated_function
@@ -3167,6 +3180,17 @@ def create_alert(patient_id, user_id, alert_type, message, severity='medium'):
         if user:
             hospital_id = user.hospital_id
     
+    # If no hospital_id from user, try to get from patient
+    if hospital_id is None and patient_id is not None:
+        patient = Patient.query.get(patient_id)
+        if patient and patient.hospitals:
+            hospital_id = patient.hospitals[0].id
+        elif patient:
+            # Fallback: get first available hospital
+            hospital = Hospital.query.first()
+            if hospital:
+                hospital_id = hospital.id
+    
     alert = Alert(
         patient_id=patient_id,
         user_id=user_id,
@@ -3199,46 +3223,94 @@ def login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
+    login_type = data.get('type', 'clinician')  # 'clinician' or 'patient'
 
-    # Find user by email (search through encrypted emails)
-    user = None
-    all_users = User.query.all()
-    for u in all_users:
-        if u.email == email:
-            user = u
-            break
+    if login_type == 'patient':
+        # Patient login using patient_id and password
+        patient_id = data.get('patient_id')
+        if not patient_id or not password:
+            return jsonify({'msg': 'Patient ID and password required'}), 400
 
-    if not user:
-        return jsonify({'msg': tr('INVALID_EMAIL_OR_PASSWORD')}), 401
+        # Find patient by patient_id (search through encrypted patient_ids)
+        patient = None
+        all_patients = Patient.query.all()
+        for p in all_patients:
+            if p.patient_id == patient_id:
+                patient = p
+                break
 
-    if not user.check_password(password):
-        return jsonify({'msg': tr('INVALID_EMAIL_OR_PASSWORD')}), 401
+        if not patient:
+            return jsonify({'msg': 'Invalid patient ID or password'}), 401
 
-    # Create access token
-    access_token = create_access_token(
-        identity=str(user.id),
-        additional_claims={
-            'username': user.username,
-            'role': user.role
-        }
-    )
+        if not patient.verify_password(password):
+            return jsonify({'msg': 'Invalid patient ID or password'}), 401
 
-    # Create audit log for login
-    audit = AuditLog(
-        user_id=user.id,
-        action='user_login',
-        entity_type='user',
-        entity_id=user.id,
-        details=f'User {user.username} logged in',
-        created_at=datetime.now()
-    )
-    db.session.add(audit)
-    db.session.commit()
+        # Create access token for patient
+        access_token = create_access_token(
+            identity=str(patient.id),
+            additional_claims={
+                'patient_id': patient.patient_id,
+                'role': 'patient'
+            }
+        )
 
-    return jsonify({
-        'access_token': access_token,
-        'user': user.to_dict()
-    })
+        # Create audit log for patient login
+        audit = AuditLog(
+            user_id=patient.id,
+            action='patient_login',
+            entity_type='patient',
+            entity_id=patient.id,
+            details=f'Patient {patient.patient_id} logged in',
+            created_at=datetime.now()
+        )
+        db.session.add(audit)
+        db.session.commit()
+
+        return jsonify({
+            'access_token': access_token,
+            'patient': patient.to_dict()
+        })
+    else:
+        # Clinician login using email and password
+        # Find user by email (search through encrypted emails)
+        user = None
+        all_users = User.query.all()
+        for u in all_users:
+            if u.email == email:
+                user = u
+                break
+
+        if not user:
+            return jsonify({'msg': tr('INVALID_EMAIL_OR_PASSWORD')}), 401
+
+        if not user.check_password(password):
+            return jsonify({'msg': tr('INVALID_EMAIL_OR_PASSWORD')}), 401
+
+        # Create access token
+        access_token = create_access_token(
+            identity=str(user.id),
+            additional_claims={
+                'username': user.username,
+                'role': user.role
+            }
+        )
+
+        # Create audit log for login
+        audit = AuditLog(
+            user_id=user.id,
+            action='user_login',
+            entity_type='user',
+            entity_id=user.id,
+            details=f'User {user.username} logged in',
+            created_at=datetime.now()
+        )
+        db.session.add(audit)
+        db.session.commit()
+
+        return jsonify({
+            'access_token': access_token,
+            'user': user.to_dict()
+        })
 
 @app.route('/api/auth/register', methods=['POST'])
 @role_required('admin', 'hospital_admin')
@@ -3457,17 +3529,17 @@ def patients():
             # Admin can see all patients or filter by hospital
             if current_user.role == 'admin':
                 if filter_hospital_id:
-                    query = query.filter_by(hospital_id=filter_hospital_id)
+                    query = query.join(Patient.hospitals).filter(Hospital.id == filter_hospital_id)
             else:
                 if current_user.hospital_id:
                     # Non-admin users see:
-                    # 1. Patients with primary hospital = user's hospital
+                    # 1. Patients associated with their hospital via many-to-many relationship
                     # OR
                     # 2. Patients that have ANY record (diagnosis, lab test, prescription, treatment, alert) at user's hospital
                     from sqlalchemy import or_
                     query = query.filter(
                         or_(
-                            Patient.hospital_id == current_user.hospital_id,
+                            Patient.hospitals.any(Hospital.id == current_user.hospital_id),
                             Patient.id.in_(
                                 db.session.query(Diagnosis.patient_id).filter(Diagnosis.hospital_id == current_user.hospital_id)
                             ),
@@ -3486,8 +3558,8 @@ def patients():
                         )
                     )
                 else:
-                    # If user has no hospital, show only patients with no hospital
-                    query = query.filter(Patient.hospital_id.is_(None))
+                    # If user has no hospital, show only patients with no hospital association
+                    query = query.filter(~Patient.hospitals.any())
         
         if search:
             query = query.filter(
@@ -3644,7 +3716,17 @@ def patient_history(patient_id):
                 authorized = True
     
     if not authorized:
-        return jsonify({"msg": "Not authorized to view this patient's history"}), 403
+        # Check if cross-hospital access with consent
+        patient_hospitals = [h.id for h in patient.hospitals]
+        if current_user.hospital_id not in patient_hospitals and patient.data_sharing_consent == 'granted':
+            authorized = True
+        else:
+            return jsonify({
+                "msg": "Not authorized to view this patient's history",
+                "consent_required": True,
+                "patient_id": patient_id,
+                "data_sharing_consent": patient.data_sharing_consent
+            }), 403
     
     # Get all records for this patient
     diagnoses = Diagnosis.query.filter_by(patient_id=patient_id).order_by(Diagnosis.created_at.desc()).all()
@@ -3919,6 +4001,38 @@ def atc_drugs():
         return jsonify(drug.to_dict()), 201
 
 
+@app.route('/api/atc-drugs/antibiotics', methods=['GET'])
+@jwt_required()
+def get_antibiotics():
+    """Get list of antibiotic drugs for autocomplete dropdown (ATC code J01 = Antibacterials)"""
+    search = request.args.get('search', '')
+    limit = request.args.get('limit', 50, type=int)
+    
+    # Filter for antibiotics (ATC level 2 = J01 for antibacterials)
+    query = ATCDrug.query.filter(ATCDrug.atc_level_2 == 'J01')
+    
+    # Add search filter if provided
+    if search:
+        query = query.filter(ATCDrug.drug_name.ilike(f'%{search}%'))
+    
+    antibiotics = query.order_by(ATCDrug.drug_name.asc()).limit(limit).all()
+    
+    return jsonify({
+        'antibiotics': [
+            {
+                'id': drug.id,
+                'drug_name': drug.drug_name,
+                'atc_code': drug.atc_code,
+                'ddd': drug.ddd,
+                'ddd_unit': drug.ddd_unit,
+                'administration_route': drug.administration_route
+            }
+            for drug in antibiotics
+        ],
+        'total': len(antibiotics)
+    })
+
+
 # Detailed Lab Results Management
 @app.route('/api/detailed-lab-results', methods=['GET', 'POST'])
 @jwt_required()
@@ -4004,8 +4118,310 @@ def antibiotic_resistance():
         db.session.commit()
         return jsonify(ar.to_dict()), 201
 
+@app.route('/api/antibiogram', methods=['GET'])
+@jwt_required()
+def get_antibiogram():
+    """Generate cumulative antibiogram showing susceptibility percentages by bacterial species and antibiotic"""
+    from models.models import AntibioticResistance
+    
+    # Get filter parameters
+    bacterial_species_filter = request.args.get('bacterial_species')
+    hospital_id = request.args.get('hospital_id', type=int)
+    
+    # Base query
+    query = AntibioticResistance.query
+    
+    # Apply filters
+    if bacterial_species_filter:
+        query = query.filter(AntibioticResistance.bacterial_species == bacterial_species_filter)
+    
+    # Hospital-based access control
+    current_user = get_current_user_from_jwt()
+    if current_user.role != 'admin' and hospital_id is None:
+        hospital_id = current_user.hospital_id
+    
+    if hospital_id:
+        # Filter by patients associated with this hospital
+        query = query.join(Patient).filter(Patient.hospitals.any(id=hospital_id))
+    
+    records = query.all()
+    
+    # Define antibiotics to analyze
+    antibiotics = {
+        'amx_amp': 'Amoxicillin/Ampicillin',
+        'amc': 'Amoxicillin-clavulanate',
+        'cz': 'Cefazolin',
+        'fox': 'Cefoxitin',
+        'ctx_cro': 'Cefotaxime/Ceftriaxone',
+        'ipm': 'Imipenem',
+        'gen': 'Gentamicin',
+        'an': 'Amikacin',
+        'ofx': 'Ofloxacin',
+        'cip': 'Ciprofloxacin',
+        'chloramphenicol': 'Chloramphenicol',
+        'co_trimoxazole': 'Co-trimoxazole'
+    }
+    
+    # Group by bacterial species
+    species_data = {}
+    for record in records:
+        species = record.bacterial_species or 'Unknown'
+        if species not in species_data:
+            species_data[species] = {antibiotic: {'susceptible': 0, 'resistant': 0, 'total': 0} for antibiotic in antibiotics}
+        
+        for ab_field, ab_name in antibiotics.items():
+            resistance_value = getattr(record, ab_field, None)
+            if resistance_value:
+                species_data[species][ab_field]['total'] += 1
+                if resistance_value.lower() in ['s', 'susceptible', 'sensitive']:
+                    species_data[species][ab_field]['susceptible'] += 1
+                elif resistance_value.lower() in ['r', 'resistant', 'resistance']:
+                    species_data[species][ab_field]['resistant'] += 1
+    
+    # Calculate susceptibility percentages
+    antibiogram = []
+    for species, ab_data in species_data.items():
+        species_result = {
+            'bacterial_species': species,
+            'antibiotics': []
+        }
+        
+        for ab_field, ab_name in antibiotics.items():
+            stats = ab_data[ab_field]
+            if stats['total'] > 0:
+                susceptibility_pct = (stats['susceptible'] / stats['total']) * 100
+                species_result['antibiotics'].append({
+                    'antibiotic': ab_name,
+                    'field': ab_field,
+                    'total_tested': stats['total'],
+                    'susceptible_count': stats['susceptible'],
+                    'resistant_count': stats['resistant'],
+                    'susceptibility_percentage': round(susceptibility_pct, 2)
+                })
+        
+        if species_result['antibiotics']:
+            antibiogram.append(species_result)
+    
+    return jsonify({
+        'antibiogram': antibiogram,
+        'total_records': len(records),
+        'species_count': len(species_data)
+    })
+
+@app.route('/api/consumption-surveillance', methods=['GET'])
+@jwt_required()
+def get_consumption_surveillance():
+    """Calculate antimicrobial consumption using DDD methodology"""
+    from models.models import Prescription, ATCDrug
+    
+    # Get filter parameters
+    hospital_id = request.args.get('hospital_id', type=int)
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    atc_level = request.args.get('atc_level', '2')  # Default to ATC level 2 (J01 = Antibacterials)
+    
+    # Base query
+    query = Prescription.query.join(ATCDrug)
+    
+    # Apply date filters
+    if start_date:
+        query = query.filter(Prescription.created_at >= datetime.fromisoformat(start_date))
+    if end_date:
+        query = query.filter(Prescription.created_at <= datetime.fromisoformat(end_date))
+    
+    # Hospital-based access control
+    current_user = get_current_user_from_jwt()
+    if current_user.role != 'admin' and hospital_id is None:
+        hospital_id = current_user.hospital_id
+    
+    if hospital_id:
+        query = query.join(Patient).filter(Patient.hospitals.any(id=hospital_id))
+    
+    prescriptions = query.all()
+    
+    # Group by ATC level
+    consumption_data = {}
+    
+    for prescription in prescriptions:
+        drug = prescription.atc_drug
+        if not drug:
+            continue
+        
+        # Get ATC level key
+        if atc_level == '1':
+            atc_key = drug.atc_level_1 or 'Unknown'
+            atc_name = f"Level 1: {atc_key}"
+        elif atc_level == '2':
+            atc_key = drug.atc_level_2 or 'Unknown'
+            atc_name = f"Level 2: {atc_key}"
+        elif atc_level == '3':
+            atc_key = drug.atc_level_3 or 'Unknown'
+            atc_name = f"Level 3: {atc_key}"
+        elif atc_level == '4':
+            atc_key = drug.atc_level_4 or 'Unknown'
+            atc_name = f"Level 4: {atc_key}"
+        else:
+            atc_key = drug.atc_code or 'Unknown'
+            atc_name = drug.drug_name
+        
+        if atc_key not in consumption_data:
+            consumption_data[atc_key] = {
+                'atc_code': atc_key,
+                'atc_name': atc_name,
+                'total_ddds': 0.0,
+                'total_prescriptions': 0,
+                'total_mg': 0.0,
+                'drugs': set()
+            }
+        
+        # Add DDDs if calculated
+        if prescription.ddds:
+            consumption_data[atc_key]['total_ddds'] += prescription.ddds
+        
+        # Add total mg
+        if prescription.total_mg:
+            consumption_data[atc_key]['total_mg'] += prescription.total_mg
+        
+        consumption_data[atc_key]['total_prescriptions'] += 1
+        consumption_data[atc_key]['drugs'].add(drug.drug_name)
+    
+    # Convert sets to lists for JSON serialization
+    result = []
+    for atc_key, data in consumption_data.items():
+        result.append({
+            'atc_code': data['atc_code'],
+            'atc_name': data['atc_name'],
+            'total_ddds': round(data['total_ddds'], 2),
+            'total_prescriptions': data['total_prescriptions'],
+            'total_mg': round(data['total_mg'], 2),
+            'drugs': list(data['drugs'])
+        })
+    
+    # Sort by DDDs descending
+    result.sort(key=lambda x: x['total_ddds'], reverse=True)
+    
+    return jsonify({
+        'consumption_data': result,
+        'total_prescriptions': len(prescriptions),
+        'atc_level': atc_level,
+        'period': {
+            'start_date': start_date,
+            'end_date': end_date
+        }
+    })
+
 
 # Prescription Management
+@app.route('/api/prescriptions/validate', methods=['POST'])
+@jwt_required()
+def validate_prescription():
+    """Validate prescription against resistance patterns, DDD standards, and inventory"""
+    from prescription_guard import PrescriptionGuard
+    
+    data = request.get_json()
+    
+    patient_id = data.get('patient_id')
+    hospital_id = data.get('hospital_id')
+    atc_drug_id = data.get('atc_drug_id')
+    dosage_mg = data.get('dosage_mg')
+    frequency = data.get('frequency')
+    duration_days = data.get('duration_days')
+    quantity = data.get('quantity', 1)
+    
+    if not all([patient_id, hospital_id, atc_drug_id, dosage_mg]):
+        return jsonify({'msg': 'Missing required fields'}), 400
+    
+    is_valid, validation_results = PrescriptionGuard.validate_prescription(
+        patient_id, hospital_id, atc_drug_id, dosage_mg, frequency, duration_days, quantity
+    )
+    
+    return jsonify({
+        'is_valid': is_valid,
+        'validation_results': validation_results,
+        'validated_at': datetime.now().isoformat()
+    })
+
+@app.route('/api/prescriptions/recommend', methods=['POST'])
+@jwt_required()
+def recommend_antibiotics():
+    """Recommend antibiotics based on hospital antibiogram and patient resistance patterns"""
+    from models.models import AntibioticResistance, ATCDrug, Patient
+    
+    data = request.get_json()
+    patient_id = data.get('patient_id')
+    organism = data.get('organism')  # Optional: specific organism to target
+    
+    patient = Patient.query.get_or_404(patient_id)
+    
+    # Get patient's resistance history
+    patient_resistance = AntibioticResistance.query.filter_by(patient_id=patient_id).all()
+    resistant_antibiotics = {r.antibiotic_name.lower() for r in patient_resistance if r.susceptibility == 'Resistant'}
+    
+    # Get hospital antibiogram data
+    antibiogram_query = AntibioticResistance.query
+    
+    if organism:
+        antibiogram_query = antibiogram_query.filter(AntibioticResistance.organism == organism)
+    
+    antibiogram_data = antibiogram_query.all()
+    
+    # Group by antibiotic and calculate susceptibility rates
+    antibiotic_stats = {}
+    for record in antibiogram_data:
+        antibiotic = record.antibiotic_name
+        if antibiotic not in antibiotic_stats:
+            antibiotic_stats[antibiotic] = {
+                'total': 0,
+                'susceptible': 0,
+                'resistant': 0,
+                'intermediate': 0
+            }
+        
+        antibiotic_stats[antibiotic]['total'] += 1
+        if record.susceptibility == 'Susceptible':
+            antibiotic_stats[antibiotic]['susceptible'] += 1
+        elif record.susceptibility == 'Resistant':
+            antibiotic_stats[antibiotic]['resistant'] += 1
+        elif record.susceptibility == 'Intermediate':
+            antibiotic_stats[antibiotic]['intermediate'] += 1
+    
+    # Calculate susceptibility percentages and rank recommendations
+    recommendations = []
+    for antibiotic, stats in antibiotic_stats.items():
+        if stats['total'] > 0:
+            susceptibility_rate = (stats['susceptible'] / stats['total']) * 100
+            resistance_rate = (stats['resistant'] / stats['total']) * 100
+            
+            # Skip if patient has resistance to this antibiotic
+            if antibiotic.lower() in resistant_antibiotics:
+                continue
+            
+            # Only recommend if susceptibility > 70%
+            if susceptibility_rate > 70:
+                # Get ATC drug info if available
+                atc_drug = ATCDrug.query.filter(ATCDrug.drug_name.like(f'%{antibiotic}%')).first()
+                
+                recommendations.append({
+                    'antibiotic': antibiotic,
+                    'susceptibility_rate': round(susceptibility_rate, 1),
+                    'resistance_rate': round(resistance_rate, 1),
+                    'total_samples': stats['total'],
+                    'atc_code': atc_drug.atc_code if atc_drug else None,
+                    'ddd': atc_drug.ddd if atc_drug else None,
+                    'recommendation_strength': 'high' if susceptibility_rate > 85 else 'medium'
+                })
+    
+    # Sort by susceptibility rate (highest first)
+    recommendations.sort(key=lambda x: x['susceptibility_rate'], reverse=True)
+    
+    return jsonify({
+        'patient_id': patient_id,
+        'organism': organism,
+        'patient_resistance_history': list(resistant_antibiotics),
+        'recommendations': recommendations[:10],  # Top 10 recommendations
+        'generated_at': datetime.now().isoformat()
+    })
+
 @app.route('/api/prescriptions', methods=['GET', 'POST'])
 @jwt_required()
 def prescriptions():
@@ -4032,6 +4448,9 @@ def prescriptions():
             prescs = query.order_by(Prescription.created_at.desc()).all()
         elif user.role in ['doctor', 'hospital_admin']:
             # Doctors and hospital admins see only their hospital
+            prescs = query.order_by(Prescription.created_at.desc()).all()
+        elif user.role == 'admin':
+            # Admins see all prescriptions (filtered by hospital_id if provided)
             prescs = query.order_by(Prescription.created_at.desc()).all()
         elif user.role == 'lab_technician':
             # Lab techs don't see prescriptions
@@ -4169,6 +4588,10 @@ def prescription_detail(presc_id):
     presc = Prescription.query.get_or_404(presc_id)
     
     if request.method == 'GET':
+        # Lab technicians cannot access prescriptions
+        if user.role == 'lab_technician':
+            lang = get_request_lang()
+            return jsonify({"msg": "Laboratory staff cannot access prescription data"}), 403
         # Check if user can access
         if user.role in ['doctor', 'pharmacist', 'admin', 'hospital_admin']:
             return jsonify(presc.to_dict())
@@ -4179,33 +4602,45 @@ def prescription_detail(presc_id):
     if request.method == 'PUT':
         data = request.get_json()
         
-        if user.role == 'pharmacist' and ('status' in data):
+        # Pharmacists cannot modify diagnosis or lab results
+        if user.role == 'pharmacist':
+            if 'diagnosis_id' in data or 'patient_id' in data:
+                return jsonify({"msg": "Pharmacists cannot modify diagnosis or patient information"}), 403
+            
             # Pharmacist can only update status to approved/rejected/dispensed
-            if data['status'] == 'approved':
-                presc.status = 'approved'
-                presc.approved_by = user_id
-                presc.approved_at = datetime.now()
-            elif data['status'] == 'rejected':
-                presc.status = 'rejected'
-                presc.rejection_reason = data.get('rejection_reason')
-            elif data['status'] == 'dispensed':
-                presc.status = 'dispensed'
-                presc.dispensed_by = user_id
-                presc.dispensed_at = datetime.now()
-                presc.stock_updated = data.get('stock_updated', False)
-            
-            # Create audit log
-            audit = AuditLog(
-                user_id=user_id,
-                action=f"{data['status']}_prescription",
-                entity_type='prescription',
-                entity_id=presc.id,
-                details=f"{data['status'].capitalize()} prescription for {presc.medication}"
-            )
-            db.session.add(audit)
-            
-            db.session.commit()
-            return jsonify(presc.to_dict())
+            if 'status' in data:
+                if data['status'] == 'approved':
+                    presc.status = 'approved'
+                    presc.approved_by = user_id
+                    presc.approved_at = datetime.now()
+                elif data['status'] == 'rejected':
+                    presc.status = 'rejected'
+                    presc.rejection_reason = data.get('rejection_reason', 'Not specified')
+                    if not data.get('rejection_reason'):
+                        return jsonify({"msg": "Rejection reason is required"}), 400
+                elif data['status'] == 'dispensed':
+                    presc.status = 'dispensed'
+                    presc.dispensed_by = user_id
+                    presc.dispensed_at = datetime.now()
+                    presc.stock_updated = data.get('stock_updated', False)
+                else:
+                    return jsonify({"msg": "Invalid status. Use: approved, rejected, or dispensed"}), 400
+                
+                # Create immutable audit log
+                from utils.immutable_audit import ImmutableAuditLogger
+                ImmutableAuditLogger.create_immutable_audit(
+                    user_id=user_id,
+                    action=f"{data['status']}_prescription",
+                    entity_type='Prescription',
+                    entity_id=presc.id,
+                    details=f"{data['status'].capitalize()} prescription for {presc.medication}. Reason: {presc.rejection_reason if data['status'] == 'rejected' else 'N/A'}",
+                    ip_address=request.remote_addr
+                )
+                
+                db.session.commit()
+                return jsonify(presc.to_dict())
+            else:
+                return jsonify({"msg": "Pharmacists can only update prescription status"}), 403
         elif user.role in ['doctor', 'admin', 'hospital_admin']:
             # Doctor or admin can update other fields
             for key, value in data.items():
@@ -4250,23 +4685,38 @@ def dashboard():
     }
     
     # Universal stats for all roles that should see them
-    total_completed_lab_tests = LabTest.query.filter_by(status='completed').count()
+    # Filter by hospital for hospital_admin
+    hospital_id = user.hospital_id if role == 'hospital_admin' else None
+
+    if hospital_id:
+        total_completed_lab_tests = LabTest.query.filter_by(status='completed', hospital_id=hospital_id).count()
+        total_diagnoses = Diagnosis.query.filter_by(hospital_id=hospital_id).count()
+        total_treatments = Treatment.query.filter_by(hospital_id=hospital_id).count()
+    else:
+        total_completed_lab_tests = LabTest.query.filter_by(status='completed').count()
+        total_diagnoses = Diagnosis.query.count()
+        total_treatments = Treatment.query.count()
+
     total_antibiotic_resistance_records = AntibioticResistance.query.count()
     total_atc_drugs = ATCDrug.query.count()
-    total_diagnoses = Diagnosis.query.count()
-    total_treatments = Treatment.query.count()
     total_hospitals = Hospital.query.count()
-    
-    # Calculate patient risk levels using DB counts (avoids loading all patients into memory)
-    total_patients = Patient.query.count()
+
+    if hospital_id:
+        # Hospital admin: filter patients by hospital association
+        patient_query = Patient.query.join(Patient.hospitals).filter(Hospital.id == hospital_id)
+    else:
+        # Admin: see all patients
+        patient_query = Patient.query
+
+    total_patients = patient_query.count()
     # High risk: tb_status_label=Yes OR genexpert=Positive OR (sputum=Positive AND chest_xray=Abnormal)
-    high_risk_patients = Patient.query.filter(
+    high_risk_patients = patient_query.filter(
         db.or_(
             Patient.tb_status_label == 'Yes',
             Patient.genexpert_test == 'Positive',
         )
     ).count()
-    medium_risk_patients = Patient.query.filter(
+    medium_risk_patients = patient_query.filter(
         db.and_(
             Patient.tb_status_label != 'Yes',
             Patient.genexpert_test != 'Positive',
@@ -4277,10 +4727,31 @@ def dashboard():
         )
     ).count()
     low_risk_patients = max(0, total_patients - high_risk_patients - medium_risk_patients)
-    recent_patients = Patient.query.filter(
+    recent_patients = patient_query.filter(
         Patient.created_at >= datetime.now() - timedelta(days=30)
     ).count()
-    
+
+    # System-wide statistics (all hospitals)
+    system_patient_query = Patient.query
+    system_total_patients = system_patient_query.count()
+    system_high_risk_patients = system_patient_query.filter(
+        db.or_(
+            Patient.tb_status_label == 'Yes',
+            Patient.genexpert_test == 'Positive',
+        )
+    ).count()
+    system_medium_risk_patients = system_patient_query.filter(
+        db.and_(
+            Patient.tb_status_label != 'Yes',
+            Patient.genexpert_test != 'Positive',
+            db.or_(
+                Patient.sputum_smear_test == 'Positive',
+                Patient.chest_xray == 'Abnormal',
+            )
+        )
+    ).count()
+    system_low_risk_patients = max(0, system_total_patients - system_high_risk_patients - system_medium_risk_patients)
+
     response['patient_stats'] = {
         'total': total_patients,
         'high_risk': high_risk_patients,
@@ -4288,7 +4759,27 @@ def dashboard():
         'low_risk': low_risk_patients,
         'recent': recent_patients
     }
-    response['hospital_stats'] = { 'total': total_hospitals }
+    
+    # Add system-wide patient statistics
+    response['system_patient_stats'] = {
+        'total': system_total_patients,
+        'high_risk': system_high_risk_patients,
+        'medium_risk': system_medium_risk_patients,
+        'low_risk': system_low_risk_patients
+    }
+    
+    # Hospital-specific vs system-wide hospital count
+    if hospital_id:
+        # Hospital admin: sees 1 (their hospital)
+        hospital_count = 1
+    else:
+        # Full admin: sees all hospitals
+        hospital_count = total_hospitals
+    
+    response['hospital_stats'] = { 
+        'total': hospital_count,
+        'system_total': total_hospitals
+    }
     response['detailed_lab_stats'] = { 'total': total_completed_lab_tests }
     response['antimicrobial_resistance_stats'] = { 'total': total_antibiotic_resistance_records }
     response['atc_drug_stats'] = { 'total': total_atc_drugs }
@@ -4296,15 +4787,32 @@ def dashboard():
     response['treatment_stats'] = { 'total': total_treatments }
     
     if role in ['admin', 'hospital_admin']:
-        # Admin dashboard: Full stats
-        total_alerts = Alert.query.count()
-        unread_alerts = Alert.query.filter_by(is_read=False).count()
-        stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship').count()
-        requested_lab_tests = LabTest.query.filter_by(status='requested').count()
-        completed_lab_tests = LabTest.query.filter_by(status='completed').count()
-        pending_prescriptions = Prescription.query.filter_by(status='pending').count()
-        approved_prescriptions = Prescription.query.filter_by(status='approved').count()
-        rejected_prescriptions = Prescription.query.filter_by(status='rejected').count()
+        # Admin dashboard: Full stats - hospital_admin filtered by hospital
+        hospital_id = user.hospital_id if role == 'hospital_admin' else None
+        
+        if hospital_id:
+            # Hospital admin: filter by their hospital
+            total_alerts = Alert.query.filter_by(hospital_id=hospital_id).count()
+            unread_alerts = Alert.query.filter_by(is_read=False, hospital_id=hospital_id).count()
+            stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship', hospital_id=hospital_id).count()
+            critical_alerts = Alert.query.filter_by(severity='critical', hospital_id=hospital_id).count()
+            requested_lab_tests = LabTest.query.filter_by(status='requested', hospital_id=hospital_id).count()
+            completed_lab_tests = LabTest.query.filter_by(status='completed', hospital_id=hospital_id).count()
+            pending_prescriptions = Prescription.query.filter_by(status='pending', hospital_id=hospital_id).count()
+            approved_prescriptions = Prescription.query.filter_by(status='approved', hospital_id=hospital_id).count()
+            rejected_prescriptions = Prescription.query.filter_by(status='rejected', hospital_id=hospital_id).count()
+        else:
+            # Full admin: see everything
+            total_alerts = Alert.query.count()
+            unread_alerts = Alert.query.filter_by(is_read=False).count()
+            stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship').count()
+            critical_alerts = Alert.query.filter_by(severity='critical').count()
+            requested_lab_tests = LabTest.query.filter_by(status='requested').count()
+            completed_lab_tests = LabTest.query.filter_by(status='completed').count()
+            pending_prescriptions = Prescription.query.filter_by(status='pending').count()
+            approved_prescriptions = Prescription.query.filter_by(status='approved').count()
+            rejected_prescriptions = Prescription.query.filter_by(status='rejected').count()
+        
         recent_audits = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(20).all()
         
         model_info = {}
@@ -4327,19 +4835,23 @@ def dashboard():
         response['alert_stats'] = {
             'total': total_alerts,
             'unread': unread_alerts,
-            'stewardship': stewardship_alerts
+            'stewardship': stewardship_alerts,
+            'critical': critical_alerts
         }
     
     elif role == 'doctor':
-        # Doctor dashboard
+        # Doctor dashboard - filter by hospital
+        hospital_id = user.hospital_id
         unread_alerts = Alert.query.filter_by(is_read=False, user_id=user_id).count()
-        stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship').count()
+        stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship', hospital_id=hospital_id).count()
         requested_lab_tests = LabTest.query.filter_by(requested_by=user_id, status='requested').count()
-        completed_lab_tests = LabTest.query.filter_by(status='completed').count()
+        completed_lab_tests = LabTest.query.filter_by(status='completed', hospital_id=hospital_id).count()
         recent_audits = AuditLog.query.filter_by(user_id=user_id).order_by(AuditLog.created_at.desc()).limit(10).all()
-        pending_prescriptions = Prescription.query.filter_by(status='pending').count()
-        approved_prescriptions = Prescription.query.filter_by(status='approved').count()
-        rejected_prescriptions = Prescription.query.filter_by(status='rejected').count()
+        
+        # Filter prescriptions by hospital
+        pending_prescriptions = Prescription.query.filter_by(status='pending', hospital_id=hospital_id).count()
+        approved_prescriptions = Prescription.query.filter_by(status='approved', hospital_id=hospital_id).count()
+        rejected_prescriptions = Prescription.query.filter_by(status='rejected', hospital_id=hospital_id).count()
         
         response['lab_test_stats'] = {
             'requested': requested_lab_tests,
@@ -4355,25 +4867,37 @@ def dashboard():
         response['recent_activity'] = [audit.to_dict() for audit in recent_audits]
     
     elif role == 'lab_technician':
-        # Lab tech dashboard: Only lab tests
-        requested_lab_tests = LabTest.query.filter_by(status='requested').count()
-        in_progress_lab_tests = LabTest.query.filter_by(status='in_progress').count()
+        # Lab tech dashboard: Only lab tests - filter by hospital
+        hospital_id = user.hospital_id
+        requested_lab_tests = LabTest.query.filter_by(status='requested', hospital_id=hospital_id).count()
+        in_progress_lab_tests = LabTest.query.filter_by(status='in_progress', hospital_id=hospital_id).count()
         
         today = datetime.now().date()
         completed_today_lab_tests = LabTest.query.filter(
             LabTest.status == 'completed',
             LabTest.completed_by == user_id,
+            LabTest.hospital_id == hospital_id,
             db.func.date(LabTest.completed_at) == today
         ).count()
         
         week_start = today - timedelta(days=today.weekday())
         total_week_lab_tests = LabTest.query.filter(
+            LabTest.hospital_id == hospital_id,
             db.func.date(LabTest.completed_at) >= week_start
         ).count()
         
-        sputum_tests = LabTest.query.filter(LabTest.test_type.ilike('%sputum%')).count()
-        genexpert_tests = LabTest.query.filter(LabTest.test_type.ilike('%genexpert%')).count()
-        xray_tests = LabTest.query.filter(LabTest.test_type.ilike('%x-ray%') | LabTest.test_type.ilike('%xray%')).count()
+        sputum_tests = LabTest.query.filter(
+            LabTest.hospital_id == hospital_id,
+            LabTest.test_type.ilike('%sputum%')
+        ).count()
+        genexpert_tests = LabTest.query.filter(
+            LabTest.hospital_id == hospital_id,
+            LabTest.test_type.ilike('%genexpert%')
+        ).count()
+        xray_tests = LabTest.query.filter(
+            LabTest.hospital_id == hospital_id,
+            LabTest.test_type.ilike('%x-ray%') | LabTest.test_type.ilike('%xray%')
+        ).count()
         
         recent_audits = AuditLog.query.filter_by(user_id=user_id).order_by(AuditLog.created_at.desc()).limit(10).all()
         
@@ -4387,31 +4911,35 @@ def dashboard():
             'xray_tests': xray_tests
         }
         response['prescription_stats'] = {
-            'pending': Prescription.query.filter_by(status='pending').count(),
-            'approved': Prescription.query.filter_by(status='approved').count(),
-            'rejected': Prescription.query.filter_by(status='rejected').count()
+            'pending': Prescription.query.filter_by(status='pending', hospital_id=hospital_id).count(),
+            'approved': Prescription.query.filter_by(status='approved', hospital_id=hospital_id).count(),
+            'rejected': Prescription.query.filter_by(status='rejected', hospital_id=hospital_id).count()
         }
         response['recent_activity'] = [audit.to_dict() for audit in recent_audits]
     
     elif role == 'pharmacist':
-        # Pharmacist dashboard: Only prescriptions and inventory
-        pending_prescriptions = Prescription.query.filter_by(status='pending').count()
+        # Pharmacist dashboard: Only prescriptions and inventory - filter by hospital
+        hospital_id = user.hospital_id
+        pending_prescriptions = Prescription.query.filter_by(status='pending', hospital_id=hospital_id).count()
         
         today = datetime.now().date()
         approved_today_prescriptions = Prescription.query.filter(
             Prescription.status == 'approved',
             Prescription.approved_by == user_id,
+            Prescription.hospital_id == hospital_id,
             db.func.date(Prescription.approved_at) == today
         ).count()
         
         dispensed_today_prescriptions = Prescription.query.filter(
             Prescription.status == 'dispensed',
             Prescription.dispensed_by == user_id,
+            Prescription.hospital_id == hospital_id,
             db.func.date(Prescription.dispensed_at) == today
         ).count()
         
-        total_inventory_drugs = PharmacyInventory.query.count()
+        total_inventory_drugs = PharmacyInventory.query.filter_by(hospital_id=hospital_id).count()
         low_stock = PharmacyInventory.query.filter(
+            PharmacyInventory.hospital_id == hospital_id,
             PharmacyInventory.stock_quantity <= PharmacyInventory.minimum_stock_level
         ).count()
         
@@ -4489,13 +5017,160 @@ def audit_logs():
         'current_page': page
     })
 
+@app.route('/api/audit-logs/verify-integrity', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def verify_audit_integrity():
+    """Verify the integrity of the immutable audit trail using cryptographic hash chain"""
+    from utils.immutable_audit import ImmutableAuditLogger
+    
+    is_valid, broken_at_id, message = ImmutableAuditLogger.verify_audit_integrity()
+    
+    return jsonify({
+        'is_valid': is_valid,
+        'broken_at_id': broken_at_id,
+        'message': message,
+        'verified_at': datetime.now().isoformat()
+    })
+
+@app.route('/api/audit-logs/chain', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_audit_chain():
+    """Get audit chain with hash verification for transparency"""
+    from utils.immutable_audit import ImmutableAuditLogger
+    
+    start_id = request.args.get('start_id', type=int)
+    end_id = request.args.get('end_id', type=int)
+    
+    chain = ImmutableAuditLogger.get_audit_chain(start_id, end_id)
+    
+    return jsonify({
+        'chain': chain,
+        'chain_length': len(chain),
+        'retrieved_at': datetime.now().isoformat()
+    })
+
+@app.route('/api/patients/<int:patient_id>/consent', methods=['POST', 'GET'])
+@jwt_required()
+def manage_patient_consent(patient_id):
+    """Manage patient consent for cross-hospital data sharing"""
+    patient = Patient.query.get_or_404(patient_id)
+    
+    if request.method == 'GET':
+        return jsonify({
+            'patient_id': patient_id,
+            'data_sharing_consent': patient.data_sharing_consent,
+            'consent_granted_at': patient.consent_granted_at.isoformat() if patient.consent_granted_at else None,
+            'consent_expires_at': patient.consent_expires_at.isoformat() if patient.consent_expires_at else None
+        })
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        consent_action = data.get('action')  # 'grant', 'deny', 'revoke'
+        
+        if consent_action == 'grant':
+            patient.data_sharing_consent = 'granted'
+            patient.consent_granted_at = datetime.now()
+            # Consent expires after 1 year by default
+            from datetime import timedelta
+            patient.consent_expires_at = datetime.now() + timedelta(days=365)
+        elif consent_action == 'deny':
+            patient.data_sharing_consent = 'denied'
+            patient.consent_granted_at = None
+            patient.consent_expires_at = None
+        elif consent_action == 'revoke':
+            patient.data_sharing_consent = 'pending'
+            patient.consent_granted_at = None
+            patient.consent_expires_at = None
+        else:
+            return jsonify({'msg': 'Invalid consent action'}), 400
+        
+        db.session.commit()
+        
+        # Log consent change
+        from utils.immutable_audit import ImmutableAuditLogger
+        ImmutableAuditLogger.create_immutable_audit(
+            user_id=get_jwt_identity(),
+            action='consent_change',
+            entity_type='Patient',
+            entity_id=patient_id,
+            details=f"Consent changed to {patient.data_sharing_consent}",
+            ip_address=request.remote_addr
+        )
+        
+        return jsonify({
+            'msg': 'Patient consent updated successfully',
+            'data_sharing_consent': patient.data_sharing_consent,
+            'consent_granted_at': patient.consent_granted_at.isoformat() if patient.consent_granted_at else None,
+            'consent_expires_at': patient.consent_expires_at.isoformat() if patient.consent_expires_at else None
+        })
+
+@app.route('/api/patients/<int:patient_id>/antibiotic-assessment', methods=['POST'])
+@jwt_required()
+def antibiotic_usage_assessment(patient_id):
+    """Assess antibiotic usage before diagnosis to detect misuse and resistance risks"""
+    from antibiotic_assessment import AntibioticUsageAssessment
+
+    patient = Patient.query.get_or_404(patient_id)
+    data = request.get_json()
+
+    # Perform assessment
+    risk_factors = AntibioticUsageAssessment.assess_antibiotic_usage(patient_id, data)
+    recommendations = AntibioticUsageAssessment.get_antibiotic_recommendations(risk_factors)
+
+    # Create alert for high resistance risk
+    alert_created = None
+    if risk_factors.get('resistance_risk') == 'high':
+        user = get_current_user_from_jwt()
+        alert_created = create_alert(
+            patient_id=patient_id,
+            user_id=user.id if user else None,
+            alert_type='Antibiotic Resistance Risk',
+            message=f'High antibiotic resistance risk detected for patient {patient.patient_id}. Risk score: {risk_factors.get("risk_score", 0)}%. Factors: {", ".join([k for k, v in risk_factors.items() if v and k not in ["risk_score", "resistance_risk", "recommendations"]])}',
+            severity='high'
+        )
+
+    # Log assessment
+    from utils.immutable_audit import ImmutableAuditLogger
+    ImmutableAuditLogger.create_immutable_audit(
+        user_id=get_jwt_identity(),
+        action='antibiotic_assessment',
+        entity_type='Patient',
+        entity_id=patient_id,
+        details=f"Antibiotic usage assessment completed. Risk score: {risk_factors['risk_score']}",
+        ip_address=request.remote_addr
+    )
+
+    return jsonify({
+        'patient_id': patient_id,
+        'risk_factors': risk_factors,
+        'recommendations': recommendations,
+        'alert_created': alert_created.id if alert_created else None,
+        'assessed_at': datetime.now().isoformat()
+    })
+
 
 @app.route('/api/patients/<int:patient_id>', methods=['GET', 'PUT', 'DELETE'])  
 @jwt_required()
 def patient_detail(patient_id):
     patient = Patient.query.get_or_404(patient_id)
+    user = get_current_user_from_jwt()
 
     if request.method == 'GET':
+        # Check cross-hospital access consent
+        patient_hospitals = [h.id for h in patient.hospitals]
+        if user.role not in ['admin', 'hospital_admin'] and user.hospital_id not in patient_hospitals:
+            # Check if patient has granted consent for cross-hospital access
+            if patient.data_sharing_consent != 'granted':
+                return jsonify({
+                    'msg': 'Cross-hospital access requires patient consent',
+                    'consent_required': True,
+                    'patient_id': patient_id,
+                    'requesting_hospital': user.hospital_id,
+                    'patient_hospitals': patient_hospitals
+                }), 403
+            
         return jsonify({
             'patient': patient.to_dict(),
             'diagnoses': [d.to_dict() for d in patient.diagnoses],
@@ -4676,13 +5351,295 @@ def hospital_detail(hospital_id):
             user_id=user.id,
             action='delete_hospital',
             entity_type='hospital',
-            entity_id=hospital_id,
+            entity_id=hospital.id,
             details=f"Deleted hospital: {hospital.name}"
         )
         db.session.add(audit)
         db.session.commit()
         
-        return jsonify({'message': 'Hospital deleted successfully'})
+        return jsonify({'msg': 'Hospital deleted successfully'})
+
+
+# Laboratory Management
+@app.route('/api/laboratories', methods=['GET', 'POST'])
+@jwt_required()
+def laboratories():
+    from models.models import Laboratory
+    
+    if request.method == 'GET':
+        labs = Laboratory.query.all()
+        return jsonify({'laboratories': [lab.to_dict() for lab in labs]})
+    
+    if request.method == 'POST':
+        user = get_current_user_from_jwt()
+        if user.role not in ['admin', 'hospital_admin']:
+            return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+        
+        data = request.get_json()
+        lab = Laboratory(**data)
+        db.session.add(lab)
+        db.session.commit()
+        
+        # Log the action
+        audit = AuditLog(
+            user_id=user.id,
+            action='create_laboratory',
+            entity_type='laboratory',
+            entity_id=lab.id,
+            details=f"Created laboratory: {lab.name}"
+        )
+        db.session.add(audit)
+        db.session.commit()
+        
+        return jsonify(lab.to_dict()), 201
+
+
+@app.route('/api/laboratories/<int:lab_id>', methods=['GET', 'PUT', 'DELETE'])
+@jwt_required()
+def laboratory_detail(lab_id):
+    from models.models import Laboratory
+    
+    lab = Laboratory.query.get_or_404(lab_id)
+    
+    if request.method == 'GET':
+        return jsonify(lab.to_dict())
+    
+    if request.method == 'PUT':
+        user = get_current_user_from_jwt()
+        if user.role not in ['admin', 'hospital_admin']:
+            return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+        
+        data = request.get_json()
+        for key, value in data.items():
+            if hasattr(lab, key):
+                setattr(lab, key, value)
+        db.session.commit()
+        
+        # Log the action
+        audit = AuditLog(
+            user_id=user.id,
+            action='update_laboratory',
+            entity_type='laboratory',
+            entity_id=lab.id,
+            details=f"Updated laboratory: {lab.name}"
+        )
+        db.session.add(audit)
+        db.session.commit()
+        
+        return jsonify(lab.to_dict())
+    
+    if request.method == 'DELETE':
+        user = get_current_user_from_jwt()
+        if user.role not in ['admin', 'hospital_admin']:
+            return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+        
+        db.session.delete(lab)
+        db.session.commit()
+        
+        # Log the action
+        audit = AuditLog(
+            user_id=user.id,
+            action='delete_laboratory',
+            entity_type='laboratory',
+            entity_id=lab.id,
+            details=f"Deleted laboratory: {lab.name}"
+        )
+        db.session.add(audit)
+        db.session.commit()
+        
+        return jsonify({'msg': 'Laboratory deleted successfully'})
+
+
+# Pharmacy Management
+@app.route('/api/pharmacies', methods=['GET', 'POST'])
+@jwt_required()
+def pharmacies():
+    from models.models import Pharmacy
+    
+    if request.method == 'GET':
+        pharmacies = Pharmacy.query.all()
+        return jsonify({'pharmacies': [pharm.to_dict() for pharm in pharmacies]})
+    
+    if request.method == 'POST':
+        user = get_current_user_from_jwt()
+        if user.role not in ['admin', 'hospital_admin']:
+            return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+        
+        data = request.get_json()
+        pharmacy = Pharmacy(**data)
+        db.session.add(pharmacy)
+        db.session.commit()
+        
+        # Log the action
+        audit = AuditLog(
+            user_id=user.id,
+            action='create_pharmacy',
+            entity_type='pharmacy',
+            entity_id=pharmacy.id,
+            details=f"Created pharmacy: {pharmacy.name}"
+        )
+        db.session.add(audit)
+        db.session.commit()
+        
+        return jsonify(pharmacy.to_dict()), 201
+
+
+@app.route('/api/pharmacies/<int:pharmacy_id>', methods=['GET', 'PUT', 'DELETE'])
+@jwt_required()
+def pharmacy_detail(pharmacy_id):
+    from models.models import Pharmacy
+    
+    pharmacy = Pharmacy.query.get_or_404(pharmacy_id)
+    
+    if request.method == 'GET':
+        return jsonify(pharmacy.to_dict())
+    
+    if request.method == 'PUT':
+        user = get_current_user_from_jwt()
+        if user.role not in ['admin', 'hospital_admin']:
+            return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+        
+        data = request.get_json()
+        for key, value in data.items():
+            if hasattr(pharmacy, key):
+                setattr(pharmacy, key, value)
+        db.session.commit()
+        
+        # Log the action
+        audit = AuditLog(
+            user_id=user.id,
+            action='update_pharmacy',
+            entity_type='pharmacy',
+            entity_id=pharmacy.id,
+            details=f"Updated pharmacy: {pharmacy.name}"
+        )
+        db.session.add(audit)
+        db.session.commit()
+        
+        return jsonify(pharmacy.to_dict())
+    
+    if request.method == 'DELETE':
+        user = get_current_user_from_jwt()
+        if user.role not in ['admin', 'hospital_admin']:
+            return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+        
+        db.session.delete(pharmacy)
+        db.session.commit()
+        
+        # Log the action
+        audit = AuditLog(
+            user_id=user.id,
+            action='delete_pharmacy',
+            entity_type='pharmacy',
+            entity_id=pharmacy.id,
+            details=f"Deleted pharmacy: {pharmacy.name}"
+        )
+        db.session.add(audit)
+        db.session.commit()
+        
+        return jsonify({'msg': 'Pharmacy deleted successfully'})
+
+
+# Hospital-Laboratory Association
+@app.route('/api/hospitals/<int:hospital_id>/laboratories', methods=['POST', 'DELETE'])
+@jwt_required()
+def manage_hospital_laboratories(hospital_id):
+    from models.models import Hospital, Laboratory
+    
+    hospital = Hospital.query.get_or_404(hospital_id)
+    user = get_current_user_from_jwt()
+    
+    if user.role not in ['admin', 'hospital_admin']:
+        return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+    
+    data = request.get_json()
+    lab_id = data.get('laboratory_id')
+    laboratory = Laboratory.query.get_or_404(lab_id)
+    
+    if request.method == 'POST':
+        if laboratory not in hospital.laboratories:
+            hospital.laboratories.append(laboratory)
+            db.session.commit()
+            
+            audit = AuditLog(
+                user_id=user.id,
+                action='associate_laboratory',
+                entity_type='hospital',
+                entity_id=hospital.id,
+                details=f"Associated laboratory {laboratory.name} with hospital {hospital.name}"
+            )
+            db.session.add(audit)
+            db.session.commit()
+            
+        return jsonify({'msg': 'Laboratory associated successfully'})
+    
+    if request.method == 'DELETE':
+        if laboratory in hospital.laboratories:
+            hospital.laboratories.remove(laboratory)
+            db.session.commit()
+            
+            audit = AuditLog(
+                user_id=user.id,
+                action='disassociate_laboratory',
+                entity_type='hospital',
+                entity_id=hospital.id,
+                details=f"Disassociated laboratory {laboratory.name} from hospital {hospital.name}"
+            )
+            db.session.add(audit)
+            db.session.commit()
+            
+        return jsonify({'msg': 'Laboratory disassociated successfully'})
+
+
+# Hospital-Pharmacy Association
+@app.route('/api/hospitals/<int:hospital_id>/pharmacies', methods=['POST', 'DELETE'])
+@jwt_required()
+def manage_hospital_pharmacies(hospital_id):
+    from models.models import Hospital, Pharmacy
+    
+    hospital = Hospital.query.get_or_404(hospital_id)
+    user = get_current_user_from_jwt()
+    
+    if user.role not in ['admin', 'hospital_admin']:
+        return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+    
+    data = request.get_json()
+    pharmacy_id = data.get('pharmacy_id')
+    pharmacy = Pharmacy.query.get_or_404(pharmacy_id)
+    
+    if request.method == 'POST':
+        if pharmacy not in hospital.pharmacies:
+            hospital.pharmacies.append(pharmacy)
+            db.session.commit()
+            
+            audit = AuditLog(
+                user_id=user.id,
+                action='associate_pharmacy',
+                entity_type='hospital',
+                entity_id=hospital.id,
+                details=f"Associated pharmacy {pharmacy.name} with hospital {hospital.name}"
+            )
+            db.session.add(audit)
+            db.session.commit()
+            
+        return jsonify({'msg': 'Pharmacy associated successfully'})
+    
+    if request.method == 'DELETE':
+        if pharmacy in hospital.pharmacies:
+            hospital.pharmacies.remove(pharmacy)
+            db.session.commit()
+            
+            audit = AuditLog(
+                user_id=user.id,
+                action='disassociate_pharmacy',
+                entity_type='hospital',
+                entity_id=hospital.id,
+                details=f"Disassociated pharmacy {pharmacy.name} from hospital {hospital.name}"
+            )
+            db.session.add(audit)
+            db.session.commit()
+            
+        return jsonify({'msg': 'Pharmacy disassociated successfully'})
 
 # Pharmacy Inventory Management
 @app.route('/api/pharmacy-inventory', methods=['GET', 'POST'])
@@ -4710,18 +5667,29 @@ def pharmacy_inventory():
         atc_drug_id = data.get('atc_drug_id')
         
         # If we have a drug name but no atc_drug_id, try to find the drug by name
-        if not atc_drug_id and data.get('drug_name'):
-            drug = ATCDrug.query.filter(
-                ATCDrug.drug_name.ilike(f"%{data['drug_name']}%")
-            ).first()
-            if drug:
-                atc_drug_id = drug.id
+        if not atc_drug_id:
+            # Try drug_name first, then medication (for compatibility)
+            drug_name = data.get('drug_name') or data.get('medication')
+            if drug_name:
+                drug = ATCDrug.query.filter(
+                    ATCDrug.drug_name.ilike(f"%{drug_name}%")
+                ).first()
+                if drug:
+                    atc_drug_id = drug.id
         
         if not atc_drug_id:
             return jsonify({'error': 'Drug not found. Please specify a valid drug name or atc_drug_id.'}), 400
             
+        # Get hospital_id: use provided, or user's hospital if available
+        hospital_id = data.get('hospital_id')
+        if not hospital_id and user.hospital_id:
+            hospital_id = user.hospital_id
+        
+        if not hospital_id:
+            return jsonify({'error': 'Hospital ID is required. Please specify hospital_id.'}), 400
+            
         inventory = PharmacyInventory(
-            hospital_id=data.get('hospital_id'),
+            hospital_id=hospital_id,
             atc_drug_id=atc_drug_id,
             stock_quantity=data.get('stock_quantity', 0),
             unit_type=data.get('unit_type', 'tablets'),
@@ -4930,571 +5898,589 @@ def dispense_prescription(presc_id):
 @app.route('/api/diagnose', methods=['POST'])
 @jwt_required()
 def diagnose():
-    data = request.get_json() or {}
-    patient_data = data.get('patient', {}) or {}
-    user = get_current_user_from_jwt()
-    lang = get_request_lang()
-    user_id = user.id
+    try:
+        data = request.get_json() or {}
+        patient_data = data.get('patient', {}) or {}
+        user = get_current_user_from_jwt()
+        lang = get_request_lang()
+        user_id = user.id
 
-    def normalize_value(v):
-        if v is None:
-            return None
-        if isinstance(v, str):
-            vv = v.strip()
-            return vv if vv != "" else None
-        return v
+        def normalize_value(v):
+            if v is None:
+                return None
+            if isinstance(v, str):
+                vv = v.strip()
+                return vv if vv != "" else None
+            return v
 
-    def upsert_patient(payload):
-        pid = normalize_value(payload.get("patient_id"))
-        if not pid:
-            pid = f"AUTO_{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}"
+        def upsert_patient(payload):
+            pid = normalize_value(payload.get("patient_id"))
+            if not pid:
+                pid = f"AUTO_{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}"
 
-        patient = Patient.query.filter_by(patient_id=pid).first()
-        if not patient:
-            patient = Patient(patient_id=pid)
-            db.session.add(patient)
+            patient = Patient.query.filter_by(patient_id=pid).first()
+            if not patient:
+                patient = Patient(patient_id=pid)
+                db.session.add(patient)
 
-        for field in [
-            "first_name",
-            "last_name",
-            "age",
-            "gender",
-            "weight",
-            "city",
-            "symptoms",
-            "exposure_history",
-            "persistent_cough_duration_weeks",
-            "contact_with_tb_patient",
-            "previous_tb_treatment",
-            "sputum_smear_test",
-            "genexpert_test",
-            "chest_xray",
-            "tb_culture",
-            "tst",
-            "igra",
-            "bacteria_species",
-            "drug_resistance",
-            "hiv",
-            "diabetes",
-            "smoking_status",
-            "alcohol_use",
-            "oxygen_saturation_spo2",
-            "antibiotic_usage_history",
-        ]:
-            if field in payload:
-                setattr(patient, field, payload.get(field))
+            for field in [
+                "first_name",
+                "last_name",
+                "age",
+                "gender",
+                "weight",
+                "city",
+                "symptoms",
+                "exposure_history",
+                "persistent_cough_duration_weeks",
+                "contact_with_tb_patient",
+                "previous_tb_treatment",
+                "sputum_smear_test",
+                "genexpert_test",
+                "chest_xray",
+                "tb_culture",
+                "tst",
+                "igra",
+                "bacteria_species",
+                "drug_resistance",
+                "hiv",
+                "diabetes",
+                "smoking_status",
+                "alcohol_use",
+                "oxygen_saturation_spo2",
+                "antibiotic_usage_history",
+            ]:
+                if field in payload:
+                    setattr(patient, field, payload.get(field))
 
-        db.session.commit()
-        return patient
+            # Associate patient with user's hospital via many-to-many relationship
+            if user.hospital_id:
+                hospital = Hospital.query.get(user.hospital_id)
+                if hospital and hospital not in patient.hospitals:
+                    patient.hospitals.append(hospital)
 
-    patient = upsert_patient(patient_data)
-    patient_name = f"{patient.first_name or 'Patient'} {patient.last_name or ''}".strip()
+            db.session.commit()
+            return patient
 
-    def compute_symptom_analysis(symptoms_text):
-        symptoms_present = analyze_who_symptoms(symptoms_text or "")
-        weights = {
-            "persistent_cough_2_weeks": 3,
-            "hemoptysis": 4,
-            "fever": 2,
-            "night_sweats": 2,
-            "weight_loss": 2,
-            "chest_pain": 1,
-            "fatigue": 1,
-            "dyspnea": 1,
-        }
-        score = 0
-        for k, w in weights.items():
-            if symptoms_present.get(k):
-                score += w
+        patient = upsert_patient(patient_data)
+        patient_name = f"{patient.first_name or 'Patient'} {patient.last_name or ''}".strip()
 
-        if score >= 7:
-            risk_level = "HIGH RISK"
-        elif score >= 4:
-            risk_level = "MODERATE RISK"
-        elif score >= 1:
-            risk_level = "LOW RISK"
-        else:
-            risk_level = "MINIMAL RISK"
-
-        red_flags = []
-        if symptoms_present.get("hemoptysis"):
-            red_flags.append(tr("RED_FLAG_HEMOPTYSIS", lang=lang))
-        if symptoms_present.get("neck_stiffness") or symptoms_present.get("confusion") or symptoms_present.get("headache_severe"):
-            red_flags.append(tr("RED_FLAG_CNS", lang=lang))
-        if symptoms_present.get("dyspnea"):
-            red_flags.append(tr("RED_FLAG_BREATHLESSNESS", lang=lang))
-
-        clinical_advice = tr("SYMPTOM_ADVICE_DEFAULT", lang=lang)
-        if risk_level == "HIGH RISK":
-            clinical_advice = tr("SYMPTOM_ADVICE_HIGH", lang=lang)
-        elif risk_level == "MODERATE RISK":
-            clinical_advice = tr("SYMPTOM_ADVICE_MODERATE", lang=lang)
-        elif risk_level == "LOW RISK":
-            clinical_advice = tr("SYMPTOM_ADVICE_LOW", lang=lang)
-
-        return {
-            "risk_level": risk_level,
-            "risk_level_display": (I18N.get("RISK_LEVEL_DISPLAY", {}).get(risk_level, {}).get(lang) or risk_level),
-            "risk_score": score,
-            "red_flags": red_flags,
-            "clinical_advice": clinical_advice,
-        }
-
-    def evaluate_tests(sputum, genexpert, chest_xray, tb_culture=None, tst=None, igra=None):
-        sputum = sputum or "Unknown"
-        genexpert = genexpert or "Unknown"
-        chest_xray = chest_xray or "Unknown"
-        tb_culture = tb_culture or "Unknown"
-        tst = tst or "Unknown"
-        igra = igra or "Unknown"
-
-        findings = []
-        confidence = 40
-        classification = tr("TEST_CLASS_INSUFFICIENT", lang=lang)
-
-        if genexpert == "Positive":
-            findings.append(tr("FINDING_GENEXPERT_POS", lang=lang))
-            classification = tr("TEST_CLASS_CONFIRMED_LIKELY", lang=lang)
-            confidence = 95
-        if sputum == "Positive":
-            findings.append(tr("FINDING_SPUTUM_POS", lang=lang))
-            classification = tr("TEST_CLASS_CONFIRMED_LIKELY", lang=lang)
-            confidence = max(confidence, 85)
-        if tb_culture == "Positive":
-            findings.append("TB Culture positive (gold standard confirmation)")
-            classification = tr("TEST_CLASS_CONFIRMED", lang=lang)
-            confidence = 98  # Culture is gold standard
-        if chest_xray == "Abnormal":
-            findings.append(tr("FINDING_CXR_ABNORMAL", lang=lang))
-            confidence = max(confidence, 60)
-        if tst == "Positive":
-            findings.append("Tuberculin Skin Test (TST) positive")
-            if classification == tr("TEST_CLASS_INSUFFICIENT", lang=lang):
-                classification = "Possible latent TB infection"
-                confidence = 50
-        if igra == "Positive":
-            findings.append("IGRA positive")
-            if classification == tr("TEST_CLASS_INSUFFICIENT", lang=lang):
-                classification = "Possible latent TB infection"
-                confidence = 55
-        if genexpert == "Negative" and sputum == "Negative" and chest_xray == "Normal" and tb_culture in ["Negative", "Unknown"]:
-            findings.append(tr("FINDING_ALL_NEGATIVE", lang=lang))
-            classification = tr("TEST_CLASS_LESS_LIKELY", lang=lang)
-            confidence = 70
-
-        return {
-            "classification": classification,
-            "confidence_percent": confidence,
-            "findings": findings,
-        }
-
-    def predict_ml(patient_obj):
-        features = get_patient_features(patient_obj)
-        x_df = pd.DataFrame([features])
-        predictions = {}
-
-        if tb_status_model and tb_status_label_encoder:
-            proba = tb_status_model.predict_proba(x_df)[0]
-            classes = list(tb_status_label_encoder.classes_)
-            pred_idx = int(np.argmax(proba))
-            predictions["tb_status"] = {
-                "prediction": classes[pred_idx],
-                "confidence": float(proba[pred_idx]),
-                "probabilities": {classes[i]: float(proba[i]) for i in range(len(classes))},
+        def compute_symptom_analysis(symptoms_text):
+            symptoms_present = analyze_who_symptoms(symptoms_text or "")
+            weights = {
+                "persistent_cough_2_weeks": 3,
+                "hemoptysis": 4,
+                "fever": 2,
+                "night_sweats": 2,
+                "weight_loss": 2,
+                "chest_pain": 1,
+                "fatigue": 1,
+                "dyspnea": 1,
             }
+            score = 0
+            for k, w in weights.items():
+                if symptoms_present.get(k):
+                    score += w
 
-        if drug_resistance_model and drug_resistance_label_encoder:
-            proba = drug_resistance_model.predict_proba(x_df)[0]
-            classes = list(drug_resistance_label_encoder.classes_)
-            pred_idx = int(np.argmax(proba))
-            predictions["drug_resistance"] = {
-                "prediction": classes[pred_idx],
-                "confidence": float(proba[pred_idx]),
-                "probabilities": {classes[i]: float(proba[i]) for i in range(len(classes))},
-            }
-
-        return predictions if predictions else None
-
-    tb_culture = patient_data.get('tb_culture', None)
-    tst = patient_data.get('tst', None)
-    igra = patient_data.get('igra', None)
-
-    species_result = infer_bacteria_species(
-        patient_data.get("bacteria_species", patient.bacteria_species),
-        patient_data.get("exposure_history", patient.exposure_history),
-        patient.region,
-        patient.city,
-        patient.symptoms,
-        patient.sputum_smear_test,
-        patient.genexpert_test,
-        patient.chest_xray,
-        tb_culture,
-        tst,
-        igra,
-    )
-
-    # WHO Clinical Analysis
-    tb_analysis = identify_tb_type_who(
-        patient.symptoms or '',
-        patient.sputum_smear_test or 'Unknown',
-        patient.genexpert_test or 'Unknown',
-        patient.chest_xray or 'Unknown',
-        patient.hiv or 'No',
-        patient.drug_resistance or 'No',
-        tb_culture,
-        tst,
-        igra,
-        species_result["species"],
-    )
-    localized_who_category = translate_backend_text_value(tb_analysis["who_category"], lang=lang)
-    localized_tb_types = localize_payload(tb_analysis["tb_types"], lang=lang)
-    bacteria_assessment = localize_payload(build_bacteria_assessment(species_result, tb_analysis), lang=lang)
-    infection_assessment = build_infection_assessment(tb_analysis, bacteria_assessment, lang=lang)
-
-    # Get WHO clinical info
-    clinical_info = localize_payload(get_who_clinical_info(
-        tb_analysis['who_category'],
-        patient.symptoms or '',
-        patient.sputum_smear_test or 'Unknown',
-        patient.genexpert_test or 'Unknown',
-        patient.chest_xray or 'Unknown',
-        patient.hiv or 'No',
-        patient.drug_resistance or 'No'
-    ), lang=lang)
-
-    # Get WHO Treatment Regimen
-    treatment = localize_payload(get_who_treatment_regimen(
-        tb_analysis['who_category'],
-        patient.hiv or 'No',
-        patient.drug_resistance or 'No'
-    ), lang=lang)
-
-    # Get detailed prescription recommendation with drug dosages
-    from medicine_recommendation import get_prescription_recommendation, get_recommended_medicines
-    
-    # Determine infection type for prescription recommendation (only if risk is sufficient)
-    infection_type = None
-    if patient.risk_score and patient.risk_score >= 50:  # Only recommend if risk is at least moderate
-        if 'pulmonary' in tb_analysis['who_category'].lower():
-            infection_type = 'pulmonary_positive'
-        elif 'extrapulmonary' in tb_analysis['who_category'].lower():
-            infection_type = 'extrapulmonary'
-        elif 'latent' in tb_analysis['who_category'].lower():
-            infection_type = 'latent'
-        elif patient.hiv == 'Yes':
-            infection_type = 'tb_hiv'
-    
-    # Compute ML prediction first to base everything on it
-    ml_prediction = predict_ml(patient)
-    
-    # Pass ML prediction to prescription recommendation
-    prescription_recommendation = get_prescription_recommendation(patient.id, infection_type, ml_prediction)
-    
-    # Extract detailed medicines if available (only if TB is actually detected)
-    detailed_medicines = []
-    if prescription_recommendation and 'medicines' in prescription_recommendation and prescription_recommendation.get('recommendation') != 'No medication needed':
-        detailed_medicines = prescription_recommendation['medicines']
-    resistance_profile = determine_resistance_profile(
-        patient.drug_resistance or 'No',
-        patient.genexpert_test or 'Unknown',
-        patient_data.get('antibiogram_result'),
-        patient_data.get('resistant_to'),
-        patient_data.get('susceptible_to'),
-    )
-    treatment, clinical_info = apply_species_treatment_adjustments(treatment, clinical_info, bacteria_assessment)
-    treatment = localize_payload(treatment, lang=lang)
-    clinical_info = localize_payload(clinical_info, lang=lang)
-    treatment_plan = localize_payload(
-        build_treatment_plan(tb_analysis, bacteria_assessment, resistance_profile, treatment, clinical_info),
-        lang=lang,
-    )
-
-    # Determine if alert should be created
-    alert_created = None
-    symptom_analysis = compute_symptom_analysis(patient.symptoms or "")
-    test_evaluation = evaluate_tests(patient.sputum_smear_test, patient.genexpert_test, patient.chest_xray, tb_culture, tst, igra)
-    if tb_culture and tb_culture != 'Unknown':
-        test_evaluation["findings"].append(f"{tr('LABEL_TB_CULTURE', lang=lang)}: {tb_culture}")
-    if tst and tst != 'Unknown':
-        test_evaluation["findings"].append(f"{tr('LABEL_TST', lang=lang)}: {tst}")
-    if igra and igra != 'Unknown':
-        test_evaluation["findings"].append(f"{tr('LABEL_IGRA', lang=lang)}: {igra}")
-    if resistance_profile["antibiogram_result"] != "Not provided":
-        test_evaluation["findings"].append(f"{tr('LABEL_DST', lang=lang)}: {resistance_profile['antibiogram_result']}")
-
-    diagnosis_record = Diagnosis(
-        patient_id=patient.id,
-        clinician_id=user.id,
-        hospital_id=user.hospital_id,
-        diagnosis_type=tb_analysis['who_category'],
-        risk_level=symptom_analysis["risk_level"],
-        confidence_percent=test_evaluation["confidence_percent"],
-        details=json.dumps({
-            'tb_types': tb_analysis['tb_types'],
-            'symptoms_present': tb_analysis['symptoms_present'],
-            'presumptive_tb': tb_analysis['presumptive_tb'],
-            'bacteriological_confirmation': tb_analysis['bacteriological_confirmation'],
-            'bacteria_assessment': bacteria_assessment,
-            'infection_assessment': infection_assessment,
-            'resistance_profile': resistance_profile,
-            'clinical_info': clinical_info,
-            'treatment_regimen': treatment,
-            'treatment_plan': treatment_plan,
-            'symptom_analysis': symptom_analysis,
-            'test_evaluation': test_evaluation,
-            'ml_prediction': ml_prediction
-        }),
-        ml_prediction=json.dumps(ml_prediction) if ml_prediction else None,
-        status='completed'
-    )
-    db.session.add(diagnosis_record)
-    db.session.flush()
-
-    # Only create treatment record if ML predicts TB
-    treatment_record = None
-    if ml_prediction and ml_prediction.get('tb_status', {}).get('prediction') == 'Yes':
-        treatment_record = Treatment(
-            patient_id=patient.id,
-            diagnosis_id=diagnosis_record.id,
-            hospital_id=user.hospital_id,
-            treatment_type=treatment_plan["selected_option"]["name"],
-            drugs=treatment_plan["selected_option"]["drugs"],
-            duration=treatment_plan["selected_option"]["duration"],
-            dosage=(
-                f"Intensive: {treatment.get('intensive_phase')}, Continuation: {treatment.get('continuation_phase')}"
-                if treatment.get('intensive_phase') and treatment.get('continuation_phase')
-                else treatment_plan["selected_option"]["administration"]
-            ),
-            administration_notes=treatment_plan["selected_option"]["notes"]
-        )
-        db.session.add(treatment_record)
-        db.session.flush()
-    else:
-        print(f"DEBUG: No treatment record created - ML predicts no TB")
-
-    # Initialize prescription variable
-    prescription = None
-
-    # Only create prescription if ML prediction indicates TB and risk score is sufficient
-    # Base decision on ML prediction (yes/no) and risk score, not WHO category
-    print(f"DEBUG: ML Prediction = {ml_prediction}")
-    print(f"DEBUG: Risk Score = {patient.risk_score}")
-    
-    # Check if ML predicts TB and risk score is above threshold
-    tb_detected = (
-        ml_prediction and 
-        ml_prediction.get('tb_status', {}).get('prediction') == 'Yes' and
-        patient.risk_score and
-        patient.risk_score >= 30  # Minimum risk score threshold
-    )
-    
-    print(f"DEBUG: TB Detected (based on ML) = {tb_detected}")
-    
-    if tb_detected:
-        # Create prescriptions for each drug in the TB regimen
-        drugs_string = treatment_plan["selected_option"]["drugs"]
-        
-        # Parse drugs from the string (comma-separated)
-        import re
-        drug_names = [d.strip() for d in drugs_string.split(',') if d.strip()]
-        
-        # Get regimen info for dosages
-        regimen_info = get_recommended_medicines(
-            infection_type=None,
-            risk_score=patient.risk_score,
-            drug_resistance=symptom_analysis.get('drug_resistance'),
-            hiv_status=patient.hiv
-        )
-        
-        # Create a mapping of drug name to dosage info
-        drug_dosage_map = {}
-        if regimen_info and 'medicines' in regimen_info:
-            for med in regimen_info['medicines']:
-                drug_dosage_map[med['name'].lower()] = med
-        
-        print(f"DEBUG: Creating prescriptions for drugs: {drug_names}")
-        print(f"DEBUG: Drug dosage map: {drug_dosage_map}")
-        
-        for drug_name in drug_names:
-            # Find ATC drug for this medication
-            atc_drug = ATCDrug.query.filter(
-                ATCDrug.drug_name.ilike(f"%{drug_name}%")
-            ).first()
-            
-            if not atc_drug:
-                print(f"DEBUG: ATC drug not found for {drug_name}")
-                continue
-            
-            # Get dosage info from regimen or use defaults
-            drug_name_lower = drug_name.lower()
-            dosage_info = drug_dosage_map.get(drug_name_lower, {})
-            
-            dosage_mg = dosage_info.get('dosage_mg', 300)
-            frequency = dosage_info.get('frequency', 'daily')
-            tablets_per_dose = dosage_info.get('tablets_per_dose', 1)
-            duration_days = dosage_info.get('duration_days', 60)
-            
-            # If no duration in dosage_info, extract from treatment record
-            if 'duration_days' not in dosage_info and treatment_record:
-                if treatment_record.duration:
-                    duration_str = str(treatment_record.duration).lower()
-                    months_match = re.search(r'(\d+)\s*months?', duration_str)
-                    if months_match:
-                        duration_days = int(months_match.group(1)) * 30
-                    else:
-                        days_match = re.search(r'(\d+)\s*days?', duration_str)
-                        if days_match:
-                            duration_days = int(days_match.group(1))
-            
-            # Calculate doses per day
-            freq_str = frequency.lower()
-            if 'once' in freq_str or '1 time' in freq_str:
-                doses_per_day = 1
-            elif 'twice' in freq_str or '2 times' in freq_str:
-                doses_per_day = 2
-            elif '3 times' in freq_str:
-                doses_per_day = 3
+            if score >= 7:
+                risk_level = "HIGH RISK"
+            elif score >= 4:
+                risk_level = "MODERATE RISK"
+            elif score >= 1:
+                risk_level = "LOW RISK"
             else:
-                doses_per_day = 1
-            
-            # Recalculate tablets_per_dose if not provided
-            if tablets_per_dose == 1 and atc_drug.ddd:
-                tablet_strength_mg = atc_drug.ddd * 1000
-                tablets_per_dose = int(dosage_mg / tablet_strength_mg) if tablet_strength_mg > 0 else 1
-            
-            total_tablets = tablets_per_dose * doses_per_day * duration_days
-            
-            prescription = Prescription(
+                risk_level = "MINIMAL RISK"
+
+            red_flags = []
+            if symptoms_present.get("hemoptysis"):
+                red_flags.append(tr("RED_FLAG_HEMOPTYSIS", lang=lang))
+            if symptoms_present.get("neck_stiffness") or symptoms_present.get("confusion") or symptoms_present.get("headache_severe"):
+                red_flags.append(tr("RED_FLAG_CNS", lang=lang))
+            if symptoms_present.get("dyspnea"):
+                red_flags.append(tr("RED_FLAG_BREATHLESSNESS", lang=lang))
+
+            clinical_advice = tr("SYMPTOM_ADVICE_DEFAULT", lang=lang)
+            if risk_level == "HIGH RISK":
+                clinical_advice = tr("SYMPTOM_ADVICE_HIGH", lang=lang)
+            elif risk_level == "MODERATE RISK":
+                clinical_advice = tr("SYMPTOM_ADVICE_MODERATE", lang=lang)
+            elif risk_level == "LOW RISK":
+                clinical_advice = tr("SYMPTOM_ADVICE_LOW", lang=lang)
+
+            return {
+                "risk_level": risk_level,
+                "risk_level_display": (I18N.get("RISK_LEVEL_DISPLAY", {}).get(risk_level, {}).get(lang) or risk_level),
+                "risk_score": score,
+                "red_flags": red_flags,
+                "clinical_advice": clinical_advice,
+            }
+
+        def evaluate_tests(sputum, genexpert, chest_xray, tb_culture=None, tst=None, igra=None):
+            sputum = sputum or "Unknown"
+            genexpert = genexpert or "Unknown"
+            chest_xray = chest_xray or "Unknown"
+            tb_culture = tb_culture or "Unknown"
+            tst = tst or "Unknown"
+            igra = igra or "Unknown"
+
+            findings = []
+            confidence = 40
+            classification = tr("TEST_CLASS_INSUFFICIENT", lang=lang)
+
+            if genexpert == "Positive":
+                findings.append(tr("FINDING_GENEXPERT_POS", lang=lang))
+                classification = tr("TEST_CLASS_CONFIRMED_LIKELY", lang=lang)
+                confidence = 95
+            if sputum == "Positive":
+                findings.append(tr("FINDING_SPUTUM_POS", lang=lang))
+                classification = tr("TEST_CLASS_CONFIRMED_LIKELY", lang=lang)
+                confidence = max(confidence, 85)
+            if tb_culture == "Positive":
+                findings.append("TB Culture positive (gold standard confirmation)")
+                classification = tr("TEST_CLASS_CONFIRMED", lang=lang)
+                confidence = 98  # Culture is gold standard
+            if chest_xray == "Abnormal":
+                findings.append(tr("FINDING_CXR_ABNORMAL", lang=lang))
+                confidence = max(confidence, 60)
+            if tst == "Positive":
+                findings.append("Tuberculin Skin Test (TST) positive")
+                if classification == tr("TEST_CLASS_INSUFFICIENT", lang=lang):
+                    classification = "Possible latent TB infection"
+                    confidence = 50
+            if igra == "Positive":
+                findings.append("IGRA positive")
+                if classification == tr("TEST_CLASS_INSUFFICIENT", lang=lang):
+                    classification = "Possible latent TB infection"
+                    confidence = 55
+            if genexpert == "Negative" and sputum == "Negative" and chest_xray == "Normal" and tb_culture in ["Negative", "Unknown"]:
+                findings.append(tr("FINDING_ALL_NEGATIVE", lang=lang))
+                classification = tr("TEST_CLASS_LESS_LIKELY", lang=lang)
+                confidence = 70
+
+            return {
+                "classification": classification,
+                "confidence_percent": confidence,
+                "findings": findings,
+            }
+
+        def predict_ml(patient_obj):
+            features = get_patient_features(patient_obj)
+            x_df = pd.DataFrame([features])
+            predictions = {}
+
+            if tb_status_model and tb_status_label_encoder:
+                proba = tb_status_model.predict_proba(x_df)[0]
+                classes = list(tb_status_label_encoder.classes_)
+                pred_idx = int(np.argmax(proba))
+                predictions["tb_status"] = {
+                    "prediction": classes[pred_idx],
+                    "confidence": float(proba[pred_idx]),
+                    "probabilities": {classes[i]: float(proba[i]) for i in range(len(classes))},
+                }
+
+            if drug_resistance_model and drug_resistance_label_encoder:
+                proba = drug_resistance_model.predict_proba(x_df)[0]
+                classes = list(drug_resistance_label_encoder.classes_)
+                pred_idx = int(np.argmax(proba))
+                predictions["drug_resistance"] = {
+                    "prediction": classes[pred_idx],
+                    "confidence": float(proba[pred_idx]),
+                    "probabilities": {classes[i]: float(proba[i]) for i in range(len(classes))},
+                }
+
+            return predictions if predictions else None
+
+        tb_culture = patient_data.get('tb_culture', None)
+        tst = patient_data.get('tst', None)
+        igra = patient_data.get('igra', None)
+
+        species_result = infer_bacteria_species(
+            patient_data.get("bacteria_species", patient.bacteria_species),
+            patient_data.get("exposure_history", patient.exposure_history),
+            patient.region,
+            patient.city,
+            patient.symptoms,
+            patient.sputum_smear_test,
+            patient.genexpert_test,
+            patient.chest_xray,
+            tb_culture,
+            tst,
+            igra,
+        )
+
+        # WHO Clinical Analysis
+        tb_analysis = identify_tb_type_who(
+            patient.symptoms or '',
+            patient.sputum_smear_test or 'Unknown',
+            patient.genexpert_test or 'Unknown',
+            patient.chest_xray or 'Unknown',
+            patient.hiv or 'No',
+            patient.drug_resistance or 'No',
+            tb_culture,
+            tst,
+            igra,
+            species_result["species"],
+        )
+        localized_who_category = translate_backend_text_value(tb_analysis["who_category"], lang=lang)
+        localized_tb_types = localize_payload(tb_analysis["tb_types"], lang=lang)
+        bacteria_assessment = localize_payload(build_bacteria_assessment(species_result, tb_analysis), lang=lang)
+        infection_assessment = build_infection_assessment(tb_analysis, bacteria_assessment, lang=lang)
+
+        # Get WHO clinical info
+        clinical_info = localize_payload(get_who_clinical_info(
+            tb_analysis['who_category'],
+            patient.symptoms or '',
+            patient.sputum_smear_test or 'Unknown',
+            patient.genexpert_test or 'Unknown',
+            patient.chest_xray or 'Unknown',
+            patient.hiv or 'No',
+            patient.drug_resistance or 'No'
+        ), lang=lang)
+
+        # Get WHO Treatment Regimen
+        treatment = localize_payload(get_who_treatment_regimen(
+            tb_analysis['who_category'],
+            patient.hiv or 'No',
+            patient.drug_resistance or 'No'
+        ), lang=lang)
+
+        # Get detailed prescription recommendation with drug dosages
+        from medicine_recommendation import get_prescription_recommendation, get_recommended_medicines
+
+        # Determine infection type for prescription recommendation (only if risk is sufficient)
+        infection_type = None
+        if patient.risk_score and patient.risk_score >= 50:  # Only recommend if risk is at least moderate
+            if 'pulmonary' in tb_analysis['who_category'].lower():
+                infection_type = 'pulmonary_positive'
+            elif 'extrapulmonary' in tb_analysis['who_category'].lower():
+                infection_type = 'extrapulmonary'
+            elif 'latent' in tb_analysis['who_category'].lower():
+                infection_type = 'latent'
+            elif patient.hiv == 'Yes':
+                infection_type = 'tb_hiv'
+
+        # Compute ML prediction first to base everything on it
+        ml_prediction = predict_ml(patient)
+
+        # Pass ML prediction to prescription recommendation
+        prescription_recommendation = get_prescription_recommendation(patient.id, infection_type, ml_prediction)
+
+        # Extract detailed medicines if available (only if TB is actually detected)
+        detailed_medicines = []
+        if prescription_recommendation and 'medicines' in prescription_recommendation and prescription_recommendation.get('recommendation') != 'No medication needed':
+            detailed_medicines = prescription_recommendation['medicines']
+        resistance_profile = determine_resistance_profile(
+            patient.drug_resistance or 'No',
+            patient.genexpert_test or 'Unknown',
+            patient_data.get('antibiogram_result'),
+            patient_data.get('resistant_to'),
+            patient_data.get('susceptible_to'),
+        )
+        treatment, clinical_info = apply_species_treatment_adjustments(treatment, clinical_info, bacteria_assessment)
+        treatment = localize_payload(treatment, lang=lang)
+        clinical_info = localize_payload(clinical_info, lang=lang)
+        treatment_plan = localize_payload(
+            build_treatment_plan(tb_analysis, bacteria_assessment, resistance_profile, treatment, clinical_info),
+            lang=lang,
+        )
+
+        # Determine if alert should be created
+        alert_created = None
+        symptom_analysis = compute_symptom_analysis(patient.symptoms or "")
+        test_evaluation = evaluate_tests(patient.sputum_smear_test, patient.genexpert_test, patient.chest_xray, tb_culture, tst, igra)
+        if tb_culture and tb_culture != 'Unknown':
+            test_evaluation["findings"].append(f"{tr('LABEL_TB_CULTURE', lang=lang)}: {tb_culture}")
+        if tst and tst != 'Unknown':
+            test_evaluation["findings"].append(f"{tr('LABEL_TST', lang=lang)}: {tst}")
+        if igra and igra != 'Unknown':
+            test_evaluation["findings"].append(f"{tr('LABEL_IGRA', lang=lang)}: {igra}")
+        if resistance_profile["antibiogram_result"] != "Not provided":
+            test_evaluation["findings"].append(f"{tr('LABEL_DST', lang=lang)}: {resistance_profile['antibiogram_result']}")
+
+        diagnosis_record = Diagnosis(
+            patient_id=patient.id,
+            clinician_id=user.id,
+            hospital_id=user.hospital_id,
+            diagnosis_type=tb_analysis['who_category'],
+            risk_level=symptom_analysis["risk_level"],
+            confidence_percent=test_evaluation["confidence_percent"],
+            details=json.dumps({
+                'tb_types': tb_analysis['tb_types'],
+                'symptoms_present': tb_analysis['symptoms_present'],
+                'presumptive_tb': tb_analysis['presumptive_tb'],
+                'bacteriological_confirmation': tb_analysis['bacteriological_confirmation'],
+                'bacteria_assessment': bacteria_assessment,
+                'infection_assessment': infection_assessment,
+                'resistance_profile': resistance_profile,
+                'clinical_info': clinical_info,
+                'treatment_regimen': treatment,
+                'treatment_plan': treatment_plan,
+                'symptom_analysis': symptom_analysis,
+                'test_evaluation': test_evaluation,
+                'ml_prediction': ml_prediction
+            }),
+            ml_prediction=json.dumps(ml_prediction) if ml_prediction else None,
+            status='completed'
+        )
+        db.session.add(diagnosis_record)
+        db.session.flush()
+
+        # Only create treatment record if ML predicts TB
+        treatment_record = None
+        if ml_prediction and ml_prediction.get('tb_status', {}).get('prediction') == 'Yes':
+            treatment_record = Treatment(
                 patient_id=patient.id,
                 diagnosis_id=diagnosis_record.id,
-                created_by=user.id,
-                medication=drug_name,
-                atc_drug_id=atc_drug.id,
-                dosage=f"{dosage_mg}mg {frequency}",
-                duration=f"{duration_days} days",
-                risk_level=symptom_analysis["risk_level"],
-                ml_recommended=True,
-                status="pending",
-                dosage_mg=dosage_mg,
-                frequency=frequency,
-                duration_days=duration_days,
-                tablets_per_dose=tablets_per_dose,
-                total_tablets=total_tablets
+                hospital_id=user.hospital_id,
+                treatment_type=treatment_plan["selected_option"]["name"],
+                drugs=treatment_plan["selected_option"]["drugs"],
+                duration=treatment_plan["selected_option"]["duration"],
+                dosage=(
+                    f"Intensive: {treatment.get('intensive_phase')}, Continuation: {treatment.get('continuation_phase')}"
+                    if treatment.get('intensive_phase') and treatment.get('continuation_phase')
+                    else treatment_plan["selected_option"]["administration"]
+                ),
+                administration_notes=treatment_plan["selected_option"]["notes"]
             )
-            db.session.add(prescription)
-            print(f"DEBUG: Prescription created for {drug_name} with {total_tablets} total tablets, atc_drug_id={atc_drug.id}")
-    else:
-        print(f"DEBUG: No prescription created - ML prediction: {ml_prediction.get('tb_status', {}).get('prediction') if ml_prediction else 'N/A'}, Risk: {patient.risk_score}")
+            db.session.add(treatment_record)
+            db.session.flush()
+        else:
+            print(f"DEBUG: No treatment record created - ML predicts no TB")
 
-    # Check for antibiotic misuse
-    recent_prescriptions = Prescription.query.filter(
-        Prescription.patient_id == patient.id,
-        Prescription.created_at >= datetime.now() - timedelta(days=90)
-    ).all()
+        # Initialize prescription variable
+        prescription = None
 
-    misuse_detected = False
-    misuse_reason = ""
-    if len(recent_prescriptions) >= 3:
-        misuse_detected = True
-        misuse_reason = "Multiple antibiotic prescriptions in last 90 days"
-    if patient.antibiotic_usage_history and "without prescription" in patient.antibiotic_usage_history.lower():
-        misuse_detected = True
-        misuse_reason = "Reported antibiotic use without prescription"
+        # Only create prescription if ML prediction indicates TB and risk score is sufficient
+        # Base decision on ML prediction (yes/no) and risk score, not WHO category
+        print(f"DEBUG: ML Prediction = {ml_prediction}")
+        print(f"DEBUG: Risk Score = {patient.risk_score}")
 
-    if misuse_detected:
-        alert = Alert(
-            patient_id=patient.id,
-            user_id=user.id,
-            hospital_id=user.hospital_id,
-            alert_type="antimicrobial_stewardship",
-            message=f"Possible antibiotic misuse detected: {misuse_reason}. Review patient history.",
-            severity="high"
-        )
-        db.session.add(alert)
-        alert_created = alert
-
-    urgency = treatment.get("priority", "MODERATE")
-    treatment_recommendation = {
-        "type": clinical_info.get("diagnosis", tb_analysis["who_category"]),
-        "category": localized_who_category,
-        "bacteria_species": bacteria_assessment["species"],
-        "infection_type": infection_assessment["primary_infection"],
-        "resistance_class": resistance_profile["classification"],
-        "regimen_name": treatment_plan["selected_option"]["name"],
-        "regimen_level": treatment_plan["selected_option"]["level"],
-        "duration": treatment_plan["selected_option"]["duration"],
-        "drugs": treatment_plan["selected_option"]["drugs"],
-        "dosage": treatment_record.dosage if treatment_record else treatment_plan["selected_option"]["administration"],
-        "administration": treatment_plan["selected_option"]["administration"],
-        "monitoring": treatment_plan["selected_option"]["monitoring"],
-        "urgency": urgency,
-        "notes": treatment_plan["selected_option"]["notes"],
-        "guideline_source": treatment_plan["guideline_source"],
-        "decision_basis": treatment_plan["decision_basis"],
-        "treatment_options": treatment_plan["options"],
-        "medicines": detailed_medicines if detailed_medicines else [],
-        "recommendation": prescription_recommendation.get('recommendation') if prescription_recommendation else 'No medication needed'
-    }
-
-    if 'CONFIRMED' in tb_analysis['who_category'] or 'URGENT' in urgency or 'CRITICAL' in urgency:
-        alert_created = create_alert(
-            patient_id=patient.id,
-            user_id=user.id,
-            alert_type=tr("ALERT_LABEL", lang=lang),
-            message=tr(
-                "ALERT_MESSAGE_TEMPLATE",
-                lang=lang,
-                patient_name=patient_name,
-                patient_id=patient.patient_id,
-                category=localized_who_category,
-                species=bacteria_assessment['species'],
-                who_recommendation=clinical_info.get('who_recommendation', ''),
-            ),
-            severity='high'
+        # Check if ML predicts TB and risk score is above threshold
+        tb_detected = (
+            ml_prediction and
+            ml_prediction.get('tb_status', {}).get('prediction') == 'Yes' and
+            patient.risk_score and
+            patient.risk_score >= 30  # Minimum risk score threshold
         )
 
-    db.session.commit()
+        print(f"DEBUG: TB Detected (based on ML) = {tb_detected}")
 
-    # Create audit log for diagnosis
-    audit = AuditLog(
-        user_id=user_id,
-        action='create_diagnosis',
-        entity_type='diagnosis',
-        entity_id=diagnosis_record.id,
-        details=f'Diagnosis created for patient {patient.patient_id}: {localized_who_category}',
-        created_at=datetime.now()
-    )
-    db.session.add(audit)
-    db.session.commit()
+        if tb_detected:
+            # Create prescriptions for each drug in the TB regimen
+            drugs_string = treatment_plan["selected_option"]["drugs"]
 
-    return jsonify({
-        "patient_name": patient_name,
-        "patient_id": patient.patient_id,
-        "symptom_analysis": symptom_analysis,
-        "test_evaluation": test_evaluation,
-        "who_standards": {
-            "tb_types": localized_tb_types,
-            "primary_diagnosis": localized_who_category,
-            "presumptive": tb_analysis["presumptive_tb"],
-            "bacteriological_confirmation": tb_analysis["bacteriological_confirmation"],
-            "clinical_info": clinical_info,
-        },
-        "bacteria_assessment": bacteria_assessment,
-        "infection_assessment": infection_assessment,
-        "resistance_profile": resistance_profile,
-        "ml_prediction": ml_prediction,
-        "treatment_recommendation": treatment_recommendation,
-        "saved_diagnosis": diagnosis_record.to_dict(),
-        "saved_treatment": treatment_record.to_dict() if treatment_record else None,
-        "saved_prescription": prescription.to_dict() if prescription else None,
-        "alert_created": alert_created.id if alert_created else None,
-    })
-    
-    # Recalculate risk score when diagnosis is made
-    try:
-        recalculate_risk_on_diagnosis(patient.id)
+            # Parse drugs from the string (comma-separated)
+            import re
+            drug_names = [d.strip() for d in drugs_string.split(',') if d.strip()]
+
+            # Get regimen info for dosages
+            regimen_info = get_recommended_medicines(
+                infection_type=None,
+                risk_score=patient.risk_score,
+                drug_resistance=symptom_analysis.get('drug_resistance'),
+                hiv_status=patient.hiv
+            )
+
+            # Create a mapping of drug name to dosage info
+            drug_dosage_map = {}
+            if regimen_info and 'medicines' in regimen_info:
+                for med in regimen_info['medicines']:
+                    drug_dosage_map[med['name'].lower()] = med
+
+            print(f"DEBUG: Creating prescriptions for drugs: {drug_names}")
+            print(f"DEBUG: Drug dosage map: {drug_dosage_map}")
+
+            for drug_name in drug_names:
+                # Find ATC drug for this medication
+                atc_drug = ATCDrug.query.filter(
+                    ATCDrug.drug_name.ilike(f"%{drug_name}%")
+                ).first()
+
+                if not atc_drug:
+                    print(f"DEBUG: ATC drug not found for {drug_name}")
+                    continue
+
+                # Get dosage info from regimen or use defaults
+                drug_name_lower = drug_name.lower()
+                dosage_info = drug_dosage_map.get(drug_name_lower, {})
+
+                dosage_mg = dosage_info.get('dosage_mg', 300)
+                frequency = dosage_info.get('frequency', 'daily')
+                tablets_per_dose = dosage_info.get('tablets_per_dose', 1)
+                duration_days = dosage_info.get('duration_days', 60)
+
+                # If no duration in dosage_info, extract from treatment record
+                if 'duration_days' not in dosage_info and treatment_record:
+                    if treatment_record.duration:
+                        duration_str = str(treatment_record.duration).lower()
+                        months_match = re.search(r'(\d+)\s*months?', duration_str)
+                        if months_match:
+                            duration_days = int(months_match.group(1)) * 30
+                        else:
+                            days_match = re.search(r'(\d+)\s*days?', duration_str)
+                            if days_match:
+                                duration_days = int(days_match.group(1))
+
+                # Calculate doses per day
+                freq_str = frequency.lower()
+                if 'once' in freq_str or '1 time' in freq_str:
+                    doses_per_day = 1
+                elif 'twice' in freq_str or '2 times' in freq_str:
+                    doses_per_day = 2
+                elif '3 times' in freq_str:
+                    doses_per_day = 3
+                else:
+                    doses_per_day = 1
+
+                # Recalculate tablets_per_dose if not provided
+                if tablets_per_dose == 1 and atc_drug.ddd:
+                    tablet_strength_mg = atc_drug.ddd * 1000
+                    tablets_per_dose = int(dosage_mg / tablet_strength_mg) if tablet_strength_mg > 0 else 1
+
+                total_tablets = tablets_per_dose * doses_per_day * duration_days
+
+                prescription = Prescription(
+                    patient_id=patient.id,
+                    diagnosis_id=diagnosis_record.id,
+                    created_by=user.id,
+                    medication=drug_name,
+                    atc_drug_id=atc_drug.id,
+                    dosage=f"{dosage_mg}mg {frequency}",
+                    duration=f"{duration_days} days",
+                    risk_level=symptom_analysis["risk_level"],
+                    ml_recommended=True,
+                    status="pending",
+                    dosage_mg=dosage_mg,
+                    frequency=frequency,
+                    duration_days=duration_days,
+                    tablets_per_dose=tablets_per_dose,
+                    total_tablets=total_tablets
+                )
+                db.session.add(prescription)
+                print(f"DEBUG: Prescription created for {drug_name} with {total_tablets} total tablets, atc_drug_id={atc_drug.id}")
+        else:
+            print(f"DEBUG: No prescription created - ML prediction: {ml_prediction.get('tb_status', {}).get('prediction') if ml_prediction else 'N/A'}, Risk: {patient.risk_score}")
+
+        # Check for antibiotic misuse
+        recent_prescriptions = Prescription.query.filter(
+            Prescription.patient_id == patient.id,
+            Prescription.created_at >= datetime.now() - timedelta(days=90)
+        ).all()
+
+        misuse_detected = False
+        misuse_reason = ""
+        if len(recent_prescriptions) >= 3:
+            misuse_detected = True
+            misuse_reason = "Multiple antibiotic prescriptions in last 90 days"
+        if patient.antibiotic_usage_history and "without prescription" in patient.antibiotic_usage_history.lower():
+            misuse_detected = True
+            misuse_reason = "Reported antibiotic use without prescription"
+
+        if misuse_detected:
+            alert = Alert(
+                patient_id=patient.id,
+                user_id=user.id,
+                hospital_id=user.hospital_id,
+                alert_type="antimicrobial_stewardship",
+                message=f"Possible antibiotic misuse detected: {misuse_reason}. Review patient history.",
+                severity="high"
+            )
+            db.session.add(alert)
+            alert_created = alert
+
+        urgency = treatment.get("priority", "MODERATE")
+        treatment_recommendation = {
+            "type": clinical_info.get("diagnosis", tb_analysis["who_category"]),
+            "category": localized_who_category,
+            "bacteria_species": bacteria_assessment["species"],
+            "infection_type": infection_assessment["primary_infection"],
+            "resistance_class": resistance_profile["classification"],
+            "regimen_name": treatment_plan["selected_option"]["name"],
+            "regimen_level": treatment_plan["selected_option"]["level"],
+            "duration": treatment_plan["selected_option"]["duration"],
+            "drugs": treatment_plan["selected_option"]["drugs"],
+            "dosage": treatment_record.dosage if treatment_record else treatment_plan["selected_option"]["administration"],
+            "administration": treatment_plan["selected_option"]["administration"],
+            "monitoring": treatment_plan["selected_option"]["monitoring"],
+            "urgency": urgency,
+            "notes": treatment_plan["selected_option"]["notes"],
+            "guideline_source": treatment_plan["guideline_source"],
+            "decision_basis": treatment_plan["decision_basis"],
+            "treatment_options": treatment_plan["options"],
+            "medicines": detailed_medicines if detailed_medicines else [],
+            "recommendation": prescription_recommendation.get('recommendation') if prescription_recommendation else 'No medication needed'
+        }
+
+        if 'CONFIRMED' in tb_analysis['who_category'] or 'URGENT' in urgency or 'CRITICAL' in urgency:
+            alert_created = create_alert(
+                patient_id=patient.id,
+                user_id=user.id,
+                alert_type=tr("ALERT_LABEL", lang=lang),
+                message=tr(
+                    "ALERT_MESSAGE_TEMPLATE",
+                    lang=lang,
+                    patient_name=patient_name,
+                    patient_id=patient.patient_id,
+                    category=localized_who_category,
+                    species=bacteria_assessment['species'],
+                    who_recommendation=clinical_info.get('who_recommendation', ''),
+                ),
+                severity='high'
+            )
+
+        # Create alert for drug resistance
+        if patient.drug_resistance and patient.drug_resistance == 'Yes':
+            alert_created = create_alert(
+                patient_id=patient.id,
+                user_id=user.id,
+                alert_type='Drug Resistance Alert',
+                message=f'Drug resistance detected for patient {patient.patient_id} ({patient_name}). Requires specialized treatment regimen.',
+                severity='high'
+            )
+
+        db.session.commit()
+
+        # Create audit log for diagnosis
+        audit = AuditLog(
+            user_id=user_id,
+            action='create_diagnosis',
+            entity_type='diagnosis',
+            entity_id=diagnosis_record.id,
+            details=f'Diagnosis created for patient {patient.patient_id}: {localized_who_category}',
+            created_at=datetime.now()
+        )
+        db.session.add(audit)
+        db.session.commit()
+
+        return jsonify({
+            "patient_name": patient_name,
+            "patient_id": patient.patient_id,
+            "symptom_analysis": symptom_analysis,
+            "test_evaluation": test_evaluation,
+            "who_standards": {
+                "tb_types": localized_tb_types,
+                "primary_diagnosis": localized_who_category,
+                "presumptive": tb_analysis["presumptive_tb"],
+                "bacteriological_confirmation": tb_analysis["bacteriological_confirmation"],
+                "clinical_info": clinical_info,
+            },
+            "bacteria_assessment": bacteria_assessment,
+            "infection_assessment": infection_assessment,
+            "resistance_profile": resistance_profile,
+            "ml_prediction": ml_prediction,
+            "treatment_recommendation": treatment_recommendation,
+            "saved_diagnosis": diagnosis_record.to_dict(),
+            "saved_treatment": treatment_record.to_dict() if treatment_record else None,
+            "saved_prescription": prescription.to_dict() if prescription else None,
+            "alert_created": alert_created.id if alert_created else None,
+        })
+
     except Exception as e:
-        print(f"Error recalculating risk score: {e}")
+        db.session.rollback()
+        import traceback
+        print(f"DIAGNOSIS ERROR: {str(e)}")
+        print(f"TRACEBACK: {traceback.format_exc()}")
+        return jsonify({'error': f'Diagnosis failed: {str(e)}'}), 500
 
 @app.route('/api/diagnoses', methods=['GET'])
 @jwt_required()
@@ -5554,48 +6540,80 @@ def get_treatments():
 @app.route('/api/alerts', methods=['GET'])
 @jwt_required()
 def get_alerts():
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    unread_only = request.args.get('unread_only', 'false').lower() == 'true'
-    filter_hospital_id = request.args.get('hospital_id', type=int)
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        unread_only = request.args.get('unread_only', 'false').lower() == 'true'
+        filter_hospital_id = request.args.get('hospital_id', type=int)
 
-    query = Alert.query
-    
-    # Hospital-based access control
-    current_user = get_current_user_from_jwt()
-    if current_user:
+        query = Alert.query
+        
+        # Hospital-based access control
+        current_user = get_current_user_from_jwt()
+        if not current_user:
+            return jsonify({
+                'alerts': [],
+                'total': 0,
+                'unread_count': 0
+            })
+            
         if current_user.role == 'admin':
             if filter_hospital_id:
                 query = query.filter_by(hospital_id=filter_hospital_id)
+        elif current_user.hospital_id:
+            query = query.filter_by(hospital_id=current_user.hospital_id)
         else:
-            if current_user.hospital_id:
-                query = query.filter_by(hospital_id=current_user.hospital_id)
-            else:
-                query = query.filter(Alert.hospital_id.is_(None))
-    
-    if unread_only:
-        query = query.filter_by(is_read=False)
+            query = query.filter(Alert.hospital_id.is_(None))
+        
+        if unread_only:
+            query = query.filter_by(is_read=False)
 
-    pagination = query.order_by(Alert.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
-    alerts = [a.to_dict() for a in pagination.items]
-    
-    # Calculate unread count with the same access rules
-    unread_query = Alert.query.filter_by(is_read=False)
-    if current_user:
+        pagination = query.order_by(Alert.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+        alerts = [a.to_dict() for a in pagination.items]
+        
+        # Calculate unread count with the same access rules
+        unread_query = Alert.query.filter_by(is_read=False)
         if current_user.role == 'admin':
             if filter_hospital_id:
                 unread_query = unread_query.filter_by(hospital_id=filter_hospital_id)
+        elif current_user.hospital_id:
+            unread_query = unread_query.filter_by(hospital_id=current_user.hospital_id)
         else:
-            if current_user.hospital_id:
-                unread_query = unread_query.filter_by(hospital_id=current_user.hospital_id)
-            else:
-                unread_query = unread_query.filter(Alert.hospital_id.is_(None))
-    
-    return jsonify({
-        'alerts': alerts,
-        'total': pagination.total,
-        'unread_count': unread_query.count()
-    })
+            unread_query = unread_query.filter(Alert.hospital_id.is_(None))
+        
+        return jsonify({
+            'alerts': alerts,
+            'total': pagination.total,
+            'unread_count': unread_query.count()
+        })
+    except Exception as e:
+        return jsonify({
+            'alerts': [],
+            'total': 0,
+            'unread_count': 0
+        }), 200
+
+@app.route('/api/alerts/unread-count', methods=['GET'])
+def get_unread_alerts_count():
+    """Get count of unread alerts for current user (simplified endpoint)"""
+    try:
+        from flask_jwt_extended import verify_jwt_in_request_optional
+        verify_jwt_in_request_optional()
+        
+        current_user = get_current_user_from_jwt()
+        if not current_user:
+            return jsonify({'unread_count': 0})
+        
+        query = Alert.query.filter_by(is_read=False)
+        
+        # Hospital-based access control
+        if current_user.role != 'admin' and current_user.hospital_id:
+            query = query.filter_by(hospital_id=current_user.hospital_id)
+        
+        count = query.count()
+        return jsonify({'unread_count': count})
+    except Exception as e:
+        return jsonify({'unread_count': 0}), 200
 
 
 # Patient Consent Endpoints
@@ -5693,7 +6711,6 @@ def consent_detail(consent_id):
         return jsonify(consent.to_dict())
     
     if request.method == 'PUT':
-        from datetime import datetime
         data = request.get_json()
         
         # Handle status changes
@@ -5709,22 +6726,222 @@ def consent_detail(consent_id):
         if 'notes' in data:
             consent.notes = data.get('notes')
         if 'expires_at' in data and data.get('expires_at'):
-            from dateutil.parser import parse
-            consent.expires_at = parse(data['expires_at'])
-        
-        # Audit log
-        audit = AuditLog(
-            user_id=user.id,
-            action=f'update_consent_{new_status}' if new_status else 'update_consent',
-            entity_type='patient_consent',
-            entity_id=consent.id,
-            details=f"Updated consent {consent_id}: status changed to {new_status}"
-        )
-        db.session.add(audit)
+            consent.expires_at = datetime.fromisoformat(data.get('expires_at'))
         
         db.session.commit()
-        
         return jsonify(consent.to_dict())
+
+
+@app.route('/api/patients/<int:patient_id>/consent', methods=['PUT'])
+@jwt_required()
+def update_patient_consent(patient_id):
+    """Update patient's data sharing consent status"""
+    patient = Patient.query.get_or_404(patient_id)
+    user = get_current_user_from_jwt()
+    
+    # Only allow updating consent for patients at user's hospital or admins
+    patient_hospitals = [h.id for h in patient.hospitals]
+    if user.role != 'admin' and user.hospital_id not in patient_hospitals:
+        return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+    
+    data = request.get_json()
+    new_status = data.get('data_sharing_consent')
+    
+    if new_status not in ['pending', 'granted', 'denied']:
+        return jsonify({'msg': 'Invalid consent status'}), 400
+    
+    patient.data_sharing_consent = new_status
+    
+    if new_status == 'granted':
+        patient.consent_granted_at = datetime.now()
+        # Set default expiry to 1 year from now if not provided
+        if data.get('consent_expires_at'):
+            patient.consent_expires_at = datetime.fromisoformat(data.get('consent_expires_at'))
+        else:
+            patient.consent_expires_at = datetime.now() + timedelta(days=365)
+    
+    db.session.commit()
+    
+    # Log consent change
+    audit = AuditLog(
+        user_id=user.id,
+        action='consent_status_change',
+        entity_type='patient',
+        entity_id=patient_id,
+        details=f'Patient consent changed to {new_status} by {user.username}',
+        created_at=datetime.now()
+    )
+    db.session.add(audit)
+    db.session.commit()
+    
+    return jsonify({
+        'patient_id': patient.id,
+        'data_sharing_consent': patient.data_sharing_consent,
+        'consent_granted_at': patient.consent_granted_at.isoformat() if patient.consent_granted_at else None,
+        'consent_expires_at': patient.consent_expires_at.isoformat() if patient.consent_expires_at else None
+    })
+
+
+@app.route('/api/patients/<int:patient_id>/consent/request', methods=['POST'])
+@jwt_required()
+def request_consent(patient_id):
+    """Request consent from patient for cross-hospital data sharing"""
+    from models.models import PatientConsent
+    import secrets
+    import hashlib
+    
+    patient = Patient.query.get_or_404(patient_id)
+    user = get_current_user_from_jwt()
+    
+    # Check if requesting hospital is different from patient's hospitals
+    patient_hospitals = [h.id for h in patient.hospitals]
+    if user.hospital_id in patient_hospitals:
+        return jsonify({'msg': 'Patient is already at your hospital - consent not required'}), 400
+    
+    # Generate verification code
+    verification_code = secrets.token_hex(4).upper()  # 8-character code
+    encrypted_code = hashlib.sha256(verification_code.encode()).hexdigest()
+    
+    # Create consent request
+    consent_request = PatientConsent(
+        patient_id=patient_id,
+        requesting_hospital_id=user.hospital_id,
+        sharing_hospital_id=patient_hospitals[0],  # Primary hospital
+        consent_type=data.get('consent_type', 'full_record'),
+        status='pending',
+        verification_method=data.get('verification_method', 'in_person'),
+        _verification_code=encrypted_code,
+        notes=data.get('notes', ''),
+        expires_at=datetime.now() + timedelta(days=30)  # Request expires in 30 days
+    )
+    
+    db.session.add(consent_request)
+    db.session.commit()
+    
+    # Log consent request
+    audit = AuditLog(
+        user_id=user.id,
+        action='consent_request_created',
+        entity_type='patient_consent',
+        entity_id=consent_request.id,
+        details=f'Consent requested for patient {patient.patient_id} by hospital {user.hospital_id}',
+        created_at=datetime.now()
+    )
+    db.session.add(audit)
+    db.session.commit()
+    
+    return jsonify({
+        'consent_id': consent_request.id,
+        'status': 'pending',
+        'verification_code': verification_code,  # Only returned for demo purposes
+        'expires_at': consent_request.expires_at.isoformat(),
+        'msg': 'Consent request created. Patient must verify using the code.'
+    })
+
+
+@app.route('/api/patients/<int:patient_id>/consent/<int:consent_id>/verify', methods=['POST'])
+@jwt_required()
+def verify_consent(patient_id, consent_id):
+    """Verify patient consent using verification code"""
+    from models.models import PatientConsent
+    import hashlib
+    
+    consent = PatientConsent.query.get_or_404(consent_id)
+    user = get_current_user_from_jwt()
+    
+    # Verify consent belongs to patient
+    if consent.patient_id != patient_id:
+        return jsonify({'msg': 'Consent not found for this patient'}), 404
+    
+    # Check if already verified
+    if consent.status != 'pending':
+        return jsonify({'msg': f'Consent already {consent.status}'}), 400
+    
+    # Check expiry
+    if consent.expires_at and consent.expires_at < datetime.now():
+        return jsonify({'msg': 'Consent request has expired'}), 400
+    
+    data = request.get_json()
+    verification_code = data.get('verification_code')
+    
+    if not verification_code:
+        return jsonify({'msg': 'Verification code required'}), 400
+    
+    # Verify code
+    encrypted_input = hashlib.sha256(verification_code.upper().encode()).hexdigest()
+    if encrypted_input != consent._verification_code:
+        return jsonify({'msg': 'Invalid verification code'}), 401
+    
+    # Grant consent
+    consent.status = 'granted'
+    consent.granted_at = datetime.now()
+    
+    # Also update patient's overall consent status
+    patient = Patient.query.get(patient_id)
+    patient.data_sharing_consent = 'granted'
+    patient.consent_granted_at = datetime.now()
+    patient.consent_expires_at = datetime.now() + timedelta(days=365)
+    
+    db.session.commit()
+    
+    # Log consent verification
+    audit = AuditLog(
+        user_id=user.id,
+        action='consent_verified',
+        entity_type='patient_consent',
+        entity_id=consent.id,
+        details=f'Consent verified for patient {patient.patient_id} by {user.username}',
+        created_at=datetime.now()
+    )
+    db.session.add(audit)
+    db.session.commit()
+    
+    return jsonify({
+        'consent_id': consent.id,
+        'status': 'granted',
+        'granted_at': consent.granted_at.isoformat(),
+        'msg': 'Consent verified and granted successfully'
+    })
+
+
+@app.route('/api/patients/<int:patient_id>/password', methods=['PUT'])
+@jwt_required()
+def change_patient_password(patient_id):
+    """Change patient password"""
+    patient = Patient.query.get_or_404(patient_id)
+    user = get_current_user_from_jwt()
+    
+    # Allow patient to change their own password, or admins to change any
+    if user.role != 'admin' and str(user.id) != str(patient.id):
+        return jsonify({'msg': tr('ACCESS_DENIED')}), 403
+    
+    data = request.get_json()
+    current_password = data.get('current_password')
+    new_password = data.get('new_password')
+    
+    if not new_password or len(new_password) < 8:
+        return jsonify({'msg': 'Password must be at least 8 characters'}), 400
+    
+    # Verify current password unless admin is changing it
+    if user.role != 'admin':
+        if not patient.verify_password(current_password):
+            return jsonify({'msg': 'Current password is incorrect'}), 401
+    
+    patient.set_password(new_password)
+    db.session.commit()
+    
+    audit = AuditLog(
+        user_id=user.id,
+        action='password_change',
+        entity_type='patient',
+        entity_id=patient.id,
+        details=f'Password changed for patient {patient.patient_id}',
+        created_at=datetime.now()
+    )
+    db.session.add(audit)
+    db.session.commit()
+    
+    return jsonify({'msg': 'Password changed successfully'})
 
 
 # HL7 FHIR-like Endpoints for Interoperability
@@ -5735,15 +6952,16 @@ def fhir_patient(patient_id):
     user = get_current_user_from_jwt()
     patient = Patient.query.get_or_404(patient_id)
     
-    # Check consent if accessing from another hospital
+    # Check consent if accessing from another hospital (many-to-many)
     authorized = False
+    patient_hospitals = [h.id for h in patient.hospitals]
+    
     if user.role == 'admin':
         authorized = True
-    elif user.hospital_id == patient.hospital_id:
+    elif user.hospital_id in patient_hospitals:
         authorized = True
     else:
-        # Check if valid consent exists
-        from datetime import datetime
+        # Check if valid consent exists for cross-hospital access
         valid_consent = PatientConsent.query.filter(
             PatientConsent.patient_id == patient_id,
             PatientConsent.requesting_hospital_id == user.hospital_id,
@@ -5755,6 +6973,9 @@ def fhir_patient(patient_id):
     
     if not authorized:
         return jsonify({'error': 'Patient consent required to access this data'}), 403
+    
+    # Get primary hospital
+    primary_hospital = patient.get_primary_hospital()
     
     # Build FHIR-like Patient resource
     fhir_patient = {
@@ -5776,10 +6997,28 @@ def fhir_patient(patient_id):
         "gender": patient.gender,
         "birthDate": patient.date_of_birth.date().isoformat() if patient.date_of_birth else None,
         "managingOrganization": {
-            "reference": f"Organization/{patient.hospital_id}",
-            "display": patient.hospital.name if patient.hospital else None
-        }
+            "reference": f"Organization/{primary_hospital.id if primary_hospital else patient_hospitals[0]}",
+            "display": primary_hospital.name if primary_hospital else (patient.hospitals[0].name if patient.hospitals else None)
+        },
+        "extension": [
+            {
+                "url": "https://tb-diagnostic-system.org/StructureDefinition/data-sharing-consent",
+                "valueCode": patient.data_sharing_consent
+            }
+        ]
     }
+    
+    # Log FHIR access for audit trail
+    audit = AuditLog(
+        user_id=user.id,
+        action='fhir_patient_access',
+        entity_type='patient',
+        entity_id=patient_id,
+        details=f'FHIR Patient resource accessed by {user.username} from hospital {user.hospital_id}',
+        created_at=datetime.now()
+    )
+    db.session.add(audit)
+    db.session.commit()
     
     return jsonify(fhir_patient)
 
@@ -5788,15 +7027,16 @@ def fhir_patient(patient_id):
 @jwt_required()
 def fhir_patient_conditions(patient_id):
     from models.models import Diagnosis, PatientConsent
-    from datetime import datetime
     user = get_current_user_from_jwt()
     patient = Patient.query.get_or_404(patient_id)
     
-    # Check consent
+    # Check consent (many-to-many hospitals)
     authorized = False
+    patient_hospitals = [h.id for h in patient.hospitals]
+    
     if user.role == 'admin':
         authorized = True
-    elif user.hospital_id == patient.hospital_id:
+    elif user.hospital_id in patient_hospitals:
         authorized = True
     else:
         valid_consent = PatientConsent.query.filter(
@@ -5832,6 +7072,18 @@ def fhir_patient_conditions(patient_id):
         }
         fhir_conditions.append(fhir_condition)
     
+    # Log FHIR access for audit trail
+    audit = AuditLog(
+        user_id=user.id,
+        action='fhir_conditions_access',
+        entity_type='patient',
+        entity_id=patient_id,
+        details=f'FHIR Condition resources accessed by {user.username} from hospital {user.hospital_id}',
+        created_at=datetime.now()
+    )
+    db.session.add(audit)
+    db.session.commit()
+    
     return jsonify({
         "resourceType": "Bundle",
         "type": "searchset",
@@ -5843,15 +7095,16 @@ def fhir_patient_conditions(patient_id):
 @jwt_required()
 def fhir_patient_observations(patient_id):
     from models.models import LabTest, PatientConsent
-    from datetime import datetime
     user = get_current_user_from_jwt()
     patient = Patient.query.get_or_404(patient_id)
     
-    # Check consent
+    # Check consent (many-to-many hospitals)
     authorized = False
+    patient_hospitals = [h.id for h in patient.hospitals]
+    
     if user.role == 'admin':
         authorized = True
-    elif user.hospital_id == patient.hospital_id:
+    elif user.hospital_id in patient_hospitals:
         authorized = True
     else:
         valid_consent = PatientConsent.query.filter(
@@ -5884,6 +7137,18 @@ def fhir_patient_observations(patient_id):
             "issued": lt.completed_at.isoformat() if lt.completed_at else None
         }
         fhir_observations.append(fhir_observation)
+    
+    # Log FHIR access for audit trail
+    audit = AuditLog(
+        user_id=user.id,
+        action='fhir_observations_access',
+        entity_type='patient',
+        entity_id=patient_id,
+        details=f'FHIR Observation resources accessed by {user.username} from hospital {user.hospital_id}',
+        created_at=datetime.now()
+    )
+    db.session.add(audit)
+    db.session.commit()
     
     return jsonify({
         "resourceType": "Bundle",
@@ -5926,19 +7191,34 @@ def import_data_endpoint():
 @app.route('/api/dashboard/charts')
 @jwt_required()
 def dashboard_charts():
+    from flask_jwt_extended import get_jwt_identity
     from sqlalchemy import func, case
 
-    # 1. Patient Risk Level distribution (bar)
-    high = Patient.query.filter(
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    role = user.role
+    hospital_id = user.hospital_id if role == 'hospital_admin' else None
+
+    # Determine patient query based on role
+    if hospital_id:
+        patient_query = Patient.query.join(Patient.hospitals).filter(Hospital.id == hospital_id)
+    else:
+        patient_query = Patient.query
+
+    # System-wide query for comparison
+    system_patient_query = Patient.query
+
+    # 1. Patient Risk Level distribution (bar) - hospital-specific
+    high = patient_query.filter(
         db.or_(Patient.tb_status_label == 'Yes', Patient.genexpert_test == 'Positive')
     ).count()
-    medium = Patient.query.filter(
+    medium = patient_query.filter(
         db.and_(
             Patient.tb_status_label != 'Yes', Patient.genexpert_test != 'Positive',
             db.or_(Patient.sputum_smear_test == 'Positive', Patient.chest_xray == 'Abnormal')
         )
     ).count()
-    total = Patient.query.count()
+    total = patient_query.count()
     low = max(0, total - high - medium)
     risk_chart = {
         'labels': ['High Risk', 'Medium Risk', 'Low Risk'],
@@ -5946,9 +7226,27 @@ def dashboard_charts():
         'colors': ['#ef4444', '#f59e0b', '#10b981']
     }
 
-    # 2. TB Status breakdown (doughnut)
-    tb_positive = Patient.query.filter(Patient.tb_status_label == 'Yes').count()
-    tb_negative = Patient.query.filter(Patient.tb_status_label == 'No').count()
+    # System-wide risk distribution
+    system_high = system_patient_query.filter(
+        db.or_(Patient.tb_status_label == 'Yes', Patient.genexpert_test == 'Positive')
+    ).count()
+    system_medium = system_patient_query.filter(
+        db.and_(
+            Patient.tb_status_label != 'Yes', Patient.genexpert_test != 'Positive',
+            db.or_(Patient.sputum_smear_test == 'Positive', Patient.chest_xray == 'Abnormal')
+        )
+    ).count()
+    system_total = system_patient_query.count()
+    system_low = max(0, system_total - system_high - system_medium)
+    system_risk_chart = {
+        'labels': ['High Risk', 'Medium Risk', 'Low Risk'],
+        'data': [system_high, system_medium, system_low],
+        'colors': ['#ef4444', '#f59e0b', '#10b981']
+    }
+
+    # 2. TB Status breakdown (doughnut) - hospital-specific
+    tb_positive = patient_query.filter(Patient.tb_status_label == 'Yes').count()
+    tb_negative = patient_query.filter(Patient.tb_status_label == 'No').count()
     tb_unknown = total - tb_positive - tb_negative
     tb_status_chart = {
         'labels': ['TB Positive', 'TB Negative', 'Unknown'],
@@ -5956,9 +7254,9 @@ def dashboard_charts():
         'colors': ['#ef4444', '#10b981', '#6b7280']
     }
 
-    # 3. Drug Resistance distribution (bar)
-    dr_yes = Patient.query.filter(Patient.drug_resistance == 'Yes').count()
-    dr_no = Patient.query.filter(Patient.drug_resistance == 'No').count()
+    # 3. Drug Resistance distribution (bar) - hospital-specific
+    dr_yes = patient_query.filter(Patient.drug_resistance == 'Yes').count()
+    dr_no = patient_query.filter(Patient.drug_resistance == 'No').count()
     dr_unknown = total - dr_yes - dr_no
     resistance_chart = {
         'labels': ['Resistant', 'Sensitive', 'Unknown'],
@@ -5966,7 +7264,7 @@ def dashboard_charts():
         'colors': ['#f97316', '#06b6d4', '#6b7280']
     }
 
-    # 4. Antibiogram – resistance rates per antibiotic from AntibioticResistance table (bar)
+    # 4. Antibiogram – resistance rates per antibiotic from AntibioticResistance table (bar) - system-wide
     ab_fields = [
         ('amx_amp', 'AMX/AMP'), ('amc', 'AMC'), ('cz', 'CZ'), ('fox', 'FOX'),
         ('ctx_cro', 'CTX/CRO'), ('ipm', 'IPM'), ('gen', 'GEN'), ('an', 'AN'),
@@ -5988,7 +7286,7 @@ def dashboard_charts():
         'title': 'Antibiotic Resistance Rate (%)'
     }
 
-    # 5. Top bacterial species from AntibioticResistance (horizontal bar)
+    # 5. Top bacterial species from AntibioticResistance (horizontal bar) - system-wide
     species_rows = db.session.query(
         AntibioticResistance.bacterial_species,
         func.count(AntibioticResistance.id).label('cnt')
@@ -6002,7 +7300,7 @@ def dashboard_charts():
         'colors': ['#8b5cf6', '#06b6d4', '#f59e0b', '#ef4444', '#10b981', '#f97316', '#3b82f6', '#ec4899']
     }
 
-    # 6. Key symptom prevalence (horizontal bar)
+    # 6. Key symptom prevalence (horizontal bar) - hospital-specific
     symptom_fields = [
         (Patient.has_fever, 'Fever'), (Patient.has_cough, 'Cough'),
         (Patient.has_weight_loss, 'Weight Loss'), (Patient.has_night_sweats, 'Night Sweats'),
@@ -6011,7 +7309,7 @@ def dashboard_charts():
     ]
     symptom_labels, symptom_data = [], []
     for col, label in symptom_fields:
-        cnt = Patient.query.filter(col == 'Yes').count()
+        cnt = patient_query.filter(col == 'Yes').count()
         pct = round(cnt / total * 100, 1) if total > 0 else 0
         symptom_labels.append(label)
         symptom_data.append(pct)
@@ -6021,11 +7319,11 @@ def dashboard_charts():
         'title': 'Symptom Prevalence (% of patients)'
     }
 
-    # 7. Test positivity rates (bar)
-    genexpert_pos = Patient.query.filter(Patient.genexpert_test == 'Positive').count()
-    sputum_pos = Patient.query.filter(Patient.sputum_smear_test == 'Positive').count()
-    xray_abn = Patient.query.filter(Patient.chest_xray == 'Abnormal').count()
-    culture_pos = Patient.query.filter(Patient.tb_culture == 'Positive').count()
+    # 7. Test positivity rates (bar) - hospital-specific
+    genexpert_pos = patient_query.filter(Patient.genexpert_test == 'Positive').count()
+    sputum_pos = patient_query.filter(Patient.sputum_smear_test == 'Positive').count()
+    xray_abn = patient_query.filter(Patient.chest_xray == 'Abnormal').count()
+    culture_pos = patient_query.filter(Patient.tb_culture == 'Positive').count()
     tests_chart = {
         'labels': ['GeneXpert+', 'Sputum+', 'X-ray Abnormal', 'Culture+'],
         'data': [
@@ -6037,31 +7335,39 @@ def dashboard_charts():
         'colors': ['#8b5cf6', '#06b6d4', '#f59e0b', '#10b981']
     }
 
-    # 8. Gender distribution (doughnut)
+    # 8. Gender distribution (doughnut) - hospital-specific
     gender_rows = db.session.query(
         Patient.gender, func.count(Patient.id).label('cnt')
-    ).filter(Patient.gender.isnot(None)).group_by(Patient.gender).all()
+    ).filter(Patient.gender.isnot(None))
+    if hospital_id:
+        gender_rows = gender_rows.join(Patient.hospitals).filter(Hospital.id == hospital_id)
+    gender_rows = gender_rows.group_by(Patient.gender).all()
     gender_chart = {
         'labels': [r.gender for r in gender_rows],
         'data': [r.cnt for r in gender_rows],
         'colors': ['#3b82f6', '#ec4899', '#6b7280']
     }
 
-    # 9. Prescription status (doughnut)
-    p_pending = Prescription.query.filter_by(status='pending').count()
-    p_approved = Prescription.query.filter_by(status='approved').count()
-    p_rejected = Prescription.query.filter_by(status='rejected').count()
+    # 9. Prescription status (doughnut) - hospital-specific
+    if hospital_id:
+        p_pending = Prescription.query.filter_by(status='pending', hospital_id=hospital_id).count()
+        p_approved = Prescription.query.filter_by(status='approved', hospital_id=hospital_id).count()
+        p_rejected = Prescription.query.filter_by(status='rejected', hospital_id=hospital_id).count()
+    else:
+        p_pending = Prescription.query.filter_by(status='pending').count()
+        p_approved = Prescription.query.filter_by(status='approved').count()
+        p_rejected = Prescription.query.filter_by(status='rejected').count()
     prescription_chart = {
         'labels': ['Pending', 'Approved', 'Rejected'],
         'data': [p_pending, p_approved, p_rejected],
         'colors': ['#f59e0b', '#10b981', '#ef4444']
     }
 
-    # 10. HIV & Comorbidities (bar)
-    hiv_yes = Patient.query.filter(Patient.hiv == 'Yes').count()
-    diabetes_yes = Patient.query.filter(Patient.diabetes == 'Yes').count()
-    smoking_current = Patient.query.filter(Patient.smoking_status == 'Current').count()
-    alcohol_reg = Patient.query.filter(Patient.alcohol_use == 'Regular').count()
+    # 10. HIV & Comorbidities (bar) - hospital-specific
+    hiv_yes = patient_query.filter(Patient.hiv == 'Yes').count()
+    diabetes_yes = patient_query.filter(Patient.diabetes == 'Yes').count()
+    smoking_current = patient_query.filter(Patient.smoking_status == 'Current').count()
+    alcohol_reg = patient_query.filter(Patient.alcohol_use == 'Regular').count()
     comorbidity_chart = {
         'labels': ['HIV+', 'Diabetes', 'Smoking', 'Alcohol Regular'],
         'data': [
@@ -6075,6 +7381,7 @@ def dashboard_charts():
 
     return jsonify({
         'risk_distribution': risk_chart,
+        'system_risk_distribution': system_risk_chart,
         'tb_status': tb_status_chart,
         'drug_resistance': resistance_chart,
         'antibiogram': antibiogram_chart,
@@ -6084,15 +7391,22 @@ def dashboard_charts():
         'gender_distribution': gender_chart,
         'prescription_status': prescription_chart,
         'comorbidities': comorbidity_chart,
+        'scope': 'hospital' if hospital_id else 'system'
     })
 
 
 if __name__ == '__main__':
     import sys
-    if len(sys.argv) > 1 and sys.argv[1] == 'seed':
+    import os
+    
+    # Check if bootstrap is running - if so, don't auto-start server
+    if os.getenv("BOOTSTRAP_RUNNING") == "1":
+        # Bootstrap will handle server startup
+        pass
+    elif len(sys.argv) > 1 and sys.argv[1] == 'seed':
         # Skip running server when seeding
         pass
     else:
-        with app.app_context():
-            db.create_all()
+        # Note: db.create_all() is handled by bootstrap.py
+        # When running app.py directly, assume database already exists
         app.run(debug=True, port=5000)

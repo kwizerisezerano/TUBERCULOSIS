@@ -201,6 +201,19 @@ cd backend
 python bootstrap.py --runserver
 ```
 
+**Fast Mode (Recommended for Initial Setup):**
+For significantly faster initial setup with reduced dataset sizes:
+```bash
+cd backend
+python bootstrap.py --fast --runserver
+```
+
+Fast mode limits:
+- Dataset imports to 2000-5000 rows each (vs full datasets)
+- ML model training to 5000 samples (vs full dataset)
+- Skips comprehensive sample patient generation
+- Maintains full functionality for testing and development
+
 Or, if you already have data in your database and don't want to reset it:
 ```bash
 cd backend
@@ -212,6 +225,7 @@ If you see `ModuleNotFoundError: No module named 'sqlalchemy'`, it usually means
 cd backend
 .\.venv\Scripts\python bootstrap.py --runserver
 ```
+
 
 This command:
 - (By default) drops the existing database if it exists and recreates it from scratch

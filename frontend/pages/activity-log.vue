@@ -70,7 +70,28 @@
 <script setup lang="ts">
 import DashboardLayout from '~/components/DashboardLayout.vue';
 
-const auditLogs = ref<any[]>([]);
+interface AuditLogUser {
+  id?: number;
+  username?: string;
+  email?: string;
+  role?: string;
+}
+
+interface AuditLog {
+  id: number;
+  action: string;
+  user?: AuditLogUser;
+  details?: string;
+  created_at: string;
+}
+
+interface AuditLogsResponse {
+  audit_logs: AuditLog[];
+  pages: number;
+  total: number;
+}
+
+const auditLogs = ref<AuditLog[]>([]);
 const loading = ref(true);
 const error = ref('');
 const currentPage = ref(1);
@@ -87,7 +108,7 @@ const formatRole = (role: string | null | undefined) => {
   const roleMap: Record<string, string> = {
     admin: 'System Admin',
     doctor: 'Doctor',
-    lab_tech: 'Lab Technician',
+    lab_technician: 'Lab Technician',
     pharmacist: 'Pharmacist',
     hospital_admin: 'Hospital Admin'
   };
@@ -117,7 +138,7 @@ const loadPage = async (page: number) => {
 const loadAuditLogs = async () => {
   loading.value = true;
   try {
-    const response = await $fetch(`http://127.0.0.1:5000/api/audit-logs?page=${currentPage.value}&per_page=20`, {
+    const response = await $fetch<AuditLogsResponse>(`http://127.0.0.1:5000/api/audit-logs?page=${currentPage.value}&per_page=20`, {
       headers: {
         'Authorization': `Bearer ${useCookie('auth_token').value}`
       }

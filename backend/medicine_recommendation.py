@@ -192,23 +192,48 @@ def get_recommended_medicines(infection_type, risk_score=None, drug_resistance=N
 def check_medicine_availability(hospital_id, medicine_names):
     """
     Check if required medicines are in stock at a hospital.
-    
+
     Args:
         hospital_id: Hospital ID
         medicine_names: List of medicine names (strings) or medicine dicts with 'name' field
-    
+
     Returns:
         Dictionary with availability status for each medicine
     """
     if not hospital_id:
-        return {'error': 'Hospital not specified'}
-    
+        # Return availability dict with all medicines marked as unavailable
+        availability = {}
+        for medicine in medicine_names:
+            if isinstance(medicine, dict):
+                medicine_name = medicine.get('name', '')
+            else:
+                medicine_name = medicine
+            if medicine_name:
+                availability[medicine_name] = {
+                    'available': False,
+                    'reason': 'Hospital not specified',
+                    'stock': 0
+                }
+        return availability
+
     hospital = Hospital.query.get(hospital_id)
     if not hospital:
-        return {'error': 'Hospital not found'}
-    
+        availability = {}
+        for medicine in medicine_names:
+            if isinstance(medicine, dict):
+                medicine_name = medicine.get('name', '')
+            else:
+                medicine_name = medicine
+            if medicine_name:
+                availability[medicine_name] = {
+                    'available': False,
+                    'reason': 'Hospital not found',
+                    'stock': 0
+                }
+        return availability
+
     availability = {}
- 
+
     for medicine in medicine_names:
         # Handle both string names and dict objects with 'name' field
         if isinstance(medicine, dict):
@@ -271,9 +296,6 @@ def get_prescription_recommendation(patient_id, infection_type=None, ml_predicti
     patient = Patient.query.get(patient_id)
     if not patient:
         return {'error': 'Patient not found'}
-    
-    if not patient.hospital_id:
-        return {'error': 'Patient hospital not found'}
     
     # Check ML prediction first - if it says No TB, return no medication
     if ml_prediction:
@@ -346,9 +368,12 @@ def get_prescription_recommendation(patient_id, infection_type=None, ml_predicti
     # Adjust regimen based on previous resistance
     if resistance_warning['has_previous_treatment']:
         recommendation = adjust_regimen_for_resistance(recommendation, resistance_warning)
-    
-    # Check availability
-    availability = check_medicine_availability(patient.hospital_id, recommendation['medicines'])
+
+    # Check availability - use first hospital from patient's hospitals or None
+    hospital_id = None
+    if patient.hospitals and len(patient.hospitals) > 0:
+        hospital_id = patient.hospitals[0].id
+    availability = check_medicine_availability(hospital_id, recommendation['medicines'])
     
     # Check if all medicines are available
     all_available = all(avail.get('available', False) for avail in availability.values())

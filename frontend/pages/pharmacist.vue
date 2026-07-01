@@ -575,12 +575,42 @@ const checkStock = async (presc) => {
 }
 
 const approvePrescription = async (presc) => {
+  // First validate the prescription before approving
   try {
+    const validationData = {
+      patient_id: presc.patient_id,
+      hospital_id: presc.hospital_id,
+      atc_drug_id: presc.atc_drug_id,
+      dosage_mg: presc.dosage_mg,
+      frequency: presc.frequency,
+      duration_days: presc.duration_days,
+      quantity: presc.total_tablets || 30
+    }
+    
+    const validationResult = await api.validatePrescription(validationData)
+    
+    if (!validationResult.is_valid) {
+      // Show validation warnings
+      const warnings = validationResult.validation_results.recommendations
+        .map(r => `- ${r.action}: ${r.reason}`)
+        .join('\n')
+      
+      const confirmApproval = confirm(
+        `Prescription Validation Warnings:\n\n${warnings}\n\nDo you still want to approve this prescription?`
+      )
+      
+      if (!confirmApproval) {
+        return
+      }
+    }
+    
+    // Proceed with approval
     await api.approvePrescription(presc.id, { status: 'approved' })
     presc.status = 'approved'
     fetchPendingPrescriptions()
   } catch (error) {
     console.error('Error approving prescription:', error)
+    alert(`Error: ${error.message}`)
   }
 }
 

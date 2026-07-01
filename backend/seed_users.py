@@ -4,7 +4,7 @@ Seed the database with users, roles, and sample data
 """
 import random
 from datetime import datetime, timedelta
-from app import app
+# Defer app import to avoid circular dependency during bootstrap
 from models.models import db, User, Patient, ATCDrug, LabTest, Prescription, Diagnosis, Treatment, Alert, AuditLog, Hospital
 
 users = [
@@ -35,6 +35,58 @@ users = [
     {
         "username": "igiclarisse10",
         "email": "igiclarisse10@gmail.com",
+        "password": "Admin123!",
+        "role": "hospital_admin"
+    }
+]
+
+# Additional test users distributed across hospitals for interoperability testing
+test_users = [
+    {
+        "username": "doctor_hosp2",
+        "email": "doctor2@hospital2.com",
+        "password": "Doctor123!",
+        "role": "doctor"
+    },
+    {
+        "username": "doctor_hosp3",
+        "email": "doctor3@hospital3.com",
+        "password": "Doctor123!",
+        "role": "doctor"
+    },
+    {
+        "username": "labtech_hosp2",
+        "email": "labtech2@hospital2.com",
+        "password": "LabTech123!",
+        "role": "lab_technician"
+    },
+    {
+        "username": "labtech_hosp3",
+        "email": "labtech3@hospital3.com",
+        "password": "LabTech123!",
+        "role": "lab_technician"
+    },
+    {
+        "username": "pharmacist_hosp2",
+        "email": "pharmacist2@hospital2.com",
+        "password": "Pharm123!",
+        "role": "pharmacist"
+    },
+    {
+        "username": "pharmacist_hosp3",
+        "email": "pharmacist3@hospital3.com",
+        "password": "Pharm123!",
+        "role": "pharmacist"
+    },
+    {
+        "username": "hospitaladmin_hosp2",
+        "email": "admin2@hospital2.com",
+        "password": "Admin123!",
+        "role": "hospital_admin"
+    },
+    {
+        "username": "hospitaladmin_hosp3",
+        "email": "admin3@hospital3.com",
         "password": "Admin123!",
         "role": "hospital_admin"
     }
@@ -140,10 +192,12 @@ sample_atc_drugs = [
 ]
 
 def seed_users():
+    # Import app only when needed
+    from app import app
     with app.app_context():
         db.create_all()
         
-        # Get or create default hospital for users
+        # Get or create default hospital for original users
         default_hospital = Hospital.query.filter_by(name="Default Hospital").first()
         if not default_hospital:
             default_hospital = Hospital(
@@ -158,13 +212,19 @@ def seed_users():
             db.session.add(default_hospital)
             db.session.commit()
         
+        # Get all available hospitals for test user distribution
+        hospitals = Hospital.query.all()
+        if not hospitals:
+            hospitals = [default_hospital]
+        
         added = 0
         updated = 0
         
+        # Seed original users - keep them in default hospital
         for user_data in users:
             existing = User.query.filter_by(email=user_data["email"]).first()
             if existing:
-                # Update existing users without hospital_id
+                # Ensure original users are in default hospital
                 if existing.hospital_id is None:
                     existing.hospital_id = default_hospital.id
                     updated += 1
@@ -180,10 +240,31 @@ def seed_users():
             db.session.add(user)
             added += 1
         
+        # Seed test users - distribute across different hospitals for interoperability testing
+        for idx, user_data in enumerate(test_users):
+            existing = User.query.filter_by(email=user_data["email"]).first()
+            if existing:
+                continue
+            
+            # Distribute test users across different hospitals
+            hospital = hospitals[idx % len(hospitals)]
+            
+            user = User(
+                username=user_data['username'],
+                email=user_data['email'],
+                role=user_data['role'],
+                hospital_id=hospital.id
+            )
+            user.set_password(user_data['password'])
+            db.session.add(user)
+            added += 1
+        
         db.session.commit()
         return {"added": added, "updated": updated, "total": User.query.count()}
 
 def seed_sample_data():
+    # Import app only when needed
+    from app import app
     with app.app_context():
         # Seed ATC drugs only (no other sample data - diagnoses/prescriptions come from /api/diagnose)
         added_atc = 0

@@ -40,7 +40,16 @@ _use_project_venv_when_available()
 
 import random
 from app import app
-from models.models import db, Patient, ExternalDatasetRow, ATCDrug, DetailedLabResult, AntibioticResistance, Hospital
+from models.models import db, Patient, ExternalDatasetRow, ATCDrug, DetailedLabResult, AntibioticResistance, Hospital, patient_hospital
+
+def set_default_password(patient, skip_hash=False):
+    """Set default password for patient. Skip hashing for bulk imports."""
+    if skip_hash:
+        # Set a pre-hashed password for bulk imports (much faster)
+        # This is the bcrypt hash of "Patient@12345"
+        patient.password = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5NU7bG8Y8fN7i"
+    else:
+        patient.set_password("Patient@12345")
 
 def get_or_create_default_hospital():
     """Get or create a default hospital for patient imports"""
@@ -224,11 +233,14 @@ def upsert_external_dataset_row(dataset_name, source_key, record):
     db.session.add(row)
     return True
 
-def import_tb_symptdata_april2024(file_path):
+def import_tb_symptdata_april2024(file_path, fast_mode=False):
     print(f"Importing TB_SymptdataApril2024 from: {file_path}")
 
     try:
         df = pd.read_csv(file_path)
+        if fast_mode and len(df) > 5000:
+            df = df.sample(n=5000, random_state=42)
+            print(f"  Fast mode: Limited to {len(df)} rows")
         print(f"  Found {len(df)} rows")
 
         # Get random hospital for interoperability testing
@@ -262,7 +274,6 @@ def import_tb_symptdata_april2024(file_path):
 
             patient_dicts.append({
                 "patient_id": patient_id,
-                "hospital_id": hospital.id,
                 "first_name": f"Patient{idx+1}",
                 "last_name": "",
                 "age": 35,
@@ -297,11 +308,30 @@ def import_tb_symptdata_april2024(file_path):
         patient_dicts = preprocess_and_fill_missing(df, patient_dicts)
 
         imported_count = 0
-        for p_dict in patient_dicts:
+        hospitals = Hospital.query.all()
+        if not hospitals:
+            default_hospital = get_or_create_default_hospital()
+            hospitals = [default_hospital]
+        
+        batch_size = 100  # Smaller batch to avoid memory issues
+        
+        for i, p_dict in enumerate(patient_dicts):
             patient = Patient(**p_dict)
+            set_default_password(patient, skip_hash=True)
+            # Assign to 2-3 random hospitals (many-to-many)
+            num_hospitals = random.randint(2, min(3, len(hospitals)))
+            assigned_hospitals = random.sample(hospitals, num_hospitals)
+            for hospital in assigned_hospitals:
+                patient.hospitals.append(hospital)
             db.session.add(patient)
             imported_count += 1
+            
+            # Commit every batch_size rows
+            if imported_count % batch_size == 0:
+                db.session.commit()
+                print(f"  Progress: {imported_count} patients imported...")
 
+        # Commit remaining
         db.session.commit()
         print(f"  Successfully imported {imported_count} patients")
         return imported_count
@@ -311,12 +341,15 @@ def import_tb_symptdata_april2024(file_path):
         db.session.rollback()
         return 0
 
-def import_symptoms_dataset(file_path):
+def import_symptoms_dataset(file_path, fast_mode=False):
     """Import the Tb disease symptoms.csv dataset"""
     print(f"Importing Symptoms Dataset from: {file_path}")
     
     try:
         df = pd.read_csv(file_path)
+        if fast_mode and len(df) > 2000:
+            df = df.sample(n=2000, random_state=42)
+            print(f"  Fast mode: Limited to {len(df)} rows")
         print(f"  Found {len(df)} patient records")
 
         # Get random hospital for interoperability testing
@@ -372,7 +405,6 @@ def import_symptoms_dataset(file_path):
 
             patient_dicts.append({
                 "patient_id": patient_id,
-                "hospital_id": hospital.id,
                 "first_name": clean_text(row.get('name', f'Patient{idx+1}')),
                 "last_name": '',
                 "age": int(row.get('age', 35)) if pd.notna(row.get('age')) else None,
@@ -404,8 +436,19 @@ def import_symptoms_dataset(file_path):
         patient_dicts = preprocess_and_fill_missing(df, patient_dicts)
 
         imported_count = 0
+        hospitals = Hospital.query.all()
+        if not hospitals:
+            default_hospital = get_or_create_default_hospital()
+            hospitals = [default_hospital]
+        
         for p_dict in patient_dicts:
             patient = Patient(**p_dict)
+            set_default_password(patient, skip_hash=True)
+            # Assign to 2-3 random hospitals (many-to-many)
+            num_hospitals = random.randint(2, min(3, len(hospitals)))
+            assigned_hospitals = random.sample(hospitals, num_hospitals)
+            for hospital in assigned_hospitals:
+                patient.hospitals.append(hospital)
             db.session.add(patient)
             imported_count += 1
 
@@ -418,12 +461,15 @@ def import_symptoms_dataset(file_path):
         db.session.rollback()
         return 0
 
-def import_bangladesh_dataset(file_path):
+def import_bangladesh_dataset(file_path, fast_mode=False):
     """Import the synthetic_tb_data_bangladesh.csv dataset"""
     print(f"Importing Bangladesh Dataset from: {file_path}")
     
     try:
         df = pd.read_csv(file_path)
+        if fast_mode and len(df) > 2000:
+            df = df.sample(n=2000, random_state=42)
+            print(f"  Fast mode: Limited to {len(df)} rows")
         print(f"  Found {len(df)} patient records")
 
         # Get random hospital for interoperability testing
@@ -441,7 +487,6 @@ def import_bangladesh_dataset(file_path):
 
             patient_dicts.append({
                 "patient_id": patient_id,
-                "hospital_id": hospital.id,
                 "first_name": f'Patient{int(row.get("Patient ID", idx+1))}',
                 "last_name": '',
                 "age": int(row.get('Age', 35)) if pd.notna(row.get('Age')) else None,
@@ -463,8 +508,19 @@ def import_bangladesh_dataset(file_path):
         patient_dicts = preprocess_and_fill_missing(df, patient_dicts)
 
         imported_count = 0
+        hospitals = Hospital.query.all()
+        if not hospitals:
+            default_hospital = get_or_create_default_hospital()
+            hospitals = [default_hospital]
+        
         for p_dict in patient_dicts:
             patient = Patient(**p_dict)
+            set_default_password(patient, skip_hash=True)
+            # Assign to 2-3 random hospitals (many-to-many)
+            num_hospitals = random.randint(2, min(3, len(hospitals)))
+            assigned_hospitals = random.sample(hospitals, num_hospitals)
+            for hospital in assigned_hospitals:
+                patient.hospitals.append(hospital)
             db.session.add(patient)
             imported_count += 1
 
@@ -477,12 +533,15 @@ def import_bangladesh_dataset(file_path):
         db.session.rollback()
         return 0
 
-def import_xray_dataset(file_path):
+def import_xray_dataset(file_path, fast_mode=False):
     """Import the tuberculosis_xray_dataset.csv dataset"""
     print(f"Importing X-ray Dataset from: {file_path}")
     
     try:
         df = pd.read_csv(file_path)
+        if fast_mode and len(df) > 2000:
+            df = df.sample(n=2000, random_state=42)
+            print(f"  Fast mode: Limited to {len(df)} rows")
         print(f"  Found {len(df)} patient records")
 
         # Get random hospital for interoperability testing
@@ -527,7 +586,6 @@ def import_xray_dataset(file_path):
 
             patient_dicts.append({
                 "patient_id": patient_id,
-                "hospital_id": hospital.id,
                 "first_name": f'Patient{idx+1}',
                 "last_name": '',
                 "age": int(row.get('Age', 35)) if pd.notna(row.get('Age')) else None,
@@ -562,8 +620,19 @@ def import_xray_dataset(file_path):
         patient_dicts = preprocess_and_fill_missing(df, patient_dicts)
 
         imported_count = 0
+        hospitals = Hospital.query.all()
+        if not hospitals:
+            default_hospital = get_or_create_default_hospital()
+            hospitals = [default_hospital]
+        
         for p_dict in patient_dicts:
             patient = Patient(**p_dict)
+            set_default_password(patient, skip_hash=True)
+            # Assign to 2-3 random hospitals (many-to-many)
+            num_hospitals = random.randint(2, min(3, len(hospitals)))
+            assigned_hospitals = random.sample(hospitals, num_hospitals)
+            for hospital in assigned_hospitals:
+                patient.hospitals.append(hospital)
             db.session.add(patient)
             imported_count += 1
 
@@ -577,12 +646,15 @@ def import_xray_dataset(file_path):
         return 0
 
 
-def import_owner_species_dataset(file_path):
+def import_owner_species_dataset(file_path, fast_mode=False):
     """Import curated owner dataset with species-labeled TB cases"""
     print(f"Importing owner TB species dataset from: {file_path}")
 
     try:
         df = pd.read_csv(file_path)
+        if fast_mode and len(df) > 1000:
+            df = df.sample(n=1000, random_state=42)
+            print(f"  Fast mode: Limited to {len(df)} rows")
         print(f"  Found {len(df)} curated patient records")
 
         # Get random hospital for interoperability testing
@@ -606,7 +678,6 @@ def import_owner_species_dataset(file_path):
 
             patient_dicts.append({
                 "patient_id": patient_id,
-                "hospital_id": hospital.id,
                 "first_name": f'Owner{idx+1}',
                 "last_name": 'Dataset',
                 "age": int(record.get('age', 35)) if record.get('age') is not None else None,
@@ -645,8 +716,19 @@ def import_owner_species_dataset(file_path):
         patient_dicts = preprocess_and_fill_missing(df, patient_dicts)
 
         imported_count = 0
+        hospitals = Hospital.query.all()
+        if not hospitals:
+            default_hospital = get_or_create_default_hospital()
+            hospitals = [default_hospital]
+        
         for p_dict in patient_dicts:
             patient = Patient(**p_dict)
+            set_default_password(patient, skip_hash=True)
+            # Assign to 2-3 random hospitals (many-to-many)
+            num_hospitals = random.randint(2, min(3, len(hospitals)))
+            assigned_hospitals = random.sample(hospitals, num_hospitals)
+            for hospital in assigned_hospitals:
+                patient.hospitals.append(hospital)
             db.session.add(patient)
             imported_count += 1
 
@@ -685,24 +767,35 @@ def preprocess_atc_ddd_data(df):
     return df, route_mode, unit_mode
 
 
-def import_atc_ddd_dataset(file_path):
+def import_atc_ddd_dataset(file_path, fast_mode=False):
     """Import WHO ATC-DDD dataset into ATCDrug model"""
     print(f"Importing WHO ATC-DDD dataset from: {file_path}")
 
     try:
         df = pd.read_csv(file_path)
+        if fast_mode and len(df) > 3000:
+            df = df.sample(n=3000, random_state=42)
+            print(f"  Fast mode: Limited to {len(df)} rows")
         print(f"  Found {len(df)} ATC-DDD records")
         # Preprocess the data
         print("  Preprocessing ATC-DDD data...")
         df, route_mode, unit_mode = preprocess_atc_ddd_data(df)
 
         imported_count = 0
+        batch_size = 1000
+        batch = []
 
         for idx, row in df.iterrows():
             atc_code = row['atc_code']
             if not atc_code or atc_code == 'NAN':
                 continue
 
+            # Get cleaned values, use modes if missing
+            drug_name = clean_text(row.get('atc_name', ''))
+            ddd_unit = clean_text(row.get('uom', '')) or unit_mode
+            administration_route = clean_text(row.get('adm_r', '')) or route_mode
+
+            # Check for existing record with same ATC code (unique constraint is on atc_code only)
             existing = ATCDrug.query.filter_by(atc_code=atc_code).first()
             if existing:
                 continue
@@ -739,9 +832,20 @@ def import_atc_ddd_dataset(file_path):
                 administration_route=administration_route
             )
 
-            with db.session.no_autoflush:
-                db.session.add(atc_drug)
-            imported_count +=1
+            batch.append(atc_drug)
+            imported_count += 1
+            
+            # Bulk insert every batch_size rows
+            if len(batch) >= batch_size:
+                db.session.bulk_save_objects(batch)
+                db.session.commit()
+                batch = []
+                print(f"  Progress: {imported_count} ATC drugs imported...")
+
+        # Insert remaining batch
+        if batch:
+            db.session.bulk_save_objects(batch)
+            db.session.commit()
 
         db.session.commit()
         print(f"  Successfully imported {imported_count} ATC drugs")
@@ -767,20 +871,35 @@ def import_synthetic_dataset(file_path: str = None):
     print("  Preprocessing and validating synthetic data...")
     patient_dicts = preprocess_and_fill_missing(None, patient_dicts)
     
-    # Add random hospital_id to each patient for interoperability testing
+    # Add random hospitals to each patient for interoperability testing
+    # Patients are assigned to 2-3 hospitals to simulate visiting multiple facilities
     hospitals = Hospital.query.all()
     if not hospitals:
         default_hospital = get_or_create_default_hospital()
         hospitals = [default_hospital]
-    
-    for p_dict in patient_dicts:
-        p_dict['hospital_id'] = random.choice(hospitals).id
-    
+
     imported_count = 0
     for p_dict in patient_dicts:
         existing = Patient.query.filter_by(patient_id=p_dict['patient_id']).first()
         if not existing:
             patient = Patient(**p_dict)
+            set_default_password(patient, skip_hash=True)
+            # Assign to 2-3 random hospitals (many-to-many) to simulate multi-hospital visits
+            num_hospitals = random.randint(2, min(3, len(hospitals)))
+            assigned_hospitals = random.sample(hospitals, num_hospitals)
+            for hospital in assigned_hospitals:
+                patient.hospitals.append(hospital)
+                # Mark first assigned hospital as primary
+                if hospital == assigned_hospitals[0]:
+                    from sqlalchemy import select
+                    from sqlalchemy.sql import update
+                    # Set is_primary flag in association table
+                    db.session.execute(
+                        update(patient_hospital)
+                        .where(patient_hospital.c.patient_id == patient.id)
+                        .where(patient_hospital.c.hospital_id == hospital.id)
+                        .values(is_primary=True)
+                    )
             db.session.add(patient)
             imported_count += 1
     db.session.commit()
@@ -814,11 +933,14 @@ def normalize_yes_no_unknown(val):
     return 'Unknown'
 
 
-def import_multi_hospital_lab_results(file_path):
+def import_multi_hospital_lab_results(file_path, fast_mode=False):
     """Import multi-hospital lab results dataset into DetailedLabResult model"""
     print(f"Importing multi-hospital lab results from: {file_path}")
     try:
         df = pd.read_csv(file_path)
+        if fast_mode and len(df) > 1000:
+            df = df.sample(n=1000, random_state=42)
+            print(f"  Fast mode: Limited to {len(df)} rows")
         print(f"  Found {len(df)} lab results")
         
         from collections import Counter
@@ -1025,11 +1147,14 @@ def preprocess_antibiotic_resistance_data(df):
     return processed_records
 
 
-def import_antibiotic_resistance(file_path):
+def import_antibiotic_resistance(file_path, fast_mode=False):
     """Import antibiotic resistance dataset into AntibioticResistance model"""
     print(f"Importing antibiotic resistance data from: {file_path}")
     try:
         df = pd.read_csv(file_path)
+        if fast_mode and len(df) > 2000:
+            df = df.sample(n=2000, random_state=42)
+            print(f"  Fast mode: Limited to {len(df)} rows")
         print(f"  Found {len(df)} resistance records")
         # Preprocess data
         print("  Preprocessing data (handling missing values)...")
@@ -1095,9 +1220,11 @@ def import_antibiotic_resistance(file_path):
         return 0
 
 
-def create_comprehensive_sample_patients():
+def create_comprehensive_sample_patients(fast_mode=False):
     """Create sample patients covering various TB scenarios"""
     print("Creating comprehensive sample patients...")
+    if fast_mode:
+        print("  Fast mode: Skipping comprehensive sample generation (use real datasets)")
     
     sample_patients = []
     raw_samples = [
@@ -1207,17 +1334,20 @@ def create_comprehensive_sample_patients():
     print(f"  Added {added_count} comprehensive sample patients")
     return added_count
 
-def main():
+def main(fast_mode=False, create_tables=True):
     """Main import function"""
     with app.app_context():
         print("=== TB Predictive EHR Analytics Dashboard - Data Import ===")
+        if fast_mode:
+            print("⚡ FAST MODE - Reduced dataset size for quicker setup")
         print()
         
-        # Create tables
-        print("Creating database tables...")
-        db.create_all()
-        print("Tables created successfully!")
-        print()
+        # Create tables (only if requested)
+        if create_tables:
+            print("Creating database tables...")
+            db.create_all()
+            print("Tables created successfully!")
+            print()
         
         total_imported = 0
 

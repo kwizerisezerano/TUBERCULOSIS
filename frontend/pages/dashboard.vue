@@ -119,10 +119,12 @@
         <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
           <p class="text-gray-500 dark:text-gray-400 text-sm">Total Patients</p>
           <p class="text-3xl font-bold text-gray-900 dark:text-white mt-1">{{ dashboard.patient_stats?.total || 0 }}</p>
+          <p v-if="userRole === 'admin'" class="text-xs text-gray-400 dark:text-gray-500 mt-1">System-wide view</p>
         </div>
         <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
           <p class="text-gray-500 dark:text-gray-400 text-sm">Healthcare Facilities</p>
           <p class="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">{{ dashboard.hospital_stats?.total || 0 }}</p>
+          <p v-if="userRole === 'admin'" class="text-xs text-gray-400 dark:text-gray-500 mt-1">System-wide view</p>
         </div>
         <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
           <p class="text-gray-500 dark:text-gray-400 text-sm">Total Lab Results</p>
@@ -151,61 +153,112 @@
         <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
           <p class="text-gray-500 dark:text-gray-400 text-sm">High Risk Patients</p>
           <p class="text-3xl font-bold text-red-600 dark:text-red-500 mt-1">{{ dashboard.patient_stats?.high_risk || 0 }}</p>
+          <p v-if="userRole === 'admin'" class="text-xs text-gray-400 dark:text-gray-500 mt-1">System-wide view</p>
         </div>
       </div>
 
-      <!-- Charts Row 1: Risk + TB Status + Drug Resistance + Gender -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
-          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Patient Risk Levels</p>
-          <canvas ref="riskChart" height="200"></canvas>
+      <!-- Charts Row 1: Patient Overview (Risk, TB Status, Gender) -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <div class="flex justify-between items-center mb-2">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">Patient Risk Levels</p>
+            <span v-if="userRole === 'admin'" class="text-xs px-2 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+              System-wide
+            </span>
+          </div>
+          <canvas ref="riskChart" height="150"></canvas>
         </div>
-        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
-          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">TB Status Distribution</p>
-          <canvas ref="tbStatusChart" height="200"></canvas>
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <div class="flex justify-between items-center mb-2">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">TB Status Distribution</p>
+            <span v-if="userRole === 'admin'" class="text-xs px-2 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+              System-wide
+            </span>
+          </div>
+          <canvas ref="tbStatusChart" height="150"></canvas>
         </div>
-        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
-          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Drug Resistance</p>
-          <canvas ref="resistanceChart" height="200"></canvas>
-        </div>
-        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
-          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Gender Distribution</p>
-          <canvas ref="genderChart" height="200"></canvas>
-        </div>
-      </div>
-
-      <!-- Charts Row 2: Antibiogram (full width) -->
-      <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
-        <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Cumulative Antibiogram — Resistance Rate per Antibiotic (%)</p>
-        <canvas ref="antibiogramChart" height="90"></canvas>
-      </div>
-
-      <!-- Charts Row 3: Symptoms + Test Positivity -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
-          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Symptom Prevalence (% of patients)</p>
-          <canvas ref="symptomsChart" height="180"></canvas>
-        </div>
-        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
-          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Diagnostic Test Positivity (%)</p>
-          <canvas ref="testsChart" height="180"></canvas>
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <div class="flex justify-between items-center mb-2">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">Gender Distribution</p>
+            <span v-if="userRole === 'admin'" class="text-xs px-2 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+              System-wide
+            </span>
+          </div>
+          <canvas ref="genderChart" height="150"></canvas>
         </div>
       </div>
 
-      <!-- Charts Row 4: Bacterial Species + Comorbidities + Prescriptions -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
-          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Top Bacterial Species</p>
-          <canvas ref="speciesChart" height="220"></canvas>
+      <!-- Charts Row 2: Clinical Indicators (Drug Resistance, Symptoms, Test Positivity) -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <div class="flex justify-between items-center mb-2">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">Drug Resistance</p>
+            <span v-if="userRole === 'admin'" class="text-xs px-2 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+              System-wide
+            </span>
+          </div>
+          <canvas ref="resistanceChart" height="150"></canvas>
         </div>
-        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
-          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Comorbidities (% of patients)</p>
-          <canvas ref="comorbidityChart" height="220"></canvas>
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <div class="flex justify-between items-center mb-2">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">Symptom Prevalence (%)</p>
+            <span v-if="userRole === 'admin'" class="text-xs px-2 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+              System-wide
+            </span>
+          </div>
+          <canvas ref="symptomsChart" height="150"></canvas>
         </div>
-        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
-          <p class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Prescription Status</p>
-          <canvas ref="prescriptionChart" height="220"></canvas>
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <div class="flex justify-between items-center mb-2">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">Test Positivity (%)</p>
+            <span v-if="userRole === 'admin'" class="text-xs px-2 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+              System-wide
+            </span>
+          </div>
+          <canvas ref="testsChart" height="150"></canvas>
         </div>
+      </div>
+
+      <!-- Charts Row 3: Treatment & Reference (Prescription, Antibiogram, Comorbidities) -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <div class="flex justify-between items-center mb-2">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">Prescription Status</p>
+            <span v-if="userRole === 'admin'" class="text-xs px-2 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+              System-wide
+            </span>
+          </div>
+          <canvas ref="prescriptionChart" height="150"></canvas>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <div class="flex justify-between items-center mb-2">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">Comorbidities (%)</p>
+            <span v-if="userRole === 'admin'" class="text-xs px-2 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+              System-wide
+            </span>
+          </div>
+          <canvas ref="comorbidityChart" height="150"></canvas>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <div class="flex justify-between items-center mb-2">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">Top Bacterial Species</p>
+            <span class="text-xs px-2 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+              System-wide
+            </span>
+          </div>
+          <canvas ref="speciesChart" height="150"></canvas>
+        </div>
+      </div>
+
+      <!-- Charts Row 4: Antibiogram (full width, compact) -->
+      <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
+        <div class="flex justify-between items-center mb-2">
+          <p class="text-sm font-semibold text-gray-900 dark:text-white">Antibiogram — Resistance Rate per Antibiotic (%)</p>
+          <span class="text-xs px-2 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+            System-wide
+          </span>
+        </div>
+        <canvas ref="antibiogramChart" height="80"></canvas>
       </div>
       </div>
 
@@ -415,7 +468,7 @@ onMounted(async () => {
   const [dashRes, pRes, alertsRes, chartsRes] = await Promise.all([
     getDashboardStats(),
     getPatients(1, 20),
-    getAlerts(1, 20),
+    getAlerts(1, 20, false),
     getDashboardCharts(),
   ]);
   dashboard.value = dashRes;

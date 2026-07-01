@@ -268,8 +268,159 @@
           </div>
         </div>
 
-        <!-- Step 3: Lab Results -->
+        <!-- Step 3: Antibiotic Assessment -->
         <div v-if="currentStep === 3" class="space-y-6">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-gray-900 dark:text-white">Antibiotic Usage Assessment</h3>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Assess antibiotic history to detect misuse and resistance risks</p>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
+              <p class="text-sm text-amber-700 dark:text-amber-400">
+                This assessment helps identify antibiotic misuse, overuse, and resistance risks before diagnosis.
+              </p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="flex items-center gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <input type="checkbox" v-model="antibioticAssessment.used_antibiotics_before" class="rounded text-amber-600">
+                  <span class="text-sm text-gray-900 dark:text-white">Has used antibiotics before?</span>
+                </label>
+              </div>
+              <div>
+                <label class="flex items-center gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <input type="checkbox" v-model="antibioticAssessment.self_medicated" class="rounded text-amber-600">
+                  <span class="text-sm text-gray-900 dark:text-white">Self-medicated antibiotics?</span>
+                </label>
+              </div>
+              <div>
+                <label class="flex items-center gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <input type="checkbox" v-model="antibioticAssessment.stopped_early" class="rounded text-amber-600">
+                  <span class="text-sm text-gray-900 dark:text-white">Stopped treatment early?</span>
+                </label>
+              </div>
+              <div>
+                <label class="flex items-center gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <input type="checkbox" v-model="antibioticAssessment.completed_treatment" class="rounded text-amber-600">
+                  <span class="text-sm text-gray-900 dark:text-white">Completed full treatment?</span>
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Which antibiotics were taken?</label>
+              <div class="relative">
+                <input
+                  v-model="antibioticSearch"
+                  @input="debounceLoadAntibiotics"
+                  @focus="loadAntibioticsList"
+                  type="text"
+                  placeholder="Click to see antibiotics or search (e.g., Amoxicillin)..."
+                  class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+                <div v-if="antibioticsList.length > 0" class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                  <div
+                    v-for="antibiotic in antibioticsList"
+                    :key="antibiotic.id"
+                    @click="selectAntibiotic(antibiotic)"
+                    class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-sm text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 last:border-0"
+                  >
+                    <div class="font-medium">{{ antibiotic.drug_name }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ antibiotic.atc_code }}</div>
+                  </div>
+                </div>
+                <div v-if="antibioticsList.length === 0 && antibioticSearch" class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl shadow-lg p-3 text-sm text-gray-500 dark:text-gray-400">
+                  No antibiotics found matching "{{ antibioticSearch }}"
+                </div>
+              </div>
+              <div v-if="selectedAntibiotics.length > 0" class="mt-2 flex flex-wrap gap-2">
+                <span
+                  v-for="(antibiotic, index) in selectedAntibiotics"
+                  :key="index"
+                  class="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 rounded-full text-sm"
+                >
+                  {{ antibiotic.drug_name }}
+                  <button @click="removeAntibiotic(index)" class="hover:text-amber-600 dark:hover:text-amber-400">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                  </button>
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Duration of antibiotic use (days)</label>
+              <input
+                v-model.number="antibioticAssessment.duration_days"
+                type="number"
+                placeholder="Number of days"
+                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-amber-500 outline-none"
+              />
+            </div>
+
+            <button
+              @click="runAntibioticAssessment"
+              :disabled="!selectedPatientId"
+              class="w-full py-3 px-4 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-all shadow-lg shadow-amber-500/30"
+            >
+              Run Antibiotic Assessment
+            </button>
+
+            <!-- Assessment Results -->
+            <div v-if="antibioticAssessmentResult" class="space-y-4">
+              <div class="p-4 rounded-xl" :class="antibioticAssessmentResult.risk_factors.resistance_risk === 'high' ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700' : antibioticAssessmentResult.risk_factors.resistance_risk === 'medium' ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700' : 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700'">
+                <div class="flex items-center justify-between mb-3">
+                  <h4 class="text-sm font-bold" :class="antibioticAssessmentResult.risk_factors.resistance_risk === 'high' ? 'text-red-800 dark:text-red-300' : antibioticAssessmentResult.risk_factors.resistance_risk === 'medium' ? 'text-amber-800 dark:text-amber-300' : 'text-green-800 dark:text-green-300'">
+                    Resistance Risk: {{ antibioticAssessmentResult.risk_factors.resistance_risk.toUpperCase() }}
+                  </h4>
+                  <span class="text-2xl font-bold" :class="antibioticAssessmentResult.risk_factors.resistance_risk === 'high' ? 'text-red-600 dark:text-red-400' : antibioticAssessmentResult.risk_factors.resistance_risk === 'medium' ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'">
+                    {{ antibioticAssessmentResult.risk_factors.risk_score }}%
+                  </span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <div v-if="antibioticAssessmentResult.risk_factors.self_medication" class="flex items-center gap-1 text-red-600 dark:text-red-400">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+                    Self-medication detected
+                  </div>
+                  <div v-if="antibioticAssessmentResult.risk_factors.incomplete_treatment" class="flex items-center gap-1 text-red-600 dark:text-red-400">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+                    Incomplete treatment
+                  </div>
+                  <div v-if="antibioticAssessmentResult.risk_factors.overuse" class="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                    Potential overuse
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="antibioticAssessmentResult.recommendations.length > 0" class="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
+                <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-3">Recommendations</h4>
+                <div class="space-y-2">
+                  <div v-for="(rec, index) in antibioticAssessmentResult.recommendations" :key="index" class="flex items-start gap-2">
+                    <span class="text-blue-600 dark:text-blue-400 mt-0.5">•</span>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900 dark:text-white">{{ rec.action }}</p>
+                      <p class="text-xs text-gray-600 dark:text-gray-400">{{ rec.reason }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4: Lab Results -->
+        <div v-if="currentStep === 4" class="space-y-6">
           <div class="flex items-center gap-3 mb-4">
             <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-600 to-purple-700 flex items-center justify-center shrink-0">
               <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -472,8 +623,8 @@
           </div>
         </div>
 
-        <!-- Step 4: Review & Diagnose -->
-        <div v-if="currentStep === 4" class="space-y-6">
+        <!-- Step 5: Review & Diagnose -->
+        <div v-if="currentStep === 5" class="space-y-6">
           <div class="flex items-center gap-3 mb-4">
             <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center shrink-0">
               <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -554,8 +705,8 @@
           </div>
         </div>
 
-        <!-- Step 5: Results -->
-        <div v-if="currentStep === 5 && diagnosisResult" class="space-y-6">
+        <!-- Step 6: Results -->
+        <div v-if="currentStep === 6 && diagnosisResult" class="space-y-6">
           <div class="flex items-center gap-3 mb-4">
             <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center shrink-0">
               <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -681,6 +832,51 @@
                   <div class="flex-1">
                     <p class="font-semibold text-gray-900 dark:text-white">{{ diagnosisResult.treatment_recommendation.drugs }}</p>
                     <p class="text-sm text-gray-600 dark:text-gray-400">{{ diagnosisResult.treatment_recommendation?.dosage }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Antibiotic Recommendations (if drug resistance detected) -->
+            <div v-if="diagnosisResult.drug_resistance === 'Yes' || antibioticAssessmentResult?.risk_factors?.resistance_risk === 'high'" class="p-4 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-2 border-amber-300 dark:border-amber-700 mb-4">
+              <div class="flex items-center gap-2 mb-4">
+                <div class="w-8 h-8 rounded-lg bg-amber-600 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                  </svg>
+                </div>
+                <p class="text-base font-bold text-amber-800 dark:text-amber-300">Alternative Antibiotic Recommendations</p>
+              </div>
+              <p class="text-sm text-amber-700 dark:text-amber-400 mb-3">
+                Based on hospital antibiogram and patient resistance patterns, consider these alternatives:
+              </p>
+              <button
+                @click="getAntibioticRecommendations"
+                :disabled="!selectedPatientId || loadingRecommendations"
+                class="w-full py-2 px-4 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                {{ loadingRecommendations ? 'Loading...' : 'Get Antibiotic Recommendations' }}
+              </button>
+              <div v-if="antibioticRecommendations.length > 0" class="mt-4 space-y-2">
+                <div v-for="(rec, index) in antibioticRecommendations" :key="index" class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-700">
+                  <div class="flex justify-between items-start mb-2">
+                    <p class="font-semibold text-gray-900 dark:text-white">{{ rec.antibiotic }}</p>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full" :class="rec.recommendation_strength === 'high' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'">
+                      {{ rec.recommendation_strength }} confidence
+                    </span>
+                  </div>
+                  <div class="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Susceptibility</p>
+                      <p class="font-medium text-green-600 dark:text-green-400">{{ rec.susceptibility_rate }}%</p>
+                    </div>
+                    <div>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Resistance</p>
+                      <p class="font-medium text-red-600 dark:text-red-400">{{ rec.resistance_rate }}%</p>
+                    </div>
+                  </div>
+                  <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    Based on {{ rec.total_samples }} samples
                   </div>
                 </div>
               </div>
@@ -962,7 +1158,13 @@
             </svg>
             {{ isLoading ? 'Analyzing...' : 'Run Diagnosis & Predict' }}
           </button>
-          <button v-if="currentStep === 5" @click="resetDiagnosis" class="flex-1 py-3 px-6 rounded-xl bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-semibold text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-green-500/30">
+          <button v-if="currentStep === 5 && diagnosisResult" @click="nextStep" class="flex-1 py-3 px-6 rounded-xl bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 text-white font-semibold text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-primary-500/30">
+            View Results & Treatment
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+          </button>
+          <button v-if="currentStep === 6" @click="resetDiagnosis" class="flex-1 py-3 px-6 rounded-xl bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-semibold text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-green-500/30">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.575-7.027M17 17v5h-5m10-3a7.004.004 0 00-7.027-4.576"></path>
             </svg>
@@ -994,9 +1196,10 @@ const symptomsList = [
 const steps = [
   { id: 1, title: 'Patient' },
   { id: 2, title: 'Symptoms' },
-  { id: 3, title: 'Lab Results' },
-  { id: 4, title: 'Review' },
-  { id: 5, title: 'Results' }
+  { id: 3, title: 'Antibiotic Assessment' },
+  { id: 4, title: 'Lab Results' },
+  { id: 5, title: 'Review' },
+  { id: 6, title: 'Results' }
 ];
 
 const currentStep = ref(1);
@@ -1011,6 +1214,99 @@ const isLoading = ref(false);
 const diagnosisResult = ref<any>(null);
 const prescriptionCreated = ref(false);
 const API_BASE = 'http://127.0.0.1:5000/api';
+
+// Antibiotic assessment
+const antibioticAssessment = ref({
+  used_antibiotics_before: false,
+  self_medicated: false,
+  stopped_early: false,
+  completed_treatment: false,
+  which_antibiotics_text: '',
+  duration_days: null
+});
+const antibioticAssessmentResult = ref<any>(null);
+
+// Antibiotic autocomplete
+const antibioticSearch = ref('');
+const antibioticsList = ref<any[]>([]);
+const showAntibioticDropdown = ref(false);
+const selectedAntibiotics = ref<any[]>([]);
+
+// Antibiotic recommendations
+const antibioticRecommendations = ref<any[]>([]);
+const loadingRecommendations = ref(false);
+
+const { antibioticAssessment: apiAntibioticAssessment, recommendAntibiotics, getAntibiotics } = useApi();
+
+const runAntibioticAssessment = async () => {
+  if (!selectedPatientId.value) return;
+
+  // Update which_antibiotics_text from selected antibiotics
+  antibioticAssessment.value.which_antibiotics_text = selectedAntibiotics.value.map(a => a.drug_name).join(', ');
+
+  try {
+    const data = {
+      used_antibiotics_before: antibioticAssessment.value.used_antibiotics_before,
+      self_medicated: antibioticAssessment.value.self_medicated,
+      stopped_early: antibioticAssessment.value.stopped_early,
+      completed_treatment: antibioticAssessment.value.completed_treatment,
+      which_antibiotics: selectedAntibiotics.value.map(a => a.drug_name),
+      duration_days: antibioticAssessment.value.duration_days
+    };
+
+    const result = await apiAntibioticAssessment(Number(selectedPatientId.value), data);
+    antibioticAssessmentResult.value = result;
+  } catch (error) {
+    console.error('Antibiotic assessment failed:', error);
+  }
+};
+
+let antibioticDebounceTimer: number;
+const debounceLoadAntibiotics = () => {
+  clearTimeout(antibioticDebounceTimer);
+  antibioticDebounceTimer = setTimeout(loadAntibioticsList, 300) as unknown as number;
+};
+
+const loadAntibioticsList = async () => {
+  try {
+    const res = await getAntibiotics(antibioticSearch.value, 50);
+    antibioticsList.value = (res as any).antibiotics || [];
+  } catch (e) {
+    console.error('Failed to load antibiotics', e);
+  }
+};
+
+const selectAntibiotic = (antibiotic: any) => {
+  if (!selectedAntibiotics.value.find(a => a.id === antibiotic.id)) {
+    selectedAntibiotics.value.push(antibiotic);
+  }
+  antibioticSearch.value = '';
+  antibioticsList.value = [];
+  showAntibioticDropdown.value = false;
+};
+
+const removeAntibiotic = (index: number) => {
+  selectedAntibiotics.value.splice(index, 1);
+};
+
+const getAntibioticRecommendations = async () => {
+  if (!selectedPatientId.value) return;
+  
+  loadingRecommendations.value = true;
+  try {
+    const data = {
+      patient_id: Number(selectedPatientId.value),
+      bacterial_species: form.value.bacteria_species || 'Mycobacterium tuberculosis'
+    };
+    
+    const result = await recommendAntibiotics(data);
+    antibioticRecommendations.value = result.recommendations || [];
+  } catch (error) {
+    console.error('Failed to get antibiotic recommendations:', error);
+  } finally {
+    loadingRecommendations.value = false;
+  }
+};
 
 // Computed dosage breakdown
 const calculatedDosage = computed(() => {
@@ -1137,9 +1433,12 @@ const canProceed = computed(() => {
     return true;
   }
   if (currentStep.value === 3) {
-    return true;
+    return true; // Antibiotic assessment is optional
   }
   if (currentStep.value === 4) {
+    return true;
+  }
+  if (currentStep.value === 5) {
     return true;
   }
   return true;
@@ -1175,7 +1474,7 @@ const debounceLoadPatients = () => {
 
 const loadPatientsList = async () => {
   try {
-    const res = await getPatients(1, 1000, patientSearch.value);
+    const res = await getPatients(1, 50, patientSearch.value);
     patientsList.value = (res as any).patients || [];
   } catch (e) {
     console.error('Failed to load patients', e);

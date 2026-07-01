@@ -1,8 +1,33 @@
 
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import event
 from utils.security import encrypt_data, decrypt_data, hash_password, verify_password
 
 db = SQLAlchemy()
+
+# Association table for Patient-Hospital many-to-many relationship
+patient_hospital = db.Table('patient_hospital',
+    db.Column('patient_id', db.Integer, db.ForeignKey('patient.id'), primary_key=True),
+    db.Column('hospital_id', db.Integer, db.ForeignKey('hospital.id'), primary_key=True),
+    db.Column('is_primary', db.Boolean, default=True),  # Mark primary hospital
+    db.Column('visited_at', db.DateTime, default=db.func.current_timestamp())
+)
+
+# Association table for Hospital-Laboratory relationships
+hospital_laboratory = db.Table('hospital_laboratory',
+    db.Column('hospital_id', db.Integer, db.ForeignKey('hospital.id'), primary_key=True),
+    db.Column('laboratory_id', db.Integer, db.ForeignKey('laboratory.id'), primary_key=True),
+    db.Column('is_primary', db.Boolean, default=True),
+    db.Column('created_at', db.DateTime, default=db.func.current_timestamp())
+)
+
+# Association table for Hospital-Pharmacy relationships
+hospital_pharmacy = db.Table('hospital_pharmacy',
+    db.Column('hospital_id', db.Integer, db.ForeignKey('hospital.id'), primary_key=True),
+    db.Column('pharmacy_id', db.Integer, db.ForeignKey('pharmacy.id'), primary_key=True),
+    db.Column('is_primary', db.Boolean, default=True),
+    db.Column('created_at', db.DateTime, default=db.func.current_timestamp())
+)
 
 class Hospital(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -68,6 +93,114 @@ class Hospital(db.Model):
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }
 
+    # Relationships to laboratories and pharmacies
+    laboratories = db.relationship('Laboratory', secondary=hospital_laboratory, backref=db.backref('hospitals', lazy=True))
+    pharmacies = db.relationship('Pharmacy', secondary=hospital_pharmacy, backref=db.backref('hospitals', lazy=True))
+
+class Laboratory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    lab_id = db.Column(db.String(100), unique=True, nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    facility_type = db.Column(db.String(50), default='Laboratory')
+    address = db.Column(db.Text)
+    city = db.Column(db.String(100))
+    region = db.Column(db.String(100))
+    country = db.Column(db.String(100), default='Rwanda')
+    phone = db.Column(db.String(50))
+    email = db.Column(db.String(200))
+    
+    # Laboratory capabilities
+    daily_test_capacity = db.Column(db.Integer)
+    has_genexpert = db.Column(db.Boolean, default=False)
+    has_culture = db.Column(db.Boolean, default=False)
+    has_xray = db.Column(db.Boolean, default=False)
+    has_molecular = db.Column(db.Boolean, default=False)
+    has_sputum_smear = db.Column(db.Boolean, default=True)
+    has_blood_tests = db.Column(db.Boolean, default=True)
+    
+    # Accreditation
+    accreditation_number = db.Column(db.String(100))
+    accreditation_expiry = db.Column(db.Date)
+    
+    source_dataset = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "lab_id": self.lab_id,
+            "name": self.name,
+            "facility_type": self.facility_type,
+            "address": self.address,
+            "city": self.city,
+            "region": self.region,
+            "country": self.country,
+            "phone": self.phone,
+            "email": self.email,
+            "daily_test_capacity": self.daily_test_capacity,
+            "has_genexpert": self.has_genexpert,
+            "has_culture": self.has_culture,
+            "has_xray": self.has_xray,
+            "has_molecular": self.has_molecular,
+            "has_sputum_smear": self.has_sputum_smear,
+            "has_blood_tests": self.has_blood_tests,
+            "accreditation_number": self.accreditation_number,
+            "accreditation_expiry": self.accreditation_expiry.isoformat() if self.accreditation_expiry else None,
+            "source_dataset": self.source_dataset,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
+        }
+
+class Pharmacy(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    pharmacy_id = db.Column(db.String(100), unique=True, nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    facility_type = db.Column(db.String(50), default='Pharmacy')
+    address = db.Column(db.Text)
+    city = db.Column(db.String(100))
+    region = db.Column(db.String(100))
+    country = db.Column(db.String(100), default='Rwanda')
+    phone = db.Column(db.String(50))
+    email = db.Column(db.String(200))
+    
+    # Pharmacy capabilities
+    daily_prescription_capacity = db.Column(db.Integer)
+    has_cold_storage = db.Column(db.Boolean, default=False)
+    has_controlled_drugs_license = db.Column(db.Boolean, default=False)
+    license_number = db.Column(db.String(100))
+    license_expiry = db.Column(db.Date)
+    
+    # Inventory tracking
+    total_drug_types = db.Column(db.Integer, default=0)
+    
+    source_dataset = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "pharmacy_id": self.pharmacy_id,
+            "name": self.name,
+            "facility_type": self.facility_type,
+            "address": self.address,
+            "city": self.city,
+            "region": self.region,
+            "country": self.country,
+            "phone": self.phone,
+            "email": self.email,
+            "daily_prescription_capacity": self.daily_prescription_capacity,
+            "has_cold_storage": self.has_cold_storage,
+            "has_controlled_drugs_license": self.has_controlled_drugs_license,
+            "license_number": self.license_number,
+            "license_expiry": self.license_expiry.isoformat() if self.license_expiry else None,
+            "total_drug_types": self.total_drug_types,
+            "source_dataset": self.source_dataset,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
+        }
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     # Encrypted fields
@@ -76,7 +209,9 @@ class User(db.Model):
     password = db.Column(db.String(200), nullable=False)  # hashed
     role = db.Column(db.String(50), default='doctor')
     hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)  # New field: is user active?
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
 
     hospital = db.relationship('Hospital', backref=db.backref('users', lazy=True))
 
@@ -108,14 +243,18 @@ class User(db.Model):
             "username": self.username,
             "email": self.email,
             "role": self.role,
-            "created_at": self.created_at.isoformat() if self.created_at else None
+            "hospital_id": self.hospital_id,
+            "hospital": self.hospital.to_dict() if self.hospital else None,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }
 
 class Patient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     # Encrypted PII and sensitive health data
     _patient_id = db.Column('patient_id', db.String(200), unique=True, nullable=False)
-    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
+    password = db.Column(db.String(200), nullable=True)  # Hashed password for patient login (optional)
     _first_name = db.Column('first_name', db.String(200))
     _last_name = db.Column('last_name', db.String(200))
     age = db.Column(db.Integer)
@@ -128,7 +267,8 @@ class Patient(db.Model):
     _occupation = db.Column('occupation', db.String(200))
     date_of_diagnosis = db.Column(db.Integer)
 
-    hospital = db.relationship('Hospital', backref=db.backref('patients', lazy=True))
+    # Many-to-many relationship with hospitals
+    hospitals = db.relationship('Hospital', secondary=patient_hospital, backref=db.backref('patients', lazy=True))
     _symptoms = db.Column('symptoms', db.Text)
     _exposure_history = db.Column('exposure_history', db.Text)
     persistent_cough_duration_weeks = db.Column(db.Integer)
@@ -171,6 +311,9 @@ class Patient(db.Model):
     has_shortness_of_breath = db.Column(db.String(10))
     risk_score = db.Column(db.Float, default=0.0)  # 0-100 continuous risk score
     last_risk_calculation = db.Column(db.DateTime)
+    data_sharing_consent = db.Column(db.String(50), default='pending')  # 'pending', 'granted', 'denied'
+    consent_granted_at = db.Column(db.DateTime)
+    consent_expires_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
 
@@ -279,12 +422,38 @@ class Patient(db.Model):
     def antibiotic_usage_history(self, value):
         self._antibiotic_usage_history = encrypt_data(value)
 
+    def set_password(self, password):
+        """Hash and set patient password"""
+        self.password = hash_password(password)
+
+    def verify_password(self, password):
+        """Verify patient password"""
+        return verify_password(password, self.password)
+
+    def get_primary_hospital(self):
+        """Get the primary hospital for this patient"""
+        from sqlalchemy import select
+        result = db.session.execute(
+            select(patient_hospital).where(
+                (patient_hospital.c.patient_id == self.id) &
+                (patient_hospital.c.is_primary == True)
+            )
+        ).first()
+        if result:
+            return Hospital.query.get(result[1])
+        # Fallback to first hospital if no primary set
+        if self.hospitals:
+            return self.hospitals[0]
+        return None
+
     def to_dict(self):
+        primary_hospital = self.get_primary_hospital()
         return {
             "id": self.id,
             "patient_id": self.patient_id,
-            "hospital_id": self.hospital_id,
-            "hospital": self.hospital.to_dict() if self.hospital else None,
+            "hospital_id": primary_hospital.id if primary_hospital else None,
+            "hospital": primary_hospital.to_dict() if primary_hospital else None,
+            "hospitals": [h.to_dict() for h in self.hospitals],
             "first_name": self.first_name,
             "last_name": self.last_name,
             "age": self.age,
@@ -324,6 +493,9 @@ class Patient(db.Model):
             "has_chest_pain": self.has_chest_pain,
             "has_blood": self.has_blood,
             "has_fatigue": self.has_fatigue,
+            "data_sharing_consent": self.data_sharing_consent,
+            "consent_granted_at": self.consent_granted_at.isoformat() if self.consent_granted_at else None,
+            "consent_expires_at": self.consent_expires_at.isoformat() if self.consent_expires_at else None,
             "has_shortness_of_breath": self.has_shortness_of_breath,
             "risk_score": self.risk_score,
             "last_risk_calculation": self.last_risk_calculation.isoformat() if self.last_risk_calculation else None,
@@ -445,7 +617,7 @@ class Alert(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=True)
     alert_type = db.Column(db.String(100))
     _message = db.Column('message', db.Text)
     severity = db.Column(db.String(50))
@@ -705,8 +877,44 @@ class AuditLog(db.Model):
     entity_id = db.Column(db.Integer)
     details = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
+    # Immutable audit fields for tamper evidence
+    entry_hash = db.Column('entry_hash', db.String(64), nullable=False)  # SHA-256 hash
+    previous_hash = db.Column(db.String(64))  # Chain to previous log entry
+    ip_address = db.Column(db.String(50))  # Client IP for additional verification
+    user_agent = db.Column(db.String(500))  # Browser/client info
+    is_verified = db.Column(db.Boolean, default=True)  # Integrity check flag
 
     user = db.relationship('User', backref=db.backref('audit_logs', lazy=True))
+
+    def compute_hash(self):
+        """Compute cryptographic hash of audit log entry for tamper evidence"""
+        import hashlib
+        import json
+        
+        # Create canonical representation of the log entry
+        data = {
+            'user_id': self.user_id,
+            'action': self.action,
+            'entity_type': self.entity_type,
+            'entity_id': self.entity_id,
+            'details': self.details,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'previous_hash': self.previous_hash,
+            'ip_address': self.ip_address,
+            'user_agent': self.user_agent
+        }
+        
+        # Sort keys for consistent hashing
+        canonical = json.dumps(data, sort_keys=True, default=str)
+        hash_value = hashlib.sha256(canonical.encode()).hexdigest()
+        self.entry_hash = hash_value
+        return hash_value
+
+    def verify_integrity(self):
+        """Verify that the audit log entry has not been tampered with"""
+        computed_hash = self.compute_hash()
+        return computed_hash == self.entry_hash
 
     def to_dict(self):
         return {
@@ -717,6 +925,10 @@ class AuditLog(db.Model):
             "entity_id": self.entity_id,
             "details": self.details,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "audit_hash": self.entry_hash,
+            "previous_hash": self.previous_hash,
+            "ip_address": self.ip_address,
+            "is_verified": self.is_verified,
             "user": {
                 "id": self.user.id if self.user else None,
                 "username": self.user.username if self.user else None,
@@ -726,18 +938,38 @@ class AuditLog(db.Model):
 
 
 # Event listener to make AuditLog immutable (prevent updates/deletes)
-from sqlalchemy import event
-from sqlalchemy.orm import Mapper
-
+@event.listens_for(AuditLog, 'before_insert')
+def before_audit_log_insert(mapper, connection, target):
+    """Compute hash and chain to previous log entry before insert"""
+    # Get previous audit log entry for chaining
+    from sqlalchemy import select
+    previous_log = connection.execute(
+        select(AuditLog).order_by(AuditLog.id.desc()).limit(1)
+    ).first()
+    
+    if previous_log:
+        target.previous_hash = previous_log.entry_hash
+    
+    # Capture IP address from request context if available
+    try:
+        from flask import request
+        target.ip_address = request.remote_addr
+        target.user_agent = request.headers.get('User-Agent')
+    except:
+        pass
+    
+    # Compute and set hash
+    target.entry_hash = target.compute_hash()
 
 @event.listens_for(AuditLog, 'before_update')
-def prevent_audit_update(mapper, connection, target):
-    raise ValueError("AuditLog entries are immutable and cannot be updated!")
-
+def before_audit_log_update(mapper, connection, target):
+    """Prevent updates to audit logs - they should be immutable"""
+    raise Exception("Audit logs are immutable and cannot be updated")
 
 @event.listens_for(AuditLog, 'before_delete')
-def prevent_audit_delete(mapper, connection, target):
-    raise ValueError("AuditLog entries are immutable and cannot be deleted!")
+def before_audit_log_delete(mapper, connection, target):
+    """Prevent deletion of audit logs - they should be immutable"""
+    raise Exception("Audit logs are immutable and cannot be deleted")
 
 
 

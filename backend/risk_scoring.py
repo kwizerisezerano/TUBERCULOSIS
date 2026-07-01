@@ -139,9 +139,11 @@ def calculate_rule_based_risk(patient):
 
 def trigger_high_risk_alert(patient, risk_score):
     """
-    Create an alert when patient risk exceeds 70% threshold.
+    Create an alert when patient risk exceeds threshold and send notifications.
     """
-    from models.models import Alert, User
+    from models.models import Alert, User, Hospital
+    from app import mail
+    from flask_mail import Message
     
     # Check if recent high-risk alert already exists
     recent_alert = Alert.query.filter(
@@ -154,9 +156,20 @@ def trigger_high_risk_alert(patient, risk_score):
     if recent_alert:
         return  # Alert already exists
     
+    # Get patient's associated hospital (if any)
+    hospital_id = None
+    if patient.hospitals:
+        hospital_id = patient.hospitals[0].id
+    else:
+        # Fallback: get first available hospital
+        hospital = Hospital.query.first()
+        if hospital:
+            hospital_id = hospital.id
+    
     # Create new alert
     alert = Alert(
         patient_id=patient.id,
+        hospital_id=hospital_id,
         alert_type='high_risk_tb',
         message=f"High TB Risk Alert: Patient {patient.patient_id} has risk score of {risk_score:.1f}%. Immediate clinical review recommended.",
         severity='critical',
@@ -166,11 +179,39 @@ def trigger_high_risk_alert(patient, risk_score):
     db.session.add(alert)
     db.session.commit()
     
-    # Notify doctors and admins
+    # Notify doctors and admins via email
     doctors = User.query.filter(User.role.in_(['doctor', 'admin', 'hospital_admin'])).all()
+    email_count = 0
+    
     for doctor in doctors:
-        # In production, send email/SMS notification here
-        pass
+        if doctor.email:
+            try:
+                msg = Message(
+                    f"High TB Risk Alert - Patient {patient.patient_id}",
+                    recipients=[doctor.email],
+                    sender=os.getenv('MAIL_DEFAULT_SENDER', 'noreply@tbdiagnostic.com')
+                )
+                msg.body = f"""
+URGENT: High TB Risk Alert
+
+Patient ID: {patient.patient_id}
+Risk Score: {risk_score:.1f}%
+Severity: CRITICAL
+
+Message: Patient has a high TB risk score. Immediate clinical review is recommended.
+
+Please log in to the TB Diagnostic System for more details.
+
+---
+This is an automated alert from the TB Predictive EHR Analytics Dashboard.
+                """
+                mail.send(msg)
+                email_count += 1
+                print(f"Email sent to {doctor.email} for high-risk alert")
+            except Exception as e:
+                print(f"Failed to send email to {doctor.email}: {e}")
+    
+    print(f"High-risk alert triggered for patient {patient.patient_id}. Emails sent: {email_count}/{len(doctors)}")
 
 def recalculate_risk_on_lab_result(patient_id):
     """

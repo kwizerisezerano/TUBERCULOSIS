@@ -45,10 +45,10 @@ Thumbs.db
 *.sqlite3
 
 # Environment variables
-.env
-backend/.env
 .env.local
 .env.*.local
+# Allow backend .env for configuration
+!backend/.env
 
 # ML models
 *.pkl
@@ -81,10 +81,15 @@ backend/data/
 NEWDATASETS/
 datasets/
 *.csv
-*.json
 *.xlsx
 *.xls
 *.pdf
+# Allow specific JSON files
+!frontend/tsconfig.json
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/nuxt.config.ts
+!frontend/tailwind.config.js
 
 # Ignore backup folder
 DATA_BACKUP/

@@ -2,17 +2,79 @@ import os
 import json
 import time
 import urllib.request
-import os
-import json
 import joblib
 import pandas as pd
 import numpy as np
+from datetime import datetime
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from imblearn.over_sampling import SMOTE
-from models.models import Patient
+from models.models import Patient, AuditLog
+
+# Model versioning
+MODEL_VERSION = "1.0.0"
+MODEL_DIR = "models/saved_models"
+MODEL_METADATA_FILE = os.path.join(MODEL_DIR, "model_metadata.json")
+
+def ensure_model_dir():
+    """Ensure model directory exists"""
+    if not os.path.exists(MODEL_DIR):
+        os.makedirs(MODEL_DIR)
+
+def save_model_metadata(metadata):
+    """Save model training metadata for versioning"""
+    ensure_model_dir()
+    with open(MODEL_METADATA_FILE, 'w') as f:
+        json.dump(metadata, f, indent=2, default=str)
+
+def load_model_metadata():
+    """Load model training metadata"""
+    if os.path.exists(MODEL_METADATA_FILE):
+        with open(MODEL_METADATA_FILE, 'r') as f:
+            return json.load(f)
+    return None
+
+def should_retrain_model():
+    """Check if model should be retrained based on new data"""
+    metadata = load_model_metadata()
+    if not metadata:
+        return True, "No existing model found"
+    
+    # Check if enough new data has been added (e.g., 100 new patients)
+    last_training_count = metadata.get('training_data_count', 0)
+    current_count = Patient.query.count()
+    
+    if current_count - last_training_count >= 100:
+        return True, f"New data available: {current_count - last_training_count} new patients"
+    
+    # Check if model is older than 30 days
+    last_training_date = datetime.fromisoformat(metadata.get('trained_at'))
+    days_since_training = (datetime.now() - last_training_date).days
+    
+    if days_since_training >= 30:
+        return True, f"Model is {days_since_training} days old (threshold: 30 days)"
+    
+    return False, "Model is up to date"
+
+def log_model_training(result, metadata):
+    """Log model training to audit trail"""
+    from app import app, db
+    with app.app_context():
+        audit = AuditLog(
+            user_id=1,  # System user
+            action='model_training',
+            entity_type='ml_model',
+            entity_id=0,
+            details=f"ML model retrained: {metadata['version']}, accuracy: {result.get('accuracy', 0):.2%}, data_count: {metadata['training_data_count']}",
+            created_at=datetime.now()
+        )
+        # Compute hash before adding to session to ensure entry_hash is set
+        hash_value = audit.compute_hash()
+        audit.entry_hash = hash_value
+        db.session.add(audit)
+        db.session.commit()
 
 
 def _emit_debug_event(hypothesis_id, location, message, data):
@@ -320,6 +382,24 @@ def _derive_drug_resistance_label(patient):
         return label
     return None
 
+def _derive_treatment_failure_label(patient):
+    """Derive treatment failure label from patient data"""
+    # Use treatment_outcome field if available
+    if patient.treatment_outcome:
+        outcome = patient.treatment_outcome.lower()
+        if outcome in ['failure', 'relapse', 'death']:
+            return "Yes"
+        elif outcome in ['cured', 'completed', 'success']:
+            return "No"
+    
+    # Fallback to risk-based labeling
+    # High risk patients with drug resistance are more likely to fail treatment
+    if patient.drug_resistance == "Yes" and patient.risk_score > 70:
+        return "Yes"
+    
+    # If no clear indicators, return None (exclude from training)
+    return None
+
 def prepare_training_data(task):
     patients = Patient.query.all()
     rows = []
@@ -330,6 +410,8 @@ def prepare_training_data(task):
             label = _derive_tb_status_label(patient)
         elif task == "drug_resistance":
             label = _derive_drug_resistance_label(patient)
+        elif task == "treatment_failure":
+            label = _derive_treatment_failure_label(patient)
         else:
             raise ValueError("Unknown task")
 
@@ -477,34 +559,108 @@ def _train_classifier(df, model_filename, encoder_filename):
         "n_samples": int(len(df)),
     }
 
+def train_models_from_database(fast_mode=False):
+    """Train ML models from database data with versioning and automatic retracking"""
+    from app import app, db
+    with app.app_context():
+        # Check if retraining is needed
+        should_retrain, reason = should_retrain_model()
+        print(f"Retrain check: {should_retrain} - Reason: {reason}")
+        
+        if not should_retrain and not fast_mode:
+            print("Model is up to date. Skipping training.")
+            return {"msg": "Model is up to date", "reason": reason}
+        
+        if fast_mode:
+            print("Fast mode: Forcing model training with optimized parameters")
+        
+        print(f"Retraining model: {reason if not fast_mode else 'Fast mode enabled'}")
+        
+        # Increment version
+        metadata = load_model_metadata()
+        if metadata:
+            version_parts = metadata.get('version', '1.0.0').split('.')
+            version_parts[2] = str(int(version_parts[2]) + 1)
+            new_version = '.'.join(version_parts)
+        else:
+            new_version = MODEL_VERSION
+        
+        results = _train_models_from_database(fast_mode=fast_mode)
+        
+        # Save model metadata
+        training_metadata = {
+            'version': new_version,
+            'trained_at': datetime.now().isoformat(),
+            'training_data_count': Patient.query.count(),
+            'retrain_reason': reason if not fast_mode else 'Fast mode',
+            'model_results': results,
+            'fast_mode': fast_mode
+        }
+        save_model_metadata(training_metadata)
+        
+        # Log training to audit trail
+        log_model_training(results, training_metadata)
+        
+        return results
+
+def _train_models_from_database(fast_mode=False):
+    """Internal function to train models without versioning checks"""
+    # Train TB status model
+    tb_status_data = prepare_training_data("tb_status")
+    tb_status_result = None
+    if tb_status_data is not None:
+        if fast_mode and len(tb_status_data) > 5000:
+            tb_status_data = tb_status_data.sample(n=5000, random_state=42)
+            print(f"  Fast mode: Limited TB status training to {len(tb_status_data)} samples")
+        tb_status_result = _train_classifier(
+            tb_status_data,
+            "tb_status_model.pkl",
+            "tb_status_encoder.pkl",
+        )
+        print("\nTB Status Model Trained Successfully")
+
+    # Train drug resistance model
+    drug_resistance_data = prepare_training_data("drug_resistance")
+    drug_resistance_result = None
+    if drug_resistance_data is not None:
+        if fast_mode and len(drug_resistance_data) > 5000:
+            drug_resistance_data = drug_resistance_data.sample(n=5000, random_state=42)
+            print(f"  Fast mode: Limited drug resistance training to {len(drug_resistance_data)} samples")
+        drug_resistance_result = _train_classifier(
+            drug_resistance_data,
+            "drug_resistance_model.pkl",
+            "drug_resistance_encoder.pkl",
+        )
+        print("\nDrug Resistance Model Trained Successfully")
+
+    # Train treatment failure prediction model
+    treatment_failure_data = prepare_training_data("treatment_failure")
+    treatment_failure_result = None
+    if treatment_failure_data is not None:
+        if fast_mode and len(treatment_failure_data) > 5000:
+            treatment_failure_data = treatment_failure_data.sample(n=5000, random_state=42)
+            print(f"  Fast mode: Limited treatment failure training to {len(treatment_failure_data)} samples")
+        treatment_failure_result = _train_classifier(
+            treatment_failure_data,
+            "treatment_failure_model.pkl",
+            "treatment_failure_encoder.pkl",
+        )
+        print("\nTreatment Failure Prediction Model Trained Successfully")
+
+    return {
+        "tb_status": tb_status_result,
+        "drug_resistance": drug_resistance_result,
+        "treatment_failure": treatment_failure_result,
+    }
+
 def train_model_from_database():
-    results = train_models_from_database()
+    """Legacy function for backward compatibility - forces retraining"""
+    results = _train_models_from_database()
     if results.get("drug_resistance"):
         return results["drug_resistance"]
     if results.get("tb_status"):
         return results["tb_status"]
-    return {"message": "No models trained", "reason": results.get("reason")}
-
-def train_models_from_database():
-    results = {}
-
-    tb_df = prepare_training_data("tb_status")
-    if tb_df is not None:
-        results["tb_status"] = _train_classifier(tb_df, "tb_status_model.pkl", "tb_status_label_encoder.pkl")
-
-    dr_df = prepare_training_data("drug_resistance")
-    if dr_df is not None:
-        results["drug_resistance"] = _train_classifier(dr_df, "drug_resistance_model.pkl", "drug_resistance_label_encoder.pkl")
-
-    if not results:
-        results["reason"] = "Not enough labeled data in database (need at least ~20 labeled rows per task)"
-
-    # Save results to JSON file
-    model_info_path = os.path.join(os.path.dirname(__file__), "model_info.json")
-    with open(model_info_path, "w") as f:
-        json.dump(results, f, indent=2)
-
-    return results
+    return {"message": "No models trained", "reason": "Not enough labeled data"}
 
 if __name__ == "__main__":
     from app import app

@@ -2,6 +2,45 @@
   <DashboardLayout>
     <div class="space-y-6">
       <h2 class="text-xl font-bold text-gray-900 dark:text-white">Administration Panel</h2>
+      
+      <!-- Statistics Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
+          <p class="text-gray-600 dark:text-gray-400 text-sm mb-1">Total Facilities</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ stats.totalFacilities }}</p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
+          <p class="text-gray-600 dark:text-gray-400 text-sm mb-1">Total Patients</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ stats.totalPatients }}</p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
+          <p class="text-gray-600 dark:text-gray-400 text-sm mb-1">Active Users</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ stats.totalUsers }}</p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
+          <p class="text-gray-600 dark:text-gray-400 text-sm mb-1">Avg Patients/Facility</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ stats.avgPatientsPerFacility }}</p>
+        </div>
+      </div>
+
+      <!-- Facilities Chart -->
+      <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Patients per Facility</h3>
+        <div v-if="loadingStats" class="text-center py-8 text-gray-500">Loading...</div>
+        <div v-else class="space-y-3">
+          <div v-for="facility in facilitiesWithPatients" :key="facility.id" class="flex items-center gap-4">
+            <div class="w-48 text-sm text-gray-900 dark:text-white truncate">{{ facility.name }}</div>
+            <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-6 overflow-hidden">
+              <div 
+                class="bg-primary-600 h-full rounded-full transition-all duration-500"
+                :style="{ width: `${(facility.patient_count / maxPatientCount) * 100}%` }"
+              ></div>
+            </div>
+            <div class="w-16 text-sm text-gray-600 dark:text-gray-400 text-right">{{ facility.patient_count }}</div>
+          </div>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
           <p class="font-semibold text-gray-900 dark:text-white mb-2">User Management</p>
@@ -261,7 +300,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import DashboardLayout from '~/components/DashboardLayout.vue'
 
@@ -275,6 +314,20 @@ const showEditUserModal = ref(false)
 const users = ref<any[]>([])
 const editingUserId = ref<number | null>(null)
 
+const loadingStats = ref(false)
+const stats = ref({
+  totalFacilities: 0,
+  totalPatients: 0,
+  totalUsers: 0,
+  avgPatientsPerFacility: 0
+})
+const facilitiesWithPatients = ref<any[]>([])
+
+const maxPatientCount = computed(() => {
+  const max = Math.max(...facilitiesWithPatients.value.map(f => f.patient_count || 0))
+  return max > 0 ? max : 1
+})
+
 const settings = ref({
   language: 'en',
   itemsPerPage: 20,
@@ -282,6 +335,41 @@ const settings = ref({
 })
 
 const API_BASE = 'http://127.0.0.1:5000/api'
+
+const fetchStats = async () => {
+  loadingStats.value = true
+  try {
+    const token = authToken.value
+    const response = await fetch(`${API_BASE}/hospitals`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    const data = await response.json()
+    facilitiesWithPatients.value = data.hospitals || []
+    
+    stats.value.totalFacilities = facilitiesWithPatients.value.length
+    stats.value.totalPatients = facilitiesWithPatients.value.reduce((sum: number, f: any) => sum + (f.patient_count || 0), 0)
+    stats.value.avgPatientsPerFacility = stats.value.totalFacilities > 0 
+      ? Math.round(stats.value.totalPatients / stats.value.totalFacilities) 
+      : 0
+  } catch (error) {
+    console.error('Error fetching stats:', error)
+  }
+  loadingStats.value = false
+}
+
+const fetchUsers = async () => {
+  try {
+    const token = authToken.value
+    const response = await fetch(`${API_BASE}/users`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    const data = await response.json()
+    users.value = data.users || []
+    stats.value.totalUsers = users.value.length
+  } catch (error) {
+    console.error('Error fetching users:', error)
+  }
+}
 
 const newUserForm = ref({
   username: '',
@@ -296,19 +384,6 @@ const editUserForm = ref({
   role: 'doctor',
   is_active: true
 })
-
-const fetchUsers = async () => {
-  try {
-    const token = authToken.value
-    const response = await fetch(`${API_BASE}/users`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    const data = await response.json()
-    users.value = data.users || []
-  } catch (error) {
-    console.error('Error fetching users:', error)
-  }
-}
 
 const addUser = async () => {
   try {
@@ -430,6 +505,7 @@ const saveSettings = () => {
 
 onMounted(() => {
   fetchUsers()
+  fetchStats()
   const savedSettings = localStorage.getItem('systemSettings')
   if (savedSettings) {
     settings.value = JSON.parse(savedSettings)

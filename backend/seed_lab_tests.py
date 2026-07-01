@@ -4,7 +4,7 @@ print('Starting seed script...')
 sys.stdout.flush()
 
 from app import app, db
-from models.models import User, Patient, LabTest
+from models.models import User, Patient, LabTest, Hospital
 from datetime import datetime, timedelta
 import random
 
@@ -26,12 +26,17 @@ def seed_lab_tests():
         print(f'Lab tech found: {lab_tech.username if lab_tech else 'NONE'}')
         sys.stdout.flush()
         
+        # Get default hospital
+        default_hospital = Hospital.query.filter_by(name='Default Hospital').first()
+        if not default_hospital:
+            default_hospital = Hospital.query.first()
+        
         patients = Patient.query.all()
         print(f'Patients found: {len(patients)}')
         sys.stdout.flush()
 
-        if not doctor or not patients:
-            print('Need doctor and patients to seed!')
+        if not doctor or not patients or not default_hospital:
+            print('Need doctor, patients, and a hospital to seed!')
             return
 
         test_types = ['Sputum Smear', 'GeneXpert', 'Chest X-ray', 'Blood Test', 'TB Culture', 'IGRA', 'TST']
@@ -64,6 +69,7 @@ def seed_lab_tests():
 
                     test = LabTest(
                         patient_id=patient.id,
+                        hospital_id=default_hospital.id,
                         requested_by=doctor.id,
                         test_type=test_type,
                         status=status,
