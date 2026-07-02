@@ -87,9 +87,10 @@
                   <input
                     v-model="patientSearch"
                     @input="debounceLoadPatients"
+                    @keyup.enter="handleSearchEnter"
                     type="text"
                     class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 outline-none"
-                    placeholder="Search by name or patient ID..."
+                    placeholder="Search by name or patient ID... (Press Enter to auto-select)"
                   />
                 </div>
               </div>
@@ -1625,6 +1626,13 @@ const loadPatientsList = async (searchTerm?: string) => {
     console.error('Failed to load patients', e);
     showNotification('Error', 'Failed to load patients list', 'error');
   }
+};
+
+const handleSearchEnter = async () => {
+  if (!patientSearch.value) return;
+  // Treat search input like manual patient ID - load and auto-select
+  manualPatientId.value = patientSearch.value;
+  await loadPatientByManualId();
 };
 
 const loadPatient = async () => {
