@@ -244,7 +244,7 @@
             />
             <button
               v-if="!isAdmin"
-              @click="showAddInventoryModal = true"
+              @click="showAddInventoryModal = true; newInventoryForm.hospital_id = currentUser?.hospital_id || null"
               class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg"
             >
               Add Inventory
@@ -491,7 +491,7 @@ const selectedPrescription = ref(null)
 const hospitals = ref([])
 const atcDrugs = ref([])
 const newInventoryForm = ref({
-  hospital_id: null,
+  hospital_id: currentUser.value?.hospital_id || null,
   atc_drug_id: null,
   stock_quantity: 0,
   unit_type: 'tablets',
@@ -575,36 +575,7 @@ const checkStock = async (presc) => {
 }
 
 const approvePrescription = async (presc) => {
-  // First validate the prescription before approving
   try {
-    const validationData = {
-      patient_id: presc.patient_id,
-      hospital_id: presc.hospital_id,
-      atc_drug_id: presc.atc_drug_id,
-      dosage_mg: presc.dosage_mg,
-      frequency: presc.frequency,
-      duration_days: presc.duration_days,
-      quantity: presc.total_tablets || 30
-    }
-    
-    const validationResult = await api.validatePrescription(validationData)
-    
-    if (!validationResult.is_valid) {
-      // Show validation warnings
-      const warnings = validationResult.validation_results.recommendations
-        .map(r => `- ${r.action}: ${r.reason}`)
-        .join('\n')
-      
-      const confirmApproval = confirm(
-        `Prescription Validation Warnings:\n\n${warnings}\n\nDo you still want to approve this prescription?`
-      )
-      
-      if (!confirmApproval) {
-        return
-      }
-    }
-    
-    // Proceed with approval
     await api.approvePrescription(presc.id, { status: 'approved' })
     presc.status = 'approved'
     fetchPendingPrescriptions()
@@ -767,17 +738,11 @@ const executeAddDrug = async () => {
   const { presc, initialStock } = confirmationData.value
   try {
     // Get hospital ID from current user, or use first available hospital
-    let hospitalId = currentUser.value?.hospital_id
-    
+    const hospitalId = currentUser.value?.hospital_id
+      || (hospitals.value?.length > 0 ? hospitals.value[0].id : null)
     if (!hospitalId) {
-      // If user doesn't have hospital assigned, use first available hospital
-      if (hospitals.value && hospitals.value.length > 0) {
-        hospitalId = hospitals.value[0].id
-        console.log(`Using first available hospital: ${hospitals.value[0].name} (ID: ${hospitalId})`)
-      } else {
-        alert('No hospitals available. Please ensure hospitals are configured in the system.')
-        return
-      }
+      alert('No hospital assigned to your account. Please contact an administrator.')
+      return
     }
     
     // Create new inventory entry
@@ -902,7 +867,7 @@ const addInventory = async () => {
     await api.createPharmacyInventory(newInventoryForm.value)
     showAddInventoryModal.value = false
     newInventoryForm.value = {
-      hospital_id: null,
+      hospital_id: currentUser.value?.hospital_id || null,
       atc_drug_id: null,
       stock_quantity: 0,
       unit_type: 'tablets',
@@ -928,7 +893,7 @@ const fetchHospitals = async () => {
 
 const fetchATCDrugs = async () => {
   try {
-    const data = await api.getATCDrugs()
+    const data = await api.getAtcDrugs(1, 200)
     atcDrugs.value = data.atc_drugs || []
   } catch (error) {
     console.error('Error fetching ATC drugs:', error)

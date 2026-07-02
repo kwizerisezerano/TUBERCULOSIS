@@ -3956,7 +3956,7 @@ def patient_history(patient_id):
             # 1. Patient's primary hospital is user's hospital
             # 2. User's hospital has any records for this patient
             from sqlalchemy import or_
-            has_primary = patient.hospital_id == current_user.hospital_id
+            has_primary = any(h.id == current_user.hospital_id for h in patient.hospitals)
             has_diagnosis = Diagnosis.query.filter_by(patient_id=patient_id, hospital_id=current_user.hospital_id).first() is not None
             has_labtest = LabTest.query.filter_by(patient_id=patient_id, hospital_id=current_user.hospital_id).first() is not None
             has_prescription = Prescription.query.filter_by(patient_id=patient_id, hospital_id=current_user.hospital_id).first() is not None
@@ -4567,30 +4567,35 @@ def get_consumption_surveillance():
 @jwt_required()
 def validate_prescription():
     """Validate prescription against resistance patterns, DDD standards, and inventory"""
-    from prescription_guard import PrescriptionGuard
-    
-    data = request.get_json()
-    
-    patient_id = data.get('patient_id')
-    hospital_id = data.get('hospital_id')
-    atc_drug_id = data.get('atc_drug_id')
-    dosage_mg = data.get('dosage_mg')
-    frequency = data.get('frequency')
-    duration_days = data.get('duration_days')
-    quantity = data.get('quantity', 1)
-    
-    if not all([patient_id, hospital_id, atc_drug_id, dosage_mg]):
-        return jsonify({'msg': 'Missing required fields'}), 400
-    
-    is_valid, validation_results = PrescriptionGuard.validate_prescription(
-        patient_id, hospital_id, atc_drug_id, dosage_mg, frequency, duration_days, quantity
-    )
-    
-    return jsonify({
-        'is_valid': is_valid,
-        'validation_results': validation_results,
-        'validated_at': datetime.now().isoformat()
-    })
+    try:
+        from prescription_guard import PrescriptionGuard
+        
+        data = request.get_json() or {}
+        
+        patient_id = data.get('patient_id')
+        hospital_id = data.get('hospital_id')
+        atc_drug_id = data.get('atc_drug_id')
+        dosage_mg = data.get('dosage_mg')
+        frequency = data.get('frequency', 'daily')
+        duration_days = data.get('duration_days')
+        quantity = data.get('quantity', 1)
+        
+        if not all([patient_id, hospital_id, atc_drug_id]) or dosage_mg is None:
+            return jsonify({'msg': 'Missing required fields: patient_id, hospital_id, atc_drug_id, dosage_mg'}), 400
+        
+        is_valid, validation_results = PrescriptionGuard.validate_prescription(
+            patient_id, hospital_id, atc_drug_id, dosage_mg, frequency, duration_days, quantity
+        )
+        
+        return jsonify({
+            'is_valid': is_valid,
+            'validation_results': validation_results,
+            'validated_at': datetime.now().isoformat()
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'msg': f'Validation error: {str(e)}'}), 500
 
 @app.route('/api/prescriptions/recommend', methods=['POST'])
 @jwt_required()
@@ -6020,7 +6025,7 @@ def pharmacy_inventory():
                     atc_drug_id = drug.id
         
         if not atc_drug_id:
-            return jsonify({'error': 'Drug not found. Please specify a valid drug name or atc_drug_id.'}), 400
+            return jsonify({'error': 'Drug not found. The drug name does not match any ATC drug in the database. Please select a drug from the dropdown.'}), 400
             
         # Get hospital_id: use provided, or user's hospital if available
         hospital_id = data.get('hospital_id')
@@ -6128,17 +6133,17 @@ def check_prescription_stock(presc_id):
             'message': 'No ATC drug linked to this prescription'
         })
     
-    # Get patient's hospital
-    patient = Patient.query.get(presc.patient_id)
-    if not patient or not patient.hospital_id:
+    # Use prescription's hospital_id directly (patient.hospital_id does not exist)
+    hospital_id = presc.hospital_id or (user.hospital_id if user else None)
+    if not hospital_id:
         return jsonify({
             'available': False,
-            'message': 'Patient hospital not found'
+            'message': 'Hospital not found for this prescription'
         })
     
     # Check inventory
     inventory = PharmacyInventory.query.filter_by(
-        hospital_id=patient.hospital_id,
+        hospital_id=hospital_id,
         atc_drug_id=presc.atc_drug_id
     ).first()
     
@@ -6176,15 +6181,15 @@ def dispense_prescription(presc_id):
             'error': 'Prescription must be approved before dispensing'
         }), 400
     
-    # Get patient's hospital
-    patient = Patient.query.get(presc.patient_id)
-    if not patient or not patient.hospital_id:
-        return jsonify({'error': 'Patient hospital not found'}), 400
+    # Use prescription's hospital_id directly (Patient has no hospital_id column)
+    hospital_id = presc.hospital_id or (user.hospital_id if user else None)
+    if not hospital_id:
+        return jsonify({'error': 'Hospital not found for this prescription'}), 400
     
     # Check and update inventory
     if presc.atc_drug_id:
         inventory = PharmacyInventory.query.filter_by(
-            hospital_id=patient.hospital_id,
+            hospital_id=hospital_id,
             atc_drug_id=presc.atc_drug_id
         ).first()
         
