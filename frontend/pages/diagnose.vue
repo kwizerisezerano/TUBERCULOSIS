@@ -1718,16 +1718,58 @@ const fetchPatientDrugResistance = async () => {
 const fetchPatientLabTests = async () => {
   if (!selectedPatientId.value) return;
   try {
+    // Fetch lab tests across ALL hospitals the patient has visited
     const response = await fetch(`${API_BASE}/lab-tests?patient_id=${selectedPatientId.value}`, {
       headers: { 'Authorization': `Bearer ${authToken.value}` }
     });
     const data = await response.json();
     patientLabTests.value = (data.lab_tests || []).filter(t => t.status === 'completed');
-    
+
+    // Also fetch previous diagnoses to pre-fill fields from most recent diagnosis
+    await fetchAndPopulatePreviousDiagnosis();
+
     // Auto-populate form with most recent completed lab results
     autoPopulateLabResults();
   } catch (error) {
     console.error('Error fetching lab tests:', error);
+  }
+};
+
+const fetchAndPopulatePreviousDiagnosis = async () => {
+  if (!selectedPatientId.value) return;
+  try {
+    const response = await fetch(`${API_BASE}/diagnoses?patient_id=${selectedPatientId.value}&per_page=1`, {
+      headers: { 'Authorization': `Bearer ${authToken.value}` }
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    const latest = (data.diagnoses || [])[0];
+    if (!latest) return;
+
+    // Pre-fill patient fields from most recent diagnosis details if not already set
+    let details: any = {};
+    try { details = JSON.parse(latest.details || '{}'); } catch { details = {}; }
+
+    // Only fill fields the clinician hasn't already changed
+    const fillIfEmpty = (key: string, value: any) => {
+      if (value && (!form.value[key as keyof typeof form.value] || form.value[key as keyof typeof form.value] === 'Unknown' || form.value[key as keyof typeof form.value] === '')) {
+        (form.value as any)[key] = value;
+      }
+    };
+
+    // Fill from resistance profile
+    const resistance = details.resistance_profile;
+    if (resistance?.classification_code && resistance.classification_code !== 'DS') {
+      fillIfEmpty('drug_resistance', 'Yes');
+    }
+
+    // Fill from bacteria assessment
+    const bacteria = details.bacteria_assessment;
+    if (bacteria?.species) fillIfEmpty('bacteria_species', bacteria.species);
+
+    console.log('Pre-filled from previous diagnosis at hospital', latest.hospital_id);
+  } catch (error) {
+    console.error('Error fetching previous diagnosis:', error);
   }
 };
 
