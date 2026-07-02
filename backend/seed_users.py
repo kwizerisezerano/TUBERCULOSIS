@@ -191,6 +191,15 @@ sample_atc_drugs = [
     }
 ]
 
+def resolve_test_user_hospital(user_data, hospitals, default_hospital):
+    username = user_data.get("username", "")
+    if username.endswith("hosp2"):
+        return default_hospital
+    if username.endswith("hosp3"):
+        return hospitals[1] if len(hospitals) > 1 else default_hospital
+    return default_hospital
+
+
 def seed_users():
     # Import app only when needed
     from app import app
@@ -240,14 +249,16 @@ def seed_users():
             db.session.add(user)
             added += 1
         
-        # Seed test users - distribute across different hospitals for interoperability testing
-        for idx, user_data in enumerate(test_users):
+        # Seed test users - keep the same hospital for all hosp2 users and the same hospital for all hosp3 users
+        for user_data in test_users:
             existing = User.query.filter_by(email=user_data["email"]).first()
+            hospital = resolve_test_user_hospital(user_data, hospitals, default_hospital)
+
             if existing:
+                if existing.hospital_id != hospital.id:
+                    existing.hospital_id = hospital.id
+                    updated += 1
                 continue
-            
-            # Distribute test users across different hospitals
-            hospital = hospitals[idx % len(hospitals)]
             
             user = User(
                 username=user_data['username'],

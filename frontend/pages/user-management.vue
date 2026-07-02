@@ -72,66 +72,73 @@
 
       <!-- Users Table -->
       <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-3">
           <input
             v-model="searchQuery"
             type="text"
             placeholder="Search users..."
-            class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+            class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
           />
+          <select
+            v-model="selectedHospitalId"
+            class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+          >
+            <option value="">All Hospitals</option>
+            <option v-for="hospital in hospitalOptions" :key="hospital.id" :value="hospital.id">
+              {{ hospital.name }}
+            </option>
+          </select>
         </div>
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead class="bg-gray-50 dark:bg-gray-700/50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Created</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-              <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                <td class="px-6 py-4">
-                  <div class="flex items-center gap-3">
-                    <div class="h-10 w-10 rounded-full bg-primary-600 text-white flex items-center justify-center font-bold">
-                      {{ user.username.charAt(0).toUpperCase() }}
-                    </div>
-                    <div>
-                      <p class="font-medium text-gray-900 dark:text-white">{{ user.username }}</p>
-                      <p class="text-sm text-gray-500 dark:text-gray-400">{{ user.email }}</p>
-                    </div>
+        <div class="space-y-3">
+          <div v-for="group in groupedUsers" :key="group.hospitalId || 'unassigned'" class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-700/30">
+              <div>
+                <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ group.hospitalName }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ group.users.length }} user{{ group.users.length === 1 ? '' : 's' }}</p>
+              </div>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+                {{ group.hospitalName }}
+              </span>
+            </div>
+
+            <div class="divide-y divide-gray-200 dark:divide-gray-700">
+              <div v-for="user in group.users" :key="user.id" class="px-4 py-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                <div class="flex items-center gap-3">
+                  <div class="h-10 w-10 rounded-full bg-primary-600 text-white flex items-center justify-center font-bold">
+                    {{ user.username.charAt(0).toUpperCase() }}
                   </div>
-                </td>
-                <td class="px-6 py-4">
+                  <div>
+                    <p class="font-medium text-gray-900 dark:text-white">{{ user.username }}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ user.email }}</p>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 lg:justify-end">
                   <span :class="getRoleBadgeClass(user.role)" class="px-3 py-1 rounded-full text-xs font-medium">
                     {{ formatRole(user.role) }}
                   </span>
-                </td>
-                <td class="px-6 py-4">
                   <span :class="user.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'" class="px-3 py-1 rounded-full text-xs font-medium">
                     {{ user.is_active ? 'Active' : 'Inactive' }}
                   </span>
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                  {{ formatDate(user.created_at) }}
-                </td>
-                <td class="px-6 py-4">
-                  <button @click="editUser(user)" class="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 mr-3">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                    </svg>
-                  </button>
-                  <button @click="toggleUserStatus(user)" class="text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
-                    </svg>
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                  <span class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ formatDate(user.created_at) }}
+                  </span>
+                  <div class="flex items-center gap-2 ml-1">
+                    <button @click="editUser(user)" class="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                      </svg>
+                    </button>
+                    <button @click="toggleUserStatus(user)" class="text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -148,17 +155,54 @@ const API_BASE = config.public.apiBase
 
 const users = ref([])
 const searchQuery = ref('')
+const selectedHospitalId = ref('')
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const editingUser = ref(null)
 
+const hospitalOptions = computed(() => {
+  const seen = new Set()
+  return users.value.reduce((acc, user) => {
+    const hospital = user.hospital || null
+    const hospitalId = hospital?.id ?? ''
+    const hospitalName = hospital?.name || 'Unassigned Hospital'
+    if (!seen.has(hospitalId)) {
+      seen.add(hospitalId)
+      acc.push({ id: hospitalId, name: hospitalName })
+    }
+    return acc
+  }, [])
+})
+
 const filteredUsers = computed(() => {
-  if (!searchQuery.value) return users.value
   const query = searchQuery.value.toLowerCase()
-  return users.value.filter(u => 
-    u.username.toLowerCase().includes(query) || 
-    u.email.toLowerCase().includes(query)
-  )
+  return users.value.filter((u) => {
+    const matchesQuery = !query || u.username.toLowerCase().includes(query) || u.email.toLowerCase().includes(query)
+    const matchesHospital = !selectedHospitalId.value || String(u.hospital?.id ?? '') === String(selectedHospitalId.value)
+    return matchesQuery && matchesHospital
+  })
+})
+
+const groupedUsers = computed(() => {
+  const grouped = []
+  const groups = new Map()
+
+  filteredUsers.value.forEach((user) => {
+    const hospitalId = user.hospital?.id ?? 'unassigned'
+    const hospitalName = user.hospital?.name || 'Unassigned Hospital'
+    if (!groups.has(hospitalId)) {
+      groups.set(hospitalId, { hospitalId, hospitalName, users: [] })
+    }
+    groups.get(hospitalId).users.push(user)
+  })
+
+  groups.forEach((group) => {
+    group.users.sort((a, b) => a.username.localeCompare(b.username))
+    grouped.push(group)
+  })
+
+  grouped.sort((a, b) => a.hospitalName.localeCompare(b.hospitalName))
+  return grouped
 })
 
 const formatDate = (dateStr) => {

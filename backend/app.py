@@ -3735,10 +3735,10 @@ def patients():
         user_hospital_id = current_user.hospital_id if current_user else None
         
         # Check if search is an exact patient_id match for OTP workflow
-        # Only bypass hospital filter if the patient has active consent for this hospital
+        # NOTE: patient_id is encrypted — must use Python-level loop, not SQLAlchemy filter
         is_exact_patient_id_search = False
         if search and current_user and current_user.role in ['admin', 'doctor', 'hospital_admin']:
-            exact_patient_match = Patient.query.filter(Patient.patient_id == search).first()
+            exact_patient_match = next((p for p in Patient.query.all() if p.patient_id == search), None)
             if exact_patient_match and current_user.hospital_id:
                 # Only bypass hospital filter if patient is already associated with this hospital
                 # OR has active granted consent for this hospital
@@ -3793,26 +3793,18 @@ def patients():
         # Note: Cannot use ilike on encrypted fields (first_name, last_name, patient_id are properties)
         # Only exact patient_id matching is supported
         if search:
-            print(f"DEBUG: Searching for patient_id: {search}")
-            # Check if search is an exact patient_id match
-            # Need to search the raw encrypted column since property getter decrypts
-            exact_patient_match = None
-            for p in Patient.query.all():
-                if p.patient_id == search:
-                    exact_patient_match = p
-                    print(f"DEBUG: Found patient {p.patient_id} (id: {p.id})")
-                    break
-            
-            if exact_patient_match and current_user and current_user.role in ['admin', 'doctor', 'hospital_admin'] and is_exact_patient_id_search:
-                # Only allow direct access if patient is associated with this hospital or has active consent
-                # (is_exact_patient_id_search already verified this above)
-                print(f"DEBUG: Verified access for exact match")
+            # patient_id is encrypted — find via Python-level decryption, reuse match from above
+            if exact_patient_match is None:
+                exact_patient_match = next((p for p in Patient.query.all() if p.patient_id == search), None)
+            if exact_patient_match and is_exact_patient_id_search:
+                # Bypass hospital filter: patient is associated or has active consent
                 query = Patient.query.options(joinedload(Patient.hospitals)).filter(Patient.id == exact_patient_match.id)
+            elif exact_patient_match:
+                # Patient found but not accessible from this hospital — apply hospital filter (returns empty)
+                query = query.filter(Patient.id == exact_patient_match.id)
             else:
-                # For non-exact searches, we cannot search encrypted fields
-                # Only filter by exact patient_id if it matches (with hospital filter still applied)
-                print(f"DEBUG: No exact match or user not authorized, applying hospital filter")
-                query = query.filter(Patient.patient_id == search)
+                # No patient matches this ID at all
+                query = query.filter(Patient.id == -1)
         
         sort_mapping = {
             'id_asc': Patient.id.asc(),
