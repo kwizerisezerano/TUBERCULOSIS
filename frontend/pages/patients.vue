@@ -528,22 +528,11 @@ const visiblePages = computed(() => {
   return pages;
 });
 
-// Filter patients based on search and other filters
+// Filter patients based on non-search filters (search is handled server-side)
 const filteredPatients = computed(() => {
   let pts = patients.value;
   
-  // Apply search filter
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    pts = pts.filter(p => 
-      p.patient_id.toLowerCase().includes(query) ||
-      (p.first_name && p.first_name.toLowerCase().includes(query)) ||
-      (p.last_name && p.last_name.toLowerCase().includes(query)) ||
-      (p.city && p.city.toLowerCase().includes(query))
-    );
-  }
-  
-  // Apply hospital filter (admin only)
+  // Apply hospital filter (admin only) - client-side since it's a UI filter on already-loaded data
   if (selectedHospitalId.value) {
     const hid = Number(selectedHospitalId.value);
     pts = pts.filter(p => p.hospital_ids && p.hospital_ids.includes(hid));
@@ -569,6 +558,8 @@ const debounceLoadResults = () => {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     currentPage.value = 1;
+    // Always use API for search to enforce hospital-scoped results
+    loadPatientsViaAPI();
   }, 300) as unknown as number;
 };
 
@@ -688,7 +679,7 @@ const handlePatientsUpdate = (data: any) => {
   lowRiskPatients.value = low;
 };
 
-watch([currentPage, searchQuery, selectedHospitalId, thisHospitalOnly, showOnlySingleHospital], () => {
+watch([currentPage, selectedHospitalId, thisHospitalOnly, showOnlySingleHospital], () => {
   if (!isConnected.value) {
     loadPatientsViaAPI();
   }
