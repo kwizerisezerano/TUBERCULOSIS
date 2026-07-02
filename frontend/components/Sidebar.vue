@@ -49,6 +49,7 @@
           <div class="flex-1 min-w-0">
             <p class="font-semibold text-gray-900 dark:text-white text-sm truncate">{{ userDisplayName }}</p>
             <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ userSubtext }}</p>
+            <p v-if="hospitalLabel" class="text-[11px] text-gray-500 dark:text-gray-400 truncate">{{ hospitalLabel }}</p>
           </div>
           <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
@@ -118,6 +119,20 @@ const userSubtext = computed(() => {
   } else {
     return currentUser.value?.email || '';
   }
+});
+
+const hospitalLabel = computed(() => {
+  const hospital = (currentUser.value as any)?.hospital;
+  if (hospital?.name && hospital?.hospital_id) {
+    return `${hospital.name} • ID: ${hospital.hospital_id}`;
+  }
+  if (hospital?.name) {
+    return hospital.name;
+  }
+  if (currentUser.value?.hospital_id) {
+    return `Hospital ID: ${currentUser.value.hospital_id}`;
+  }
+  return '';
 });
 
 // Fetch unread alert count
