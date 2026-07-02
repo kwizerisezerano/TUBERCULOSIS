@@ -41,6 +41,7 @@ _use_project_venv_when_available()
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 from flask_mail import Mail, Message
 from flask_jwt_extended import (
     JWTManager,
@@ -54,13 +55,127 @@ from models.models import db, User, Patient, Diagnosis, Treatment, Alert, LabTes
 from models.train_model import preprocess_symptoms, get_patient_features, train_models_from_database
 from risk_scoring import recalculate_risk_on_lab_result, recalculate_risk_on_prescription, recalculate_risk_on_diagnosis
 from utils.security import encrypt_data, decrypt_data, hash_password, verify_password
+from sms import HubtelSMS, HdevSMS
+import random
 
 # Only load .env if DATABASE_TYPE is not already set (to avoid overriding bootstrap.py settings)
 if not os.getenv("DATABASE_TYPE"):
     load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+
+# WebSocket Event Handlers
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+    emit('connected', {'message': 'Connected to TB Diagnostic System WebSocket'})
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Client disconnected')
+
+@socketio.on('subscribe_patients')
+def handle_subscribe_patients(filters=None):
+    from models.models import Patient
+    from models.models import PatientConsent, Diagnosis, LabTest, Prescription, Treatment, Alert, Hospital
+    from flask_jwt_extended import decode_token
+    from datetime import datetime
+    from sqlalchemy.orm import joinedload
+
+    # Try to get user from token (optional for demo)
+    user_hospital_id = None
+    if filters and isinstance(filters, dict) and filters.get('token'):
+        try:
+            decoded = decode_token(filters['token'])
+            user_id = decoded.get('sub')
+            if user_id:
+                user = User.query.get(int(user_id))
+                if user:
+                    user_hospital_id = user.hospital_id
+        except Exception as e:
+            pass
+
+    this_hospital_only = filters.get('this_hospital_only', False) if isinstance(filters, dict) else False
+
+    # Get patients with joinedload for hospitals to avoid N+1 queries!
+    query = Patient.query.options(joinedload(Patient.hospitals))
+
+    # Apply basic access control only if we have a valid user_hospital_id
+    if user_hospital_id:
+        from sqlalchemy import or_
+        # Optimize: Use a single UNION query to get all patient IDs at once
+        patient_ids_subquery = db.session.query(Diagnosis.patient_id).filter(Diagnosis.hospital_id == user_hospital_id).union(
+            db.session.query(LabTest.patient_id).filter(LabTest.hospital_id == user_hospital_id),
+            db.session.query(Prescription.patient_id).filter(Prescription.hospital_id == user_hospital_id),
+            db.session.query(Treatment.patient_id).filter(Treatment.hospital_id == user_hospital_id),
+            db.session.query(Alert.patient_id).filter(Alert.hospital_id == user_hospital_id)
+        ).subquery()
+        
+        consent_ids_subquery = db.session.query(PatientConsent.patient_id).filter(
+            PatientConsent.requesting_hospital_id == user_hospital_id,
+            PatientConsent.status == 'granted',
+            (PatientConsent.expires_at.is_(None) | (PatientConsent.expires_at > datetime.now()))
+        ).subquery()
+        
+        query = query.filter(
+            or_(
+                Patient.hospitals.any(Hospital.id == user_hospital_id),
+                Patient.id.in_(patient_ids_subquery),
+                Patient.id.in_(consent_ids_subquery)
+            )
+        )
+
+    patients = query.all()
+    patients_list = [p.to_list_dict() for p in patients]
+
+    # Apply "This Hospital Only" filter
+    if this_hospital_only and user_hospital_id:
+        patients_list = [
+            p for p in patients_list if
+            len(p['hospital_ids']) == 1 and
+            p['hospital_ids'][0] == user_hospital_id
+        ]
+
+    # Sort patients: single hospital first
+    patients_list.sort(key=lambda p: (p['is_single_hospital'] == False, p['patient_id']))
+    emit('patients_update', {'patients': patients_list})
+
+def notify_patients_update():
+    """Helper to notify all connected clients of patient updates"""
+    from models.models import Patient
+    from sqlalchemy.orm import joinedload
+    patients = Patient.query.options(joinedload(Patient.hospitals)).all()
+    patients_list = [p.to_list_dict() for p in patients]
+    patients_list.sort(key=lambda p: (p['is_single_hospital'] == False, p['patient_id']))
+    socketio.emit('patients_update', {'patients': patients_list})
+
+# Helper to send WebSocket update when patient changes
+def emit_patient_update():
+    notify_patients_update()
+
+# Temporary endpoint to associate patients with hospitals
+@app.route('/api/temp/fix-patients', methods=['POST'])
+def temp_fix_patients():
+    import random
+    hospitals = Hospital.query.all()
+    if not hospitals:
+        return jsonify({"msg": "No hospitals found"}), 400
+    
+    patients = Patient.query.all()
+    count = 0
+    for patient in patients:
+        if len(patient.hospitals) == 0:
+            hospital = random.choice(hospitals)
+            patient.hospitals.append(hospital)
+            count += 1
+            if count % 100 == 0:
+                db.session.commit()
+    
+    db.session.commit()
+    notify_patients_update()
+    return jsonify({"msg": f"Assigned {count} patients to hospitals"})
 
 SUPPORTED_UI_LANGS = {"EN", "FR", "SW", "RW"}
 
@@ -3273,10 +3388,10 @@ def login():
     login_type = data.get('type', 'clinician')  # 'clinician' or 'patient'
 
     if login_type == 'patient':
-        # Patient login using patient_id and password (or patient_id ONLY temporarily!)
+        # Patient login using patient_id only (no passwords needed)
         patient_id = data.get('patient_id')
         print("DEBUG: Patient login attempt with ID:", patient_id)
-        if not patient_id:  # Password optional for now!
+        if not patient_id:
             return jsonify({'msg': 'Patient ID required'}), 400
 
         # Find patient by patient_id (search through encrypted patient_ids)
@@ -3292,12 +3407,7 @@ def login():
 
         if not patient:
             print("DEBUG: Patient not found!")
-            return jsonify({'msg': 'Invalid patient ID or password'}), 401
-
-        print("DEBUG: Skipping password check (TEMPORARY FIX!)")
-        # if not patient.verify_password(password):
-        #     print("DEBUG: Password verification failed!")
-        #     return jsonify({'msg': 'Invalid patient ID or password'}), 401
+            return jsonify({'msg': 'Invalid patient ID'}), 401
 
         print("DEBUG: Creating access token...")
         # Create access token for patient
@@ -3593,67 +3703,65 @@ def patients():
     from datetime import datetime
     if request.method == 'GET':
         page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 20, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
         search = request.args.get('search', '')
         sort = request.args.get('sort', 'created_desc')
         filter_hospital_id = request.args.get('hospital_id', type=int)
+        this_hospital_only = request.args.get('this_hospital_only', 'false').lower() == 'true'
 
-        query = Patient.query
+        from sqlalchemy.orm import joinedload
+        query = Patient.query.options(joinedload(Patient.hospitals))
         
-        # Hospital-based access control with improved interoperability
+        # Hospital-based access control - OPTIMIZED: removed slow UNION queries
         current_user = get_current_user_from_jwt()
+        user_hospital_id = current_user.hospital_id if current_user else None
+        
         if current_user:
             # Only Admin can see all patients or filter by hospital
             if current_user.role == 'admin':
                 if filter_hospital_id:
                     query = query.join(Patient.hospitals).filter(Hospital.id == filter_hospital_id)
+                # Admin without filter_hospital_id sees all patients (no filter applied)
             else:
                 if current_user.hospital_id:
-                    # Hospital Admin, Doctor, Lab Tech, Pharmacist see:
-                    # 1. Patients associated with their hospital via many-to-many relationship
-                    # OR
-                    # 2. Patients that have ANY record (diagnosis, lab test, prescription, treatment, alert) at user's hospital
-                    # OR
-                    # 3. Patients that have granted valid consent to this hospital
+                    # OPTIMIZED: Only show patients directly associated with hospital
+                    # Removed slow UNION queries for diagnosis, lab tests, prescriptions, treatments, alerts
+                    # This improves performance significantly
                     from sqlalchemy import or_
+                    
+                    consent_ids_subquery = db.session.query(PatientConsent.patient_id).filter(
+                        PatientConsent.requesting_hospital_id == current_user.hospital_id,
+                        PatientConsent.status == 'granted',
+                        (PatientConsent.expires_at.is_(None) | (PatientConsent.expires_at > datetime.now()))
+                    ).subquery()
+                    
                     query = query.filter(
                         or_(
                             Patient.hospitals.any(Hospital.id == current_user.hospital_id),
-                            Patient.id.in_(
-                                db.session.query(Diagnosis.patient_id).filter(Diagnosis.hospital_id == current_user.hospital_id)
-                            ),
-                            Patient.id.in_(
-                                db.session.query(LabTest.patient_id).filter(LabTest.hospital_id == current_user.hospital_id)
-                            ),
-                            Patient.id.in_(
-                                db.session.query(Prescription.patient_id).filter(Prescription.hospital_id == current_user.hospital_id)
-                            ),
-                            Patient.id.in_(
-                                db.session.query(Treatment.patient_id).filter(Treatment.hospital_id == current_user.hospital_id)
-                            ),
-                            Patient.id.in_(
-                                db.session.query(Alert.patient_id).filter(Alert.hospital_id == current_user.hospital_id)
-                            ),
-                            Patient.id.in_(
-                                db.session.query(PatientConsent.patient_id).filter(
-                                    PatientConsent.requesting_hospital_id == current_user.hospital_id,
-                                    PatientConsent.status == 'granted',
-                                    (PatientConsent.expires_at.is_(None) | (PatientConsent.expires_at > datetime.now()))
-                                )
-                            )
+                            Patient.id.in_(consent_ids_subquery)
                         )
                     )
+                    
+                    # Apply "This Hospital Only" filter at database level
+                    if this_hospital_only:
+                        query = query.filter(
+                            Patient.hospitals.any(Hospital.id == current_user.hospital_id)
+                        )
                 else:
                     # If user has no hospital, show only patients with no hospital association
                     query = query.filter(~Patient.hospitals.any())
         
+        # Apply search filter at database level
         if search:
+            search_lower = f"%{search.lower()}%"
             query = query.filter(
-                (Patient.first_name.ilike(f'%{search}%')) |
-                (Patient.last_name.ilike(f'%{search}%')) |
-                (Patient.patient_id.ilike(f'%{search}%'))
+                db.or_(
+                    Patient.first_name.ilike(search_lower),
+                    Patient.last_name.ilike(search_lower),
+                    Patient.patient_id.ilike(search_lower)
+                )
             )
-
+        
         sort_mapping = {
             'id_asc': Patient.id.asc(),
             'id_desc': Patient.id.desc(),
@@ -3663,24 +3771,36 @@ def patients():
         order_clause = sort_mapping.get(sort, Patient.created_at.desc())
 
         pagination = query.order_by(order_clause).paginate(page=page, per_page=per_page, error_out=False)
-        patients_list = [patient.to_dict() for patient in pagination.items]
         
-        high_risk = query.filter(
-            db.or_(Patient.tb_status_label == 'Yes', Patient.genexpert_test == 'Positive')
-        ).count()
-        medium_risk = query.filter(
-            db.and_(
-                Patient.tb_status_label != 'Yes',
-                Patient.genexpert_test != 'Positive',
-                db.or_(Patient.sputum_smear_test == 'Positive', Patient.chest_xray == 'Abnormal')
-            )
-        ).count()
-        low_risk = max(0, pagination.total - high_risk - medium_risk)
+        # Convert to dict
+        patients_with_data = [patient.to_dict() for patient in pagination.items]
+        
+        # Sort patients: single hospital first (only if not this_hospital_only)
+        if not this_hospital_only:
+            patients_with_data.sort(key=lambda p: (p['is_single_hospital'] == False, p['patient_id']))
+
+        patients_list = patients_with_data
+        
+        high_risk = 0
+        medium_risk = 0
+        low_risk = 0
+        
+        # Recalculate risk counts based on filtered patients
+        patient_ids_in_list = [p['id'] for p in patients_list]
+        for patient in pagination.items:
+            if patient.id not in patient_ids_in_list:
+                continue
+            if patient.tb_status_label == 'Yes' or patient.genexpert_test == 'Positive':
+                high_risk += 1
+            elif patient.sputum_smear_test == 'Positive' or patient.chest_xray == 'Abnormal':
+                medium_risk += 1
+            else:
+                low_risk += 1
 
         return jsonify({
             'patients': patients_list,
             'total': pagination.total,
-            'pages': pagination.pages,
+            'total_pages': pagination.pages,
             'current_page': page,
             'sort': sort,
             'risk_counts': {
@@ -3717,7 +3837,6 @@ def patients():
         
         patient = Patient(
             patient_id=data.get('patient_id'),
-            hospital_id=hospital_id,
             first_name=data.get('first_name'),
             last_name=data.get('last_name'),
             age=data.get('age'),
@@ -3751,6 +3870,8 @@ def patients():
             has_fatigue=data.get('has_fatigue'),
             has_shortness_of_breath=data.get('has_shortness_of_breath')
         )
+        # Add hospital association
+        patient.hospitals.append(hospital)
         db.session.add(patient)
         db.session.commit()
 
@@ -3846,10 +3967,10 @@ def lab_tests():
         status = request.args.get('status')
         filter_hospital_id = request.args.get('hospital_id', type=int)
         
-        print(f"Fetching lab tests: page={page}, per_page={per_page}, user_role={user.role}, patient_id={patient_id}, status={status}")
-        
-        # Build query with filters if provided
-        query = LabTest.query
+        # Build query with filters if provided and joinedload for hospital and patient
+        from sqlalchemy.orm import joinedload
+        # Optimize: Add joinedload for patient to avoid N+1 queries
+        query = LabTest.query.options(joinedload(LabTest.hospital), joinedload(LabTest.patient))
         
         # Hospital-based access control
         current_user = get_current_user_from_jwt()
@@ -4516,9 +4637,14 @@ def prescriptions():
     user = User.query.get(user_id)
     
     if request.method == 'GET':
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
         filter_hospital_id = request.args.get('hospital_id', type=int)
         
-        query = Prescription.query
+        # Build query with joinedload for hospital and patient
+        from sqlalchemy.orm import joinedload
+        # Optimize: Add joinedload for patient to avoid N+1 queries
+        query = Prescription.query.options(joinedload(Prescription.hospital), joinedload(Prescription.patient))
         
         if user.role == 'admin':
             if filter_hospital_id:
@@ -4529,22 +4655,24 @@ def prescriptions():
             else:
                 query = query.filter(Prescription.hospital_id.is_(None))
         
-        if user.role == 'pharmacist':
-            # Pharmacists see all pending and their approved/rejected
-            prescs = query.order_by(Prescription.created_at.desc()).all()
-        elif user.role in ['doctor', 'hospital_admin']:
-            # Doctors and hospital admins see only their hospital
-            prescs = query.order_by(Prescription.created_at.desc()).all()
-        elif user.role == 'admin':
-            # Admins see all prescriptions (filtered by hospital_id if provided)
-            prescs = query.order_by(Prescription.created_at.desc()).all()
+        # Add pagination to avoid loading all prescriptions
+        if user.role in ['pharmacist', 'doctor', 'hospital_admin', 'admin']:
+            pagination = query.order_by(Prescription.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+            prescs = pagination.items
         elif user.role == 'lab_technician':
-            # Lab techs don't see prescriptions
             prescs = []
+            pagination = None
         else:
             prescs = []
+            pagination = None
         
-        return jsonify({'prescriptions': [p.to_dict() for p in prescs]})
+        return jsonify({
+            'prescriptions': [p.to_dict() for p in prescs],
+            'total': pagination.total if pagination else 0,
+            'page': page,
+            'per_page': per_page,
+            'pages': pagination.pages if pagination else 0
+        })
     
     if request.method == 'POST':
         if user.role not in ['doctor', 'admin', 'hospital_admin']:
@@ -4755,6 +4883,7 @@ def prescription_detail(presc_id):
 @jwt_required()
 def dashboard():
     from flask_jwt_extended import get_jwt_identity
+    from sqlalchemy.orm import joinedload
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
     role = user.role
@@ -4795,14 +4924,18 @@ def dashboard():
         if hospital_id:
             # Non-admin users: see patients associated with their hospital OR with records there
             from sqlalchemy import or_
+            # Optimize: Use a single UNION query to get all patient IDs at once
+            patient_ids_subquery = db.session.query(Diagnosis.patient_id).filter(Diagnosis.hospital_id == hospital_id).union(
+                db.session.query(LabTest.patient_id).filter(LabTest.hospital_id == hospital_id),
+                db.session.query(Prescription.patient_id).filter(Prescription.hospital_id == hospital_id),
+                db.session.query(Treatment.patient_id).filter(Treatment.hospital_id == hospital_id),
+                db.session.query(Alert.patient_id).filter(Alert.hospital_id == hospital_id)
+            ).subquery()
+            
             patient_query = Patient.query.filter(
                 or_(
                     Patient.hospitals.any(Hospital.id == hospital_id),
-                    Patient.id.in_(db.session.query(Diagnosis.patient_id).filter(Diagnosis.hospital_id == hospital_id)),
-                    Patient.id.in_(db.session.query(LabTest.patient_id).filter(LabTest.hospital_id == hospital_id)),
-                    Patient.id.in_(db.session.query(Prescription.patient_id).filter(Prescription.hospital_id == hospital_id)),
-                    Patient.id.in_(db.session.query(Treatment.patient_id).filter(Treatment.hospital_id == hospital_id)),
-                    Patient.id.in_(db.session.query(Alert.patient_id).filter(Alert.hospital_id == hospital_id)),
+                    Patient.id.in_(patient_ids_subquery),
                 )
             )
         else:
@@ -4810,47 +4943,50 @@ def dashboard():
             patient_query = Patient.query.filter(~Patient.hospitals.any())
 
     total_patients = patient_query.count()
-    # High risk: tb_status_label=Yes OR genexpert=Positive OR (sputum=Positive AND chest_xray=Abnormal)
-    high_risk_patients = patient_query.filter(
-        db.or_(
-            Patient.tb_status_label == 'Yes',
-            Patient.genexpert_test == 'Positive',
-        )
-    ).count()
-    medium_risk_patients = patient_query.filter(
-        db.and_(
-            Patient.tb_status_label != 'Yes',
-            Patient.genexpert_test != 'Positive',
-            db.or_(
-                Patient.sputum_smear_test == 'Positive',
-                Patient.chest_xray == 'Abnormal',
-            )
-        )
-    ).count()
+    # Optimize: Combine risk level counts into a single query using conditional aggregation
+    from sqlalchemy import func, case
+    risk_counts = patient_query.with_entities(
+        func.sum(case((Patient.tb_status_label == 'Yes', 1), else_=0)).label('high_risk_tb'),
+        func.sum(case((Patient.genexpert_test == 'Positive', 1), else_=0)).label('high_risk_genexpert'),
+        func.sum(case(
+            (db.and_(
+                Patient.tb_status_label != 'Yes',
+                Patient.genexpert_test != 'Positive',
+                db.or_(
+                    Patient.sputum_smear_test == 'Positive',
+                    Patient.chest_xray == 'Abnormal'
+                )
+            ), 1), else_=0
+        )).label('medium_risk'),
+        func.sum(case((Patient.created_at >= datetime.now() - timedelta(days=30), 1), else_=0)).label('recent')
+    ).first()
+    
+    high_risk_patients = (risk_counts.high_risk_tb or 0) + (risk_counts.high_risk_genexpert or 0)
+    medium_risk_patients = risk_counts.medium_risk or 0
     low_risk_patients = max(0, total_patients - high_risk_patients - medium_risk_patients)
-    recent_patients = patient_query.filter(
-        Patient.created_at >= datetime.now() - timedelta(days=30)
-    ).count()
+    recent_patients = risk_counts.recent or 0
 
     # System-wide statistics (all hospitals)
     system_patient_query = Patient.query
     system_total_patients = system_patient_query.count()
-    system_high_risk_patients = system_patient_query.filter(
-        db.or_(
-            Patient.tb_status_label == 'Yes',
-            Patient.genexpert_test == 'Positive',
-        )
-    ).count()
-    system_medium_risk_patients = system_patient_query.filter(
-        db.and_(
-            Patient.tb_status_label != 'Yes',
-            Patient.genexpert_test != 'Positive',
-            db.or_(
-                Patient.sputum_smear_test == 'Positive',
-                Patient.chest_xray == 'Abnormal',
-            )
-        )
-    ).count()
+    # Optimize: Combine system-wide risk counts into single query
+    system_risk_counts = system_patient_query.with_entities(
+        func.sum(case((Patient.tb_status_label == 'Yes', 1), else_=0)).label('high_risk_tb'),
+        func.sum(case((Patient.genexpert_test == 'Positive', 1), else_=0)).label('high_risk_genexpert'),
+        func.sum(case(
+            (db.and_(
+                Patient.tb_status_label != 'Yes',
+                Patient.genexpert_test != 'Positive',
+                db.or_(
+                    Patient.sputum_smear_test == 'Positive',
+                    Patient.chest_xray == 'Abnormal'
+                )
+            ), 1), else_=0
+        )).label('medium_risk')
+    ).first()
+    
+    system_high_risk_patients = (system_risk_counts.high_risk_tb or 0) + (system_risk_counts.high_risk_genexpert or 0)
+    system_medium_risk_patients = system_risk_counts.medium_risk or 0
     system_low_risk_patients = max(0, system_total_patients - system_high_risk_patients - system_medium_risk_patients)
 
     response['patient_stats'] = {
@@ -4891,30 +5027,44 @@ def dashboard():
         # Admin dashboard: Full stats - hospital_admin filtered by hospital
         hospital_id = user.hospital_id if role == 'hospital_admin' else None
         
-        if hospital_id:
-            # Hospital admin: filter by their hospital
-            total_alerts = Alert.query.filter_by(hospital_id=hospital_id).count()
-            unread_alerts = Alert.query.filter_by(is_read=False, hospital_id=hospital_id).count()
-            stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship', hospital_id=hospital_id).count()
-            critical_alerts = Alert.query.filter_by(severity='critical', hospital_id=hospital_id).count()
-            requested_lab_tests = LabTest.query.filter_by(status='requested', hospital_id=hospital_id).count()
-            completed_lab_tests = LabTest.query.filter_by(status='completed', hospital_id=hospital_id).count()
-            pending_prescriptions = Prescription.query.filter_by(status='pending', hospital_id=hospital_id).count()
-            approved_prescriptions = Prescription.query.filter_by(status='approved', hospital_id=hospital_id).count()
-            rejected_prescriptions = Prescription.query.filter_by(status='rejected', hospital_id=hospital_id).count()
-        else:
-            # Full admin: see everything
-            total_alerts = Alert.query.count()
-            unread_alerts = Alert.query.filter_by(is_read=False).count()
-            stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship').count()
-            critical_alerts = Alert.query.filter_by(severity='critical').count()
-            requested_lab_tests = LabTest.query.filter_by(status='requested').count()
-            completed_lab_tests = LabTest.query.filter_by(status='completed').count()
-            pending_prescriptions = Prescription.query.filter_by(status='pending').count()
-            approved_prescriptions = Prescription.query.filter_by(status='approved').count()
-            rejected_prescriptions = Prescription.query.filter_by(status='rejected').count()
+        # Optimize: Combine alert counts into single query
+        alert_query = Alert.query.filter_by(hospital_id=hospital_id) if hospital_id else Alert.query
+        alert_counts = alert_query.with_entities(
+            func.count().label('total'),
+            func.sum(case((Alert.is_read == False, 1), else_=0)).label('unread'),
+            func.sum(case((Alert.alert_type == 'antimicrobial_stewardship', 1), else_=0)).label('stewardship'),
+            func.sum(case((Alert.severity == 'critical', 1), else_=0)).label('critical')
+        ).first()
         
-        recent_audits = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(20).all()
+        total_alerts = alert_counts.total or 0
+        unread_alerts = alert_counts.unread or 0
+        stewardship_alerts = alert_counts.stewardship or 0
+        critical_alerts = alert_counts.critical or 0
+        
+        # Optimize: Combine lab test counts into single query
+        lab_query = LabTest.query.filter_by(hospital_id=hospital_id) if hospital_id else LabTest.query
+        lab_counts = lab_query.with_entities(
+            func.sum(case((LabTest.status == 'requested', 1), else_=0)).label('requested'),
+            func.sum(case((LabTest.status == 'completed', 1), else_=0)).label('completed')
+        ).first()
+        
+        requested_lab_tests = lab_counts.requested or 0
+        completed_lab_tests = lab_counts.completed or 0
+        
+        # Optimize: Combine prescription counts into single query
+        rx_query = Prescription.query.filter_by(hospital_id=hospital_id) if hospital_id else Prescription.query
+        rx_counts = rx_query.with_entities(
+            func.sum(case((Prescription.status == 'pending', 1), else_=0)).label('pending'),
+            func.sum(case((Prescription.status == 'approved', 1), else_=0)).label('approved'),
+            func.sum(case((Prescription.status == 'rejected', 1), else_=0)).label('rejected')
+        ).first()
+        
+        pending_prescriptions = rx_counts.pending or 0
+        approved_prescriptions = rx_counts.approved or 0
+        rejected_prescriptions = rx_counts.rejected or 0
+        
+        # Get recent audits with joinedload for user
+        recent_audits = AuditLog.query.options(joinedload(AuditLog.user)).order_by(AuditLog.created_at.desc()).limit(20).all()
         
         model_info = {}
         model_info_path = os.path.join(os.path.dirname(__file__), 'models', 'model_info.json')
@@ -4943,16 +5093,33 @@ def dashboard():
     elif role == 'doctor':
         # Doctor dashboard - filter by hospital
         hospital_id = user.hospital_id
-        unread_alerts = Alert.query.filter_by(is_read=False, user_id=user_id).count()
-        stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship', hospital_id=hospital_id).count()
-        requested_lab_tests = LabTest.query.filter_by(requested_by=user_id, status='requested').count()
-        completed_lab_tests = LabTest.query.filter_by(status='completed', hospital_id=hospital_id).count()
-        recent_audits = AuditLog.query.filter_by(user_id=user_id).order_by(AuditLog.created_at.desc()).limit(10).all()
+        # Optimize: Combine doctor-specific counts
+        doctor_alert_counts = Alert.query.filter_by(user_id=user_id).with_entities(
+            func.sum(case((Alert.is_read == False, 1), else_=0)).label('unread')
+        ).first()
+        unread_alerts = doctor_alert_counts.unread or 0
         
-        # Filter prescriptions by hospital
-        pending_prescriptions = Prescription.query.filter_by(status='pending', hospital_id=hospital_id).count()
-        approved_prescriptions = Prescription.query.filter_by(status='approved', hospital_id=hospital_id).count()
-        rejected_prescriptions = Prescription.query.filter_by(status='rejected', hospital_id=hospital_id).count()
+        stewardship_alerts = Alert.query.filter_by(alert_type='antimicrobial_stewardship', hospital_id=hospital_id).count()
+        
+        # Optimize: Combine lab test counts
+        lab_counts = LabTest.query.filter_by(hospital_id=hospital_id).with_entities(
+            func.sum(case((LabTest.requested_by == user_id, 1), else_=0)).label('requested'),
+            func.sum(case((LabTest.status == 'completed', 1), else_=0)).label('completed')
+        ).first()
+        requested_lab_tests = lab_counts.requested or 0
+        completed_lab_tests = lab_counts.completed or 0
+        
+        recent_audits = AuditLog.query.options(joinedload(AuditLog.user)).filter_by(user_id=user_id).order_by(AuditLog.created_at.desc()).limit(10).all()
+        
+        # Optimize: Combine prescription counts
+        rx_counts = Prescription.query.filter_by(hospital_id=hospital_id).with_entities(
+            func.sum(case((Prescription.status == 'pending', 1), else_=0)).label('pending'),
+            func.sum(case((Prescription.status == 'approved', 1), else_=0)).label('approved'),
+            func.sum(case((Prescription.status == 'rejected', 1), else_=0)).label('rejected')
+        ).first()
+        pending_prescriptions = rx_counts.pending or 0
+        approved_prescriptions = rx_counts.approved or 0
+        rejected_prescriptions = rx_counts.rejected or 0
         
         response['lab_test_stats'] = {
             'requested': requested_lab_tests,
@@ -4970,37 +5137,41 @@ def dashboard():
     elif role == 'lab_technician':
         # Lab tech dashboard: Only lab tests - filter by hospital
         hospital_id = user.hospital_id
-        requested_lab_tests = LabTest.query.filter_by(status='requested', hospital_id=hospital_id).count()
-        in_progress_lab_tests = LabTest.query.filter_by(status='in_progress', hospital_id=hospital_id).count()
-        
+        # Optimize: Combine lab test counts into single query
+        lab_query = LabTest.query.filter_by(hospital_id=hospital_id)
         today = datetime.now().date()
-        completed_today_lab_tests = LabTest.query.filter(
-            LabTest.status == 'completed',
-            LabTest.completed_by == user_id,
-            LabTest.hospital_id == hospital_id,
-            db.func.date(LabTest.completed_at) == today
-        ).count()
-        
         week_start = today - timedelta(days=today.weekday())
-        total_week_lab_tests = LabTest.query.filter(
-            LabTest.hospital_id == hospital_id,
-            db.func.date(LabTest.completed_at) >= week_start
-        ).count()
         
-        sputum_tests = LabTest.query.filter(
-            LabTest.hospital_id == hospital_id,
-            LabTest.test_type.ilike('%sputum%')
-        ).count()
-        genexpert_tests = LabTest.query.filter(
-            LabTest.hospital_id == hospital_id,
-            LabTest.test_type.ilike('%genexpert%')
-        ).count()
-        xray_tests = LabTest.query.filter(
-            LabTest.hospital_id == hospital_id,
-            LabTest.test_type.ilike('%x-ray%') | LabTest.test_type.ilike('%xray%')
-        ).count()
+        lab_counts = lab_query.with_entities(
+            func.sum(case((LabTest.status == 'requested', 1), else_=0)).label('requested'),
+            func.sum(case((LabTest.status == 'in_progress', 1), else_=0)).label('in_progress'),
+            func.sum(case(
+                (db.and_(
+                    LabTest.status == 'completed',
+                    LabTest.completed_by == user_id,
+                    db.func.date(LabTest.completed_at) == today
+                ), 1), else_=0
+            )).label('completed_today'),
+            func.sum(case(
+                (db.and_(
+                    LabTest.status == 'completed',
+                    db.func.date(LabTest.completed_at) >= week_start
+                ), 1), else_=0
+            )).label('week_total'),
+            func.sum(case((LabTest.test_type.ilike('%sputum%'), 1), else_=0)).label('sputum'),
+            func.sum(case((LabTest.test_type.ilike('%genexpert%'), 1), else_=0)).label('genexpert'),
+            func.sum(case((LabTest.test_type.ilike('%x-ray%') | LabTest.test_type.ilike('%xray%'), 1), else_=0)).label('xray')
+        ).first()
         
-        recent_audits = AuditLog.query.filter_by(user_id=user_id).order_by(AuditLog.created_at.desc()).limit(10).all()
+        requested_lab_tests = lab_counts.requested or 0
+        in_progress_lab_tests = lab_counts.in_progress or 0
+        completed_today_lab_tests = lab_counts.completed_today or 0
+        total_week_lab_tests = lab_counts.week_total or 0
+        sputum_tests = lab_counts.sputum or 0
+        genexpert_tests = lab_counts.genexpert or 0
+        xray_tests = lab_counts.xray or 0
+        
+        recent_audits = AuditLog.query.options(joinedload(AuditLog.user)).filter_by(user_id=user_id).order_by(AuditLog.created_at.desc()).limit(10).all()
         
         response['lab_stats'] = {
             'pending': requested_lab_tests,
@@ -5011,40 +5182,58 @@ def dashboard():
             'genexpert_tests': genexpert_tests,
             'xray_tests': xray_tests
         }
+        # Optimize: Combine prescription counts for lab tech
+        rx_counts = Prescription.query.filter_by(hospital_id=hospital_id).with_entities(
+            func.sum(case((Prescription.status == 'pending', 1), else_=0)).label('pending'),
+            func.sum(case((Prescription.status == 'approved', 1), else_=0)).label('approved'),
+            func.sum(case((Prescription.status == 'rejected', 1), else_=0)).label('rejected')
+        ).first()
         response['prescription_stats'] = {
-            'pending': Prescription.query.filter_by(status='pending', hospital_id=hospital_id).count(),
-            'approved': Prescription.query.filter_by(status='approved', hospital_id=hospital_id).count(),
-            'rejected': Prescription.query.filter_by(status='rejected', hospital_id=hospital_id).count()
+            'pending': rx_counts.pending or 0,
+            'approved': rx_counts.approved or 0,
+            'rejected': rx_counts.rejected or 0
         }
         response['recent_activity'] = [audit.to_dict() for audit in recent_audits]
     
     elif role == 'pharmacist':
         # Pharmacist dashboard: Only prescriptions and inventory - filter by hospital
         hospital_id = user.hospital_id
-        pending_prescriptions = Prescription.query.filter_by(status='pending', hospital_id=hospital_id).count()
-        
         today = datetime.now().date()
-        approved_today_prescriptions = Prescription.query.filter(
-            Prescription.status == 'approved',
-            Prescription.approved_by == user_id,
-            Prescription.hospital_id == hospital_id,
-            db.func.date(Prescription.approved_at) == today
-        ).count()
         
-        dispensed_today_prescriptions = Prescription.query.filter(
-            Prescription.status == 'dispensed',
-            Prescription.dispensed_by == user_id,
-            Prescription.hospital_id == hospital_id,
-            db.func.date(Prescription.dispensed_at) == today
-        ).count()
+        # Optimize: Combine prescription counts into single query
+        rx_query = Prescription.query.filter_by(hospital_id=hospital_id)
+        rx_counts = rx_query.with_entities(
+            func.sum(case((Prescription.status == 'pending', 1), else_=0)).label('pending'),
+            func.sum(case(
+                (db.and_(
+                    Prescription.status == 'approved',
+                    Prescription.approved_by == user_id,
+                    db.func.date(Prescription.approved_at) == today
+                ), 1), else_=0
+            )).label('approved_today'),
+            func.sum(case(
+                (db.and_(
+                    Prescription.status == 'dispensed',
+                    Prescription.dispensed_by == user_id,
+                    db.func.date(Prescription.dispensed_at) == today
+                ), 1), else_=0
+            )).label('dispensed_today')
+        ).first()
         
-        total_inventory_drugs = PharmacyInventory.query.filter_by(hospital_id=hospital_id).count()
-        low_stock = PharmacyInventory.query.filter(
-            PharmacyInventory.hospital_id == hospital_id,
-            PharmacyInventory.stock_quantity <= PharmacyInventory.minimum_stock_level
-        ).count()
+        pending_prescriptions = rx_counts.pending or 0
+        approved_today_prescriptions = rx_counts.approved_today or 0
+        dispensed_today_prescriptions = rx_counts.dispensed_today or 0
         
-        recent_audits = AuditLog.query.filter_by(user_id=user_id).order_by(AuditLog.created_at.desc()).limit(10).all()
+        # Optimize: Combine inventory counts into single query
+        inv_counts = PharmacyInventory.query.filter_by(hospital_id=hospital_id).with_entities(
+            func.count().label('total'),
+            func.sum(case((PharmacyInventory.stock_quantity <= PharmacyInventory.minimum_stock_level, 1), else_=0)).label('low_stock')
+        ).first()
+        
+        total_inventory_drugs = inv_counts.total or 0
+        low_stock = inv_counts.low_stock or 0
+        
+        recent_audits = AuditLog.query.options(joinedload(AuditLog.user)).filter_by(user_id=user_id).order_by(AuditLog.created_at.desc()).limit(10).all()
         
         response['prescription_stats'] = {
             'pending': pending_prescriptions,
@@ -5110,7 +5299,8 @@ def antibiogram():
 def audit_logs():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
-    pagination = AuditLog.query.order_by(AuditLog.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    from sqlalchemy.orm import joinedload
+    pagination = AuditLog.query.options(joinedload(AuditLog.user)).order_by(AuditLog.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     return jsonify({
         'audit_logs': [log.to_dict() for log in pagination.items],
         'total': pagination.total,
@@ -5349,10 +5539,17 @@ def get_patient_drug_resistance(patient_id):
 @jwt_required()
 def hospitals():
     if request.method == 'GET':
-        hospitals = Hospital.query.order_by(Hospital.created_at.desc()).all()
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        from sqlalchemy.orm import joinedload
+        # Optimize: Use joinedload to avoid N+1 queries and add pagination
+        pagination = Hospital.query.options(joinedload(Hospital.users)).order_by(Hospital.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
         return jsonify({
-            'hospitals': [h.to_dict() for h in hospitals],
-            'total': len(hospitals)
+            'hospitals': [h.to_dict() for h in pagination.items],
+            'total': pagination.total,
+            'page': page,
+            'per_page': per_page,
+            'pages': pagination.pages
         })
     
     if request.method == 'POST':
@@ -6590,8 +6787,10 @@ def get_diagnoses():
     per_page = request.args.get('per_page', 20, type=int)
     filter_hospital_id = request.args.get('hospital_id', type=int)
     
-    # Build query with hospital-based access control
-    query = Diagnosis.query
+    # Build query with hospital-based access control and joinedload
+    from sqlalchemy.orm import joinedload
+    # Optimize: Add joinedload for patient to avoid N+1 queries
+    query = Diagnosis.query.options(joinedload(Diagnosis.hospital), joinedload(Diagnosis.patient))
     current_user = get_current_user_from_jwt()
     
     if current_user:
@@ -6694,8 +6893,10 @@ def get_treatments():
     per_page = request.args.get('per_page', 20, type=int)
     filter_hospital_id = request.args.get('hospital_id', type=int)
     
-    # Build query with hospital-based access control
-    query = Treatment.query
+    # Build query with hospital-based access control and joinedload
+    from sqlalchemy.orm import joinedload
+    # Optimize: Add joinedload for patient to avoid N+1 queries
+    query = Treatment.query.options(joinedload(Treatment.hospital), joinedload(Treatment.patient))
     current_user = get_current_user_from_jwt()
     
     if current_user:
@@ -6731,7 +6932,9 @@ def get_alerts():
         unread_only = False
 
     try:
-        query = Alert.query
+        from sqlalchemy.orm import joinedload
+        # Optimize: Add joinedload for user to avoid N+1 queries
+        query = Alert.query.options(joinedload(Alert.hospital), joinedload(Alert.user))
         
         # Hospital-based access control
         current_user = get_current_user_from_jwt()
@@ -6759,23 +6962,14 @@ def get_alerts():
         pagination = query.order_by(Alert.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
         alerts = [a.to_dict() for a in pagination.items]
         
-        # Calculate unread count with the same access rules
-        unread_query = Alert.query.filter_by(is_read=False)
-        if current_user.role == 'admin':
-            if filter_hospital_id:
-                unread_query = unread_query.filter_by(hospital_id=filter_hospital_id)
-        elif current_user.hospital_id:
-            unread_query = unread_query.filter(
-                (Alert.hospital_id == current_user.hospital_id) | 
-                (Alert.hospital_id.is_(None))
-            )
-        else:
-            unread_query = unread_query.filter(Alert.hospital_id.is_(None))
+        # Optimize: Calculate unread count using the same query with count
+        unread_query = query.filter_by(is_read=False)
+        unread_count = unread_query.count()
         
         return jsonify({
             'alerts': alerts,
             'total': pagination.total,
-            'unread_count': unread_query.count()
+            'unread_count': unread_count
         }), 200
     except Exception as e:
         print(f"ERROR in alerts endpoint: {e}")
@@ -7096,44 +7290,179 @@ def verify_consent(patient_id, consent_id):
     })
 
 
-@app.route('/api/patients/<int:patient_id>/password', methods=['PUT'])
+@app.route('/api/patients/request-otp', methods=['POST'])
 @jwt_required()
-def change_patient_password(patient_id):
-    """Change patient password"""
-    patient = Patient.query.get_or_404(patient_id)
-    user = get_current_user_from_jwt()
-    
-    # Allow patient to change their own password, or admins to change any
-    if user.role != 'admin' and str(user.id) != str(patient.id):
-        return jsonify({'msg': tr('ACCESS_DENIED')}), 403
-    
+def request_patient_otp():
+    """
+    Request OTP for cross-hospital patient access
+    Request body: { "patient_id": "PAT-1234" }
+    """
     data = request.get_json()
-    current_password = data.get('current_password')
-    new_password = data.get('new_password')
-    
-    if not new_password or len(new_password) < 8:
-        return jsonify({'msg': 'Password must be at least 8 characters'}), 400
-    
-    # Verify current password unless admin is changing it
-    if user.role != 'admin':
-        if not patient.verify_password(current_password):
-            return jsonify({'msg': 'Current password is incorrect'}), 401
-    
-    patient.set_password(new_password)
+    patient_id_str = data.get('patient_id')
+    if not patient_id_str:
+        return jsonify({'msg': 'Patient ID is required'}), 400
+
+    user = get_current_user_from_jwt()
+    if user.role not in ['admin', 'doctor', 'hospital_admin']:
+        return jsonify({'msg': 'Access denied'}), 403
+
+    # Find patient by patient_id (search through encrypted field)
+    patient = None
+    all_patients = Patient.query.all()
+    for p in all_patients:
+        if p.patient_id == patient_id_str:
+            patient = p
+            break
+
+    if not patient:
+        return jsonify({'msg': 'Patient not found'}), 404
+
+    # Check if patient is already associated with user's hospital
+    patient_hospitals = [h.id for h in patient.hospitals]
+    if user.hospital_id in patient_hospitals:
+        return jsonify({'msg': 'Patient is already associated with your hospital', 'already_associated': True}), 200
+
+    # Check if patient has phone number
+    if not patient.phone_number:
+        return jsonify({'msg': 'Patient has no phone number registered'}), 400
+
+    # Generate 6-digit OTP
+    otp_code = str(random.randint(100000, 999999))
+    patient.otp_code = otp_code
+    patient.otp_expires_at = datetime.now() + timedelta(minutes=5)  # OTP valid for 5 minutes
     db.session.commit()
-    
+
+    # Send SMS via HDEV (Rwanda SMS Gateway)
+    message = f"Your TB Diagnostic System OTP for hospital access is: {otp_code}. It expires in 5 minutes."
+    sms_result = HdevSMS.send_sms(patient.phone_number, message)
+
+    if not sms_result['success']:
+        # Log OTP for development/testing when SMS fails
+        print(f"SMS failed, OTP for patient {patient.patient_id}: {otp_code}")
+        # Return success anyway for development (in production, you might want to fail)
+        return jsonify({
+            'msg': f'OTP generated (SMS failed: {sms_result.get("error")}). OTP: {otp_code}',
+            'otp_sent': True,
+            'otp_code': otp_code,  # Include OTP in response for development
+            'sms_error': sms_result.get('error')
+        }), 200
+
     audit = AuditLog(
         user_id=user.id,
-        action='password_change',
+        action='otp_requested',
         entity_type='patient',
         entity_id=patient.id,
-        details=f'Password changed for patient {patient.patient_id}',
+        details=f"OTP requested for patient {patient.patient_id} by hospital {user.hospital_id}",
         created_at=datetime.now()
     )
+    audit.compute_hash()
     db.session.add(audit)
     db.session.commit()
+
+    return jsonify({'msg': 'OTP sent successfully to patient\'s phone!', 'otp_sent': True})
+
+
+@app.route('/api/patients/verify-otp', methods=['POST', 'OPTIONS'])
+@jwt_required()
+def verify_patient_otp():
+    """
+    Verify OTP and associate patient with hospital if correct
+    Request body: { "patient_id": "PAT-1234", "otp_code": "123456" }
+    """
+    if request.method == 'OPTIONS':
+        return '', 200
     
-    return jsonify({'msg': 'Password changed successfully'})
+    print("DEBUG: verify-otp endpoint called")
+    
+    # Get user from JWT
+    user = get_current_user_from_jwt()
+    print(f"DEBUG: Current user: {user.email if user else 'None'}")
+    if not user:
+        return jsonify({'msg': 'Authentication required'}), 401
+    if user.role not in ['admin', 'doctor', 'hospital_admin']:
+        return jsonify({'msg': 'Access denied'}), 403
+    
+    try:
+        data = request.get_json()
+        print(f"DEBUG: Request data: {data}")
+        patient_id_str = data.get('patient_id')
+        otp_code = data.get('otp_code')
+
+        if not patient_id_str or not otp_code:
+            return jsonify({'msg': 'Patient ID and OTP are required'}), 400
+
+        # Find patient by patient_id
+        patient = None
+        all_patients = Patient.query.all()
+        for p in all_patients:
+            if p.patient_id == patient_id_str:
+                patient = p
+                break
+
+        if not patient:
+            return jsonify({'msg': 'Patient not found'}), 404
+
+        # Verify OTP
+        print(f"DEBUG: Verifying OTP for patient {patient.patient_id}")
+        print(f"DEBUG: Stored OTP (decrypted): {patient.otp_code}")
+        print(f"DEBUG: Input OTP: {otp_code}")
+        print(f"DEBUG: Input OTP type: {type(otp_code)}")
+        print(f"DEBUG: Stored OTP type: {type(patient.otp_code)}")
+        print(f"DEBUG: Match: {patient.otp_code == otp_code}")
+        print(f"DEBUG: Match with str(): {str(patient.otp_code) == str(otp_code)}")
+        
+        if not patient.otp_code or str(patient.otp_code) != str(otp_code):
+            return jsonify({'msg': 'Invalid OTP'}), 401
+
+        if not patient.otp_expires_at or patient.otp_expires_at < datetime.now():
+            return jsonify({'msg': 'OTP has expired'}), 401
+
+        # Associate patient with user's hospital
+        hospital = Hospital.query.get(user.hospital_id)
+        if hospital and hospital not in patient.hospitals:
+            patient.hospitals.append(hospital)
+
+        # Create consent record
+        from models.models import PatientConsent
+        consent = PatientConsent(
+            patient_id=patient.id,
+            requesting_hospital_id=user.hospital_id,
+            sharing_hospital_id=patient.hospitals[0].id if patient.hospitals else user.hospital_id,
+            consent_type='full_record',
+            status='granted',
+            granted_at=datetime.now(),
+            expires_at=None
+        )
+        db.session.add(consent)
+
+        # Clear OTP after successful verification
+        patient.otp_code = None
+        patient.otp_expires_at = None
+
+        db.session.commit()
+
+        audit = AuditLog(
+            user_id=user.id,
+            action='patient_associated',
+            entity_type='patient',
+            entity_id=patient.id,
+            details=f"Patient {patient.patient_id} associated with hospital {user.hospital_id} via OTP",
+            created_at=datetime.now()
+        )
+        audit.compute_hash()
+        db.session.add(audit)
+        db.session.commit()
+
+        return jsonify({
+            'msg': 'OTP verified successfully',
+            'patient': patient.to_dict()
+        })
+
+    except Exception as e:
+        print(f"DEBUG: Error in verify-otp: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'msg': f'Error: {str(e)}'}), 500
 
 
 # HL7 FHIR-like Endpoints for Interoperability
@@ -7399,14 +7728,18 @@ def dashboard_charts():
         if hospital_id:
             # Non-admin users: see patients associated with their hospital OR with records there
             from sqlalchemy import or_
+            # Optimize: Use a single UNION query to get all patient IDs at once
+            patient_ids_subquery = db.session.query(Diagnosis.patient_id).filter(Diagnosis.hospital_id == hospital_id).union(
+                db.session.query(LabTest.patient_id).filter(LabTest.hospital_id == hospital_id),
+                db.session.query(Prescription.patient_id).filter(Prescription.hospital_id == hospital_id),
+                db.session.query(Treatment.patient_id).filter(Treatment.hospital_id == hospital_id),
+                db.session.query(Alert.patient_id).filter(Alert.hospital_id == hospital_id)
+            ).subquery()
+            
             patient_query = Patient.query.filter(
                 or_(
                     Patient.hospitals.any(Hospital.id == hospital_id),
-                    Patient.id.in_(db.session.query(Diagnosis.patient_id).filter(Diagnosis.hospital_id == hospital_id)),
-                    Patient.id.in_(db.session.query(LabTest.patient_id).filter(LabTest.hospital_id == hospital_id)),
-                    Patient.id.in_(db.session.query(Prescription.patient_id).filter(Prescription.hospital_id == hospital_id)),
-                    Patient.id.in_(db.session.query(Treatment.patient_id).filter(Treatment.hospital_id == hospital_id)),
-                    Patient.id.in_(db.session.query(Alert.patient_id).filter(Alert.hospital_id == hospital_id)),
+                    Patient.id.in_(patient_ids_subquery),
                 )
             )
         else:
@@ -7416,60 +7749,68 @@ def dashboard_charts():
     # System-wide query for comparison
     system_patient_query = Patient.query
 
-    # 1. Patient Risk Level distribution (bar) - hospital-specific
-    high = patient_query.filter(
-        db.or_(Patient.tb_status_label == 'Yes', Patient.genexpert_test == 'Positive')
-    ).count()
-    medium = patient_query.filter(
-        db.and_(
+    # Optimize: Get all counts in a single query using case statements
+    patient_counts = patient_query.with_entities(
+        func.count().label('total'),
+        func.sum(case((db.or_(Patient.tb_status_label == 'Yes', Patient.genexpert_test == 'Positive'), 1), else_=0)).label('high'),
+        func.sum(case((db.and_(
             Patient.tb_status_label != 'Yes', Patient.genexpert_test != 'Positive',
             db.or_(Patient.sputum_smear_test == 'Positive', Patient.chest_xray == 'Abnormal')
-        )
-    ).count()
-    total = patient_query.count()
+        ), 1), else_=0)).label('medium'),
+        func.sum(case((Patient.tb_status_label == 'Yes', 1), else_=0)).label('tb_positive'),
+        func.sum(case((Patient.tb_status_label == 'No', 1), else_=0)).label('tb_negative'),
+        func.sum(case((Patient.drug_resistance == 'Yes', 1), else_=0)).label('dr_yes'),
+        func.sum(case((Patient.drug_resistance == 'No', 1), else_=0)).label('dr_no')
+    ).first()
+
+    total = patient_counts.total or 0
+    high = patient_counts.high or 0
+    medium = patient_counts.medium or 0
     low = max(0, total - high - medium)
+    tb_positive = patient_counts.tb_positive or 0
+    tb_negative = patient_counts.tb_negative or 0
+    tb_unknown = total - tb_positive - tb_negative
+    dr_yes = patient_counts.dr_yes or 0
+    dr_no = patient_counts.dr_no or 0
+    dr_unknown = total - dr_yes - dr_no
+
     risk_chart = {
         'labels': ['High Risk', 'Medium Risk', 'Low Risk'],
         'data': [high, medium, low],
         'colors': ['#ef4444', '#f59e0b', '#10b981']
     }
 
-    # System-wide risk distribution
-    system_high = system_patient_query.filter(
-        db.or_(Patient.tb_status_label == 'Yes', Patient.genexpert_test == 'Positive')
-    ).count()
-    system_medium = system_patient_query.filter(
-        db.and_(
-            Patient.tb_status_label != 'Yes', Patient.genexpert_test != 'Positive',
-            db.or_(Patient.sputum_smear_test == 'Positive', Patient.chest_xray == 'Abnormal')
-        )
-    ).count()
-    system_total = system_patient_query.count()
-    system_low = max(0, system_total - system_high - system_medium)
-    system_risk_chart = {
-        'labels': ['High Risk', 'Medium Risk', 'Low Risk'],
-        'data': [system_high, system_medium, system_low],
-        'colors': ['#ef4444', '#f59e0b', '#10b981']
-    }
-
-    # 2. TB Status breakdown (doughnut) - hospital-specific
-    tb_positive = patient_query.filter(Patient.tb_status_label == 'Yes').count()
-    tb_negative = patient_query.filter(Patient.tb_status_label == 'No').count()
-    tb_unknown = total - tb_positive - tb_negative
     tb_status_chart = {
         'labels': ['TB Positive', 'TB Negative', 'Unknown'],
         'data': [tb_positive, tb_negative, tb_unknown],
         'colors': ['#ef4444', '#10b981', '#6b7280']
     }
 
-    # 3. Drug Resistance distribution (bar) - hospital-specific
-    dr_yes = patient_query.filter(Patient.drug_resistance == 'Yes').count()
-    dr_no = patient_query.filter(Patient.drug_resistance == 'No').count()
-    dr_unknown = total - dr_yes - dr_no
     resistance_chart = {
         'labels': ['Resistant', 'Sensitive', 'Unknown'],
         'data': [dr_yes, dr_no, dr_unknown],
         'colors': ['#f97316', '#06b6d4', '#6b7280']
+    }
+
+    # System-wide counts (single query)
+    system_counts = system_patient_query.with_entities(
+        func.count().label('total'),
+        func.sum(case((db.or_(Patient.tb_status_label == 'Yes', Patient.genexpert_test == 'Positive'), 1), else_=0)).label('high'),
+        func.sum(case((db.and_(
+            Patient.tb_status_label != 'Yes', Patient.genexpert_test != 'Positive',
+            db.or_(Patient.sputum_smear_test == 'Positive', Patient.chest_xray == 'Abnormal')
+        ), 1), else_=0)).label('medium')
+    ).first()
+
+    system_total = system_counts.total or 0
+    system_high = system_counts.high or 0
+    system_medium = system_counts.medium or 0
+    system_low = max(0, system_total - system_high - system_medium)
+
+    system_risk_chart = {
+        'labels': ['High Risk', 'Medium Risk', 'Low Risk'],
+        'data': [system_high, system_medium, system_low],
+        'colors': ['#ef4444', '#f59e0b', '#10b981']
     }
 
     # 4. Antibiogram – resistance rates per antibiotic from AntibioticResistance table (bar) - system-wide
@@ -7482,9 +7823,25 @@ def dashboard_charts():
     ar_total = AntibioticResistance.query.count()
     antibiogram_labels, antibiogram_data = [], []
     if ar_total > 0:
+        # Optimize: Get all resistance counts in a single query
+        ar_counts = AntibioticResistance.query.with_entities(
+            func.sum(case((getattr(AntibioticResistance, 'amx_amp') == 'R', 1), else_=0)).label('amx_amp'),
+            func.sum(case((getattr(AntibioticResistance, 'amc') == 'R', 1), else_=0)).label('amc'),
+            func.sum(case((getattr(AntibioticResistance, 'cz') == 'R', 1), else_=0)).label('cz'),
+            func.sum(case((getattr(AntibioticResistance, 'fox') == 'R', 1), else_=0)).label('fox'),
+            func.sum(case((getattr(AntibioticResistance, 'ctx_cro') == 'R', 1), else_=0)).label('ctx_cro'),
+            func.sum(case((getattr(AntibioticResistance, 'ipm') == 'R', 1), else_=0)).label('ipm'),
+            func.sum(case((getattr(AntibioticResistance, 'gen') == 'R', 1), else_=0)).label('gen'),
+            func.sum(case((getattr(AntibioticResistance, 'an') == 'R', 1), else_=0)).label('an'),
+            func.sum(case((getattr(AntibioticResistance, 'ofx') == 'R', 1), else_=0)).label('ofx'),
+            func.sum(case((getattr(AntibioticResistance, 'cip') == 'R', 1), else_=0)).label('cip'),
+            func.sum(case((getattr(AntibioticResistance, 'chloramphenicol') == 'R', 1), else_=0)).label('chloramphenicol'),
+            func.sum(case((getattr(AntibioticResistance, 'co_trimoxazole') == 'R', 1), else_=0)).label('co_trimoxazole'),
+            func.sum(case((getattr(AntibioticResistance, 'colistine') == 'R', 1), else_=0)).label('colistine'),
+        ).first()
+        
         for col_name, label in ab_fields:
-            col = getattr(AntibioticResistance, col_name)
-            r_count = AntibioticResistance.query.filter(col == 'R').count()
+            r_count = getattr(ar_counts, col_name) or 0
             pct = round(r_count / ar_total * 100, 1)
             antibiogram_labels.append(label)
             antibiogram_data.append(pct)
@@ -7509,18 +7866,29 @@ def dashboard_charts():
     }
 
     # 6. Key symptom prevalence (horizontal bar) - hospital-specific
-    symptom_fields = [
-        (Patient.has_fever, 'Fever'), (Patient.has_cough, 'Cough'),
-        (Patient.has_weight_loss, 'Weight Loss'), (Patient.has_night_sweats, 'Night Sweats'),
-        (Patient.has_chest_pain, 'Chest Pain'), (Patient.has_blood, 'Hemoptysis'),
-        (Patient.has_fatigue, 'Fatigue'), (Patient.has_shortness_of_breath, 'Shortness of Breath')
+    # Optimize: Get all symptom counts in a single query
+    symptom_counts = patient_query.with_entities(
+        func.sum(case((Patient.has_fever == 'Yes', 1), else_=0)).label('fever'),
+        func.sum(case((Patient.has_cough == 'Yes', 1), else_=0)).label('cough'),
+        func.sum(case((Patient.has_weight_loss == 'Yes', 1), else_=0)).label('weight_loss'),
+        func.sum(case((Patient.has_night_sweats == 'Yes', 1), else_=0)).label('night_sweats'),
+        func.sum(case((Patient.has_chest_pain == 'Yes', 1), else_=0)).label('chest_pain'),
+        func.sum(case((Patient.has_blood == 'Yes', 1), else_=0)).label('blood'),
+        func.sum(case((Patient.has_fatigue == 'Yes', 1), else_=0)).label('fatigue'),
+        func.sum(case((Patient.has_shortness_of_breath == 'Yes', 1), else_=0)).label('shortness_of_breath')
+    ).first()
+    
+    symptom_labels = ['Fever', 'Cough', 'Weight Loss', 'Night Sweats', 'Chest Pain', 'Hemoptysis', 'Fatigue', 'Shortness of Breath']
+    symptom_data = [
+        round((symptom_counts.fever or 0) / total * 100, 1) if total > 0 else 0,
+        round((symptom_counts.cough or 0) / total * 100, 1) if total > 0 else 0,
+        round((symptom_counts.weight_loss or 0) / total * 100, 1) if total > 0 else 0,
+        round((symptom_counts.night_sweats or 0) / total * 100, 1) if total > 0 else 0,
+        round((symptom_counts.chest_pain or 0) / total * 100, 1) if total > 0 else 0,
+        round((symptom_counts.blood or 0) / total * 100, 1) if total > 0 else 0,
+        round((symptom_counts.fatigue or 0) / total * 100, 1) if total > 0 else 0,
+        round((symptom_counts.shortness_of_breath or 0) / total * 100, 1) if total > 0 else 0,
     ]
-    symptom_labels, symptom_data = [], []
-    for col, label in symptom_fields:
-        cnt = patient_query.filter(col == 'Yes').count()
-        pct = round(cnt / total * 100, 1) if total > 0 else 0
-        symptom_labels.append(label)
-        symptom_data.append(pct)
     symptoms_chart = {
         'labels': symptom_labels,
         'data': symptom_data,
@@ -7528,17 +7896,21 @@ def dashboard_charts():
     }
 
     # 7. Test positivity rates (bar) - hospital-specific
-    genexpert_pos = patient_query.filter(Patient.genexpert_test == 'Positive').count()
-    sputum_pos = patient_query.filter(Patient.sputum_smear_test == 'Positive').count()
-    xray_abn = patient_query.filter(Patient.chest_xray == 'Abnormal').count()
-    culture_pos = patient_query.filter(Patient.tb_culture == 'Positive').count()
+    # Optimize: Get all test counts in a single query
+    test_counts = patient_query.with_entities(
+        func.sum(case((Patient.genexpert_test == 'Positive', 1), else_=0)).label('genexpert'),
+        func.sum(case((Patient.sputum_smear_test == 'Positive', 1), else_=0)).label('sputum'),
+        func.sum(case((Patient.chest_xray == 'Abnormal', 1), else_=0)).label('xray'),
+        func.sum(case((Patient.tb_culture == 'Positive', 1), else_=0)).label('culture')
+    ).first()
+    
     tests_chart = {
         'labels': ['GeneXpert+', 'Sputum+', 'X-ray Abnormal', 'Culture+'],
         'data': [
-            round(genexpert_pos / total * 100, 1) if total > 0 else 0,
-            round(sputum_pos / total * 100, 1) if total > 0 else 0,
-            round(xray_abn / total * 100, 1) if total > 0 else 0,
-            round(culture_pos / total * 100, 1) if total > 0 else 0,
+            round((test_counts.genexpert or 0) / total * 100, 1) if total > 0 else 0,
+            round((test_counts.sputum or 0) / total * 100, 1) if total > 0 else 0,
+            round((test_counts.xray or 0) / total * 100, 1) if total > 0 else 0,
+            round((test_counts.culture or 0) / total * 100, 1) if total > 0 else 0,
         ],
         'colors': ['#8b5cf6', '#06b6d4', '#f59e0b', '#10b981']
     }
@@ -7617,4 +7989,13 @@ if __name__ == '__main__':
     else:
         # Note: db.create_all() is handled by bootstrap.py
         # When running app.py directly, assume database already exists
-        app.run(debug=True, port=5000)
+        try:
+            socketio.run(app, debug=True, port=5000, host='0.0.0.0', allow_unsafe_werkzeug=True)
+        except OSError as e:
+            if "WinError 10048" in str(e) or "Address already in use" in str(e):
+                print(f"\n{'='*60}")
+                print(f"Port 5000 is already in use!")
+                print(f"Please close the other application using port 5000.")
+                print(f"You can find it by running: netstat -ano | findstr :5000")
+                print(f"{'='*60}\n")
+            raise

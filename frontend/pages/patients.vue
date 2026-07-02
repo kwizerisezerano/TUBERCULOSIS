@@ -4,6 +4,73 @@
       <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
         <h2 class="text-xl font-bold text-gray-900 dark:text-white">Patient Records</h2>
         <div class="flex flex-col sm:flex-row items-center gap-3">
+          <!-- Find Patient by ID with OTP -->
+          <div class="flex items-center gap-2">
+            <input
+              v-model="findPatientId"
+              type="text"
+              placeholder="Enter patient ID..."
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 outline-none"
+            />
+            <button @click="requestOtp" :disabled="isOtpLoading || !findPatientId" class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-medium shadow-sm">
+              Request OTP
+            </button>
+          </div>
+          <!-- OTP Input -->
+          <div v-if="otpSent" class="flex items-center gap-2">
+            <input
+              v-model="otpCode"
+              type="text"
+              placeholder="Enter OTP"
+              maxlength="6"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 outline-none"
+            />
+            <button @click="verifyOtp" :disabled="isOtpLoading || !otpCode" class="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-medium shadow-sm">
+              Verify OTP
+            </button>
+          </div>
+          <!-- Hospital Filter -->
+          <div class="relative" v-if="user?.role === 'admin'">
+            <select
+              v-model="selectedHospitalId"
+              @change="subscribePatientsWithFilters"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none appearance-none pr-8"
+            >
+              <option value="">All Hospitals</option>
+              <option v-for="hospital in hospitals" :key="hospital.id" :value="hospital.id">
+                {{ hospital.name }}
+              </option>
+            </select>
+            <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </div>
+          <!-- Single Hospital Filter -->
+          <div class="relative">
+            <select
+              v-model="showOnlySingleHospital"
+              @change="subscribePatientsWithFilters"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none appearance-none pr-8"
+            >
+              <option value="">All Patients</option>
+              <option :value="true">Only Single Hospital</option>
+            </select>
+            <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </div>
+          <!-- This Hospital Only -->
+          <div class="relative" v-if="user?.hospital_id">
+            <label class="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg cursor-pointer">
+              <input
+                v-model="thisHospitalOnly"
+                type="checkbox"
+                @change="subscribePatientsWithFilters"
+                class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+              />
+              <span class="text-gray-700 dark:text-gray-300">This Hospital Only</span>
+            </label>
+          </div>
           <div class="relative">
             <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -52,6 +119,7 @@
                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">ID</th>
                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Name</th>
                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Age / Gender</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Phone</th>
                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">City</th>
                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Symptoms</th>
                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Risk Level</th>
@@ -60,15 +128,29 @@
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
               <tr
-                v-for="patient in patients"
+                v-for="patient in paginatedPatients"
                 :key="patient.id"
                 class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition"
+                :class="{
+                  'bg-green-50 dark:bg-green-900/20 border-l-4 border-l-green-500': patient.is_single_hospital
+                }"
               >
-                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 font-mono">{{ patient.patient_id }}</td>
+                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 font-mono">
+                  <div class="flex items-center gap-2">
+                    {{ patient.patient_id }}
+                    <span v-if="patient.is_single_hospital" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200">
+                      <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"></path>
+                      </svg>
+                      Only 1 Hospital
+                    </span>
+                  </div>
+                </td>
                 <td class="px-6 py-4">
                   <p class="font-medium text-gray-900 dark:text-white">{{ patient.first_name }} {{ patient.last_name }}</p>
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ patient.age }} / {{ patient.gender }}</td>
+                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ patient.phone_number || 'N/A' }}</td>
                 <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ patient.city }}</td>
                 <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 truncate max-w-xs">{{ patient.symptoms || 'No symptoms' }}</td>
                 <td class="px-6 py-4">
@@ -159,6 +241,10 @@
               <div>
                 <p class="text-xs text-gray-500 dark:text-gray-400 uppercase">Age / Gender</p>
                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ selectedPatient?.age }} / {{ selectedPatient?.gender }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase">Phone Number</p>
+                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ selectedPatient?.phone_number || 'N/A' }}</p>
               </div>
               <div>
                 <p class="text-xs text-gray-500 dark:text-gray-400 uppercase">City</p>
@@ -344,10 +430,12 @@
 
 <script setup lang="ts">
 import DashboardLayout from '~/components/DashboardLayout.vue';
-const { getPatients, getPatientById } = useApi();
+const { getPatientById } = useApi();
+const { connect, disconnect, subscribePatients, onPatientsUpdate, offPatientsUpdate, isConnected } = useSocket();
 const router = useRouter();
 
 const patients = ref<any[]>([]);
+const hospitals = ref<any[]>([]);
 const searchQuery = ref('');
 const currentPage = ref(1);
 const perPage = 20;
@@ -360,6 +448,16 @@ const showPatientModal = ref(false);
 const selectedPatientId = ref<number | null>(null);
 const selectedPatient = ref<any>(null);
 const patientDetails = ref<any>(null);
+// OTP related
+const findPatientId = ref('');
+const otpCode = ref('');
+const otpSent = ref(false);
+const isOtpLoading = ref(false);
+const selectedHospitalId = ref<string | number>('');
+const showOnlySingleHospital = ref<boolean | string>('');
+const thisHospitalOnly = ref(false);
+const { authToken, currentUser } = useAuth();
+const user = currentUser;
 
 function getRiskInfo(patient: any): { class: string; text: string } {
   let score = 0;
@@ -401,32 +499,66 @@ const visiblePages = computed(() => {
   return pages;
 });
 
+// Filter patients based on search and other filters
+const filteredPatients = computed(() => {
+  let pts = patients.value;
+  
+  // Apply search filter
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    pts = pts.filter(p => 
+      p.patient_id.toLowerCase().includes(query) ||
+      (p.first_name && p.first_name.toLowerCase().includes(query)) ||
+      (p.last_name && p.last_name.toLowerCase().includes(query)) ||
+      (p.city && p.city.toLowerCase().includes(query))
+    );
+  }
+  
+  // Apply hospital filter (admin only)
+  if (selectedHospitalId.value) {
+    const hid = Number(selectedHospitalId.value);
+    pts = pts.filter(p => p.hospital_ids && p.hospital_ids.includes(hid));
+  }
+  
+  // Apply "Only Single Hospital" filter
+  if (showOnlySingleHospital.value === true) {
+    pts = pts.filter(p => p.is_single_hospital);
+  }
+  
+  return pts;
+});
+
+// Paginated patients for display
+const paginatedPatients = computed(() => {
+  const start = (currentPage.value - 1) * perPage;
+  const end = start + perPage;
+  return filteredPatients.value.slice(start, end);
+});
+
 let debounceTimer: number;
 const debounceLoadResults = () => {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     currentPage.value = 1;
-    loadPatients();
   }, 300) as unknown as number;
 };
 
-const loadPatients = async () => {
-  const res = await getPatients(currentPage.value, perPage, searchQuery.value);
-  patients.value = (res as any).patients || [];
-  totalPatients.value = (res as any).total || patients.value.length;
-  totalPages.value = (res as any).pages || Math.ceil(totalPatients.value / perPage);
-  
-  // Use risk counts from API if available
-  if ((res as any).risk_counts) {
-    highRiskPatients.value = (res as any).risk_counts.high || 0;
-    mediumRiskPatients.value = (res as any).risk_counts.medium || 0;
-    lowRiskPatients.value = (res as any).risk_counts.low || 0;
+const loadHospitals = async () => {
+  try {
+    const res = await $fetch('http://127.0.0.1:5000/api/hospitals', {
+      headers: {
+        'Authorization': `Bearer ${authToken.value}`
+      }
+    });
+    hospitals.value = (res as any).hospitals || [];
+  } catch (e) {
+    console.error('Failed to load hospitals', e);
   }
 };
 
 const openPatientDetails = async (patientId: number) => {
   selectedPatientId.value = patientId;
-  selectedPatient.value = patients.value.find(p => p.id === patientId) || null;
+  selectedPatient.value = filteredPatients.value.find(p => p.id === patientId) || null;
   try {
     const detailsRes = await getPatientById(patientId);
     patientDetails.value = detailsRes;
@@ -443,9 +575,150 @@ const closePatientModal = () => {
   patientDetails.value = null;
 };
 
-watch(currentPage, () => loadPatients());
+const requestOtp = async () => {
+  isOtpLoading.value = true;
+  try {
+    const res = await $fetch('http://127.0.0.1:5000/api/patients/request-otp', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken.value}`
+      },
+      body: {
+        patient_id: findPatientId.value
+      }
+    });
+    if ((res as any).already_associated) {
+      alert('Patient is already associated with your hospital!');
+      // Let's try to open the patient details
+      const foundPatient = filteredPatients.value.find((p: any) => p.patient_id === findPatientId.value);
+      if (foundPatient) {
+        await openPatientDetails(foundPatient.id);
+      }
+    } else {
+      otpSent.value = true;
+      alert('OTP sent to patient\'s phone!');
+    }
+  } catch (e: any) {
+    console.error('Request OTP failed:', e);
+    alert(e.data?.msg || 'Failed to send OTP');
+  } finally {
+    isOtpLoading.value = false;
+  }
+};
+
+const verifyOtp = async () => {
+  isOtpLoading.value = true;
+  try {
+    const res = await $fetch('http://127.0.0.1:5000/api/patients/verify-otp', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken.value}`,
+        'Content-Type': 'application/json'
+      },
+      body: {
+        patient_id: findPatientId.value,
+        otp_code: otpCode.value
+      }
+    });
+    alert('OTP verified! Patient is now associated with your hospital!');
+    // Reset OTP state
+    otpSent.value = false;
+    findPatientId.value = '';
+    otpCode.value = '';
+    // Open patient details
+    if ((res as any).patient?.id) {
+      await openPatientDetails((res as any).patient.id);
+    }
+  } catch (e: any) {
+    console.error('Verify OTP failed:', e);
+    alert(e.data?.msg || 'Invalid or expired OTP');
+  } finally {
+    isOtpLoading.value = false;
+  }
+};
+
+const handlePatientsUpdate = (data: any) => {
+  let pts = data.patients || [];
+  patients.value = pts;
+  totalPatients.value = filteredPatients.value.length;
+  totalPages.value = Math.ceil(filteredPatients.value.length / perPage);
+  
+  // Calculate risk counts based on all patients
+  let high = 0, medium = 0, low = 0;
+  pts.forEach((p: any) => {
+    const info = getRiskInfo(p);
+    if (info.text === 'High Risk') high++;
+    else if (info.text === 'Medium Risk') medium++;
+    else low++;
+  });
+  highRiskPatients.value = high;
+  mediumRiskPatients.value = medium;
+  lowRiskPatients.value = low;
+};
+
+watch([currentPage, searchQuery, selectedHospitalId, thisHospitalOnly, showOnlySingleHospital], () => {
+  if (!isConnected.value) {
+    loadPatientsViaAPI();
+  }
+});
+
+const subscribePatientsWithFilters = () => {
+  if (isConnected.value) {
+    subscribePatients({
+      token: authToken.value,
+      this_hospital_only: thisHospitalOnly.value
+    });
+  } else {
+    loadPatientsViaAPI();
+  }
+};
+
+const loadPatientsViaAPI = async () => {
+  try {
+    const params: any = { page: currentPage.value, per_page: perPage };
+    if (thisHospitalOnly.value) {
+      params.this_hospital_only = 'true';
+    }
+    if (searchQuery.value) {
+      params.search = searchQuery.value;
+    }
+    const res = await $fetch('http://127.0.0.1:5000/api/patients', {
+      headers: {
+        'Authorization': `Bearer ${authToken.value}`
+      },
+      params
+    });
+    const data = res as any;
+    patients.value = data.patients || [];
+    totalPatients.value = data.total || patients.value.length;
+    totalPages.value = data.total_pages || Math.ceil(totalPatients.value / perPage);
+    
+    // Calculate risk counts
+    let high = 0, medium = 0, low = 0;
+    patients.value.forEach((p: any) => {
+      const info = getRiskInfo(p);
+      if (info.text === 'High Risk') high++;
+      else if (info.text === 'Medium Risk') medium++;
+      else low++;
+    });
+    highRiskPatients.value = high;
+    mediumRiskPatients.value = medium;
+    lowRiskPatients.value = low;
+  } catch (e) {
+    console.error('Failed to load patients via API:', e);
+  }
+};
 
 onMounted(async () => {
-  await loadPatients();
+  await loadHospitals();
+  // Try WebSocket first, fallback to REST API
+  connect();
+  onPatientsUpdate(handlePatientsUpdate);
+  subscribePatientsWithFilters();
+});
+
+onUnmounted(() => {
+  offPatientsUpdate(handlePatientsUpdate);
+  disconnect();
 });
 </script>

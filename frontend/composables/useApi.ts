@@ -56,10 +56,12 @@ export const useApi = () => {
   };
 
   return {
-    getPatients: (page = 1, perPage = 20, search = '') => {
-      let url = `/patients?page=${page}&per_page=${perPage}`;
-      if (search) url += `&search=${encodeURIComponent(search)}`;
-      return request(url);
+    getPatients: (page = 1, perPage = 20, search = '', hospitalId: number | null = null, thisHospitalOnly: boolean = false) => {
+      let url = `/patients?page=${page}&per_page=${perPage}`
+      if (search) url += `&search=${encodeURIComponent(search)}`
+      if (hospitalId) url += `&hospital_id=${hospitalId}`
+      if (thisHospitalOnly) url += `&this_hospital_only=true`
+      return request(url)
     },
     getPatientById: (id: number) => request(`/patients/${id}`),
     createPatient: (data: Partial<Patient>) => request('/patients', { method: 'POST', body: data }),

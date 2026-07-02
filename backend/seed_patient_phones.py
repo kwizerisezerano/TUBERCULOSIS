@@ -1,9 +1,26 @@
-
+"""
+Set phone numbers for all patients
+"""
 import os
 os.environ["BOOTSTRAP_RUNNING"] = "1"
 from app import app
 from models.models import db, Patient
-from datetime import datetime
+import random
+
+# Sample Rwandan phone numbers (starts with +250)
+DEFAULT_PHONE = "+250790989830"
+SAMPLE_PHONES = [
+    "+250790989830",
+    "+250781234567",
+    "+250782345678",
+    "+250783456789",
+    "+250784567890",
+    "+250785678901",
+    "+250786789012",
+    "+250787890123",
+    "+250788901234",
+    "+250789012345"
+]
 
 def main():
     with app.app_context():
@@ -11,19 +28,20 @@ def main():
         
         # Get ALL patients
         patients = Patient.query.all()
+        batch_size = 100  # Process in batches for speed
+        updated_count = 0
         
-        # Assign demo passwords to ALL of them
-        demo_patients = []
+        # Assign phone numbers to ALL patients (use default for all)
         for i, patient in enumerate(patients):
-            # Generate a simple patient ID and password
             # Keep existing patient_id if present
             patient_id = patient.patient_id
             if not patient_id or patient_id.strip() == "":
                 patient_id = f"PAT-{1000 + i}"
                 patient.patient_id = patient_id
             
-            password = "Patient123!"
-            patient.set_password(password)
+            # Assign phone number to ALL patients
+            patient.phone_number = DEFAULT_PHONE
+            updated_count += 1
             
             # Make sure first name and last name are set
             if not patient.first_name:
@@ -31,15 +49,16 @@ def main():
             if not patient.last_name:
                 patient.last_name = "Demo"
             
-            demo_patients.append({
-                "role": "Patient",
-                "patient_id": patient_id,
-                "password": password,
-                "first_name": patient.first_name,
-                "last_name": patient.last_name
-            })
-            
             db.session.add(patient)
+            
+            # Commit every 100 patients to avoid memory issues and show progress
+            if (i + 1) % batch_size == 0:
+                db.session.commit()
+                print(f"      Processed {i + 1}/{len(patients)} patients (updated {updated_count} phones)...")
+        
+        # Final commit for remaining patients
+        if len(patients) > 0:
+            db.session.commit()
         
         # If there are no patients, create a few!
         if len(patients) == 0:
@@ -51,7 +70,6 @@ def main():
             
             for i in range(5):
                 patient_id = f"PAT-{1000 + i}"
-                password = "Patient123!"
                 
                 patient = Patient(
                     patient_id=patient_id,
@@ -60,28 +78,23 @@ def main():
                     age=30 + i,
                     gender="Male" if i % 2 == 0 else "Female"
                 )
-                patient.set_password(password)
+                patient.phone_number = DEFAULT_PHONE
                 
                 if default_hospital:
                     patient.hospitals.append(default_hospital)
                 
                 db.session.add(patient)
-                
-                demo_patients.append({
-                    "role": "Patient",
-                    "patient_id": patient_id,
-                    "password": password,
-                    "first_name": patient.first_name,
-                    "last_name": patient.last_name
-                })
+            
+            db.session.commit()
+            updated_count = 5
         
-        db.session.commit()
+        print(f"\nSuccessfully updated {updated_count} patients with phone numbers!")
         
-        print("Demo patients set up successfully!")
-        for dp in demo_patients[:10]:  # Only show first 10 to avoid clutter
-            print(f"- {dp['first_name']} {dp['last_name']}: Patient ID = {dp['patient_id']}, Password = {dp['password']}")
-        if len(demo_patients) > 10:
-            print(f"... and {len(demo_patients) - 10} more patients!")
+        # Show first few patients
+        all_patients = Patient.query.all()
+        print("\nFirst 5 patients:")
+        for patient in all_patients[:5]:
+            print(f"Patient ID: {patient.patient_id}, Phone: {patient.phone_number}, Name: {patient.first_name} {patient.last_name}")
 
 if __name__ == "__main__":
     main()

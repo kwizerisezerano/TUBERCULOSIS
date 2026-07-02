@@ -71,28 +71,8 @@
             </div>
           </div>
 
-          <!-- Login Type Toggle -->
-          <div class="flex gap-2 p-1 bg-gray-100 dark:bg-gray-900 rounded-xl">
-            <button
-              type="button"
-              @click="loginType = 'clinician'"
-              :class="loginType === 'clinician' ? 'bg-white dark:bg-gray-800 shadow-sm' : 'text-gray-500 dark:text-gray-400'"
-              class="flex-1 py-2 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all"
-            >
-              Clinician
-            </button>
-            <button
-              type="button"
-              @click="loginType = 'patient'"
-              :class="loginType === 'patient' ? 'bg-white dark:bg-gray-800 shadow-sm' : 'text-gray-500 dark:text-gray-400'"
-              class="flex-1 py-2 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all"
-            >
-              Patient
-            </button>
-          </div>
-
           <form @submit.prevent="handleLogin" class="space-y-4 sm:space-y-5">
-            <div v-if="loginType === 'clinician'">
+            <div>
               <label for="email" class="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">Email Address</label>
               <input
                 id="email"
@@ -104,19 +84,7 @@
                 placeholder="you@hospital.com"
               />
             </div>
-            <div v-else>
-              <label for="patientId" class="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">Patient ID</label>
-              <input
-                id="patientId"
-                v-model="patientId"
-                type="text"
-                required
-                autocomplete="username"
-                class="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all text-sm sm:text-base"
-                placeholder="e.g., SYM2024000001"
-              />
-            </div>
-            <div v-if="loginType === 'clinician'">
+            <div>
               <label for="password" class="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">Password</label>
               <div class="relative">
                 <input
@@ -160,23 +128,13 @@
           <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700">
             <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-3 sm:mb-4 font-semibold uppercase tracking-wide">Demo Credentials</p>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <template v-if="loginType === 'patient'">
-                <button v-for="cred in patientCredentials" :key="cred.patient_id" @click="patientId = cred.patient_id" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-xs overflow-hidden">
-                  <div class="text-left min-w-0 flex-1 overflow-hidden">
-                    <span class="font-semibold text-gray-700 dark:text-gray-300 block truncate text-[11px]">{{ cred.role }}</span>
-                    <span class="text-gray-400 dark:text-gray-500 text-[9px] truncate block">{{ cred.patient_id }}</span>
-                  </div>
-                </button>
-              </template>
-              <template v-else>
-                <button v-for="cred in credentials" :key="cred.email" @click="email = cred.email; password = cred.pwd; showPwd = true" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-xs overflow-hidden">
-                  <div class="text-left min-w-0 flex-1 overflow-hidden">
-                    <span class="font-semibold text-gray-700 dark:text-gray-300 block truncate text-[11px]">{{ cred.role }}</span>
-                    <span class="text-gray-400 dark:text-gray-500 text-[9px] truncate block">{{ cred.email }}</span>
-                  </div>
-                  <span class="text-primary-600 dark:text-primary-400 font-mono text-[9px] shrink-0">{{ cred.pwd }}</span>
-                </button>
-              </template>
+              <button v-for="cred in credentials" :key="cred.email" @click="email = cred.email; password = cred.pwd; showPwd = true" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-xs overflow-hidden">
+                <div class="text-left min-w-0 flex-1 overflow-hidden">
+                  <span class="font-semibold text-gray-700 dark:text-gray-300 block truncate text-[11px]">{{ cred.role }}</span>
+                  <span class="text-gray-400 dark:text-gray-500 text-[9px] truncate block">{{ cred.email }}</span>
+                </div>
+                <span class="text-primary-600 dark:text-primary-400 font-mono text-[9px] shrink-0">{{ cred.pwd }}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -196,9 +154,7 @@ const router = useRouter();
 
 if (isLoggedIn.value) router.push('/dashboard');
 
-const loginType = ref('clinician');
 const email = ref('');
-const patientId = ref('');
 const password = ref('');
 const showPwd = ref(false);
 const isLoading = ref(false);
@@ -254,53 +210,15 @@ const credentials = [
     { role: 'Hospital Admin (Hosp 3)', email: 'admin3@hospital3.com', pwd: 'Admin123!' }
 ];
 
-const patientCredentials = ref([
-    { role: 'Loading Patients...', patient_id: '...', pwd: 'Patient123!' }
-]);
-
-const fetchDemoPatients = async () => {
-  try {
-    const response = await $fetch('http://127.0.0.1:5000/api/demo/patients');
-    if (response.patients && response.patients.length > 0) {
-      patientCredentials.value = response.patients.map((p: any) => ({
-        role: `${p.first_name || 'Patient'} ${p.last_name || ''}`.trim(),
-        patient_id: p.patient_id,
-        pwd: 'Patient123!'
-      }));
-    } else {
-      patientCredentials.value = [
-        { role: 'Demo Patient 1', patient_id: 'SYM2024000001', pwd: 'Patient123!' },
-        { role: 'Demo Patient 2', patient_id: 'SYM2024000002', pwd: 'Patient123!' }
-      ];
-    }
-  } catch (err) {
-    console.error(err);
-    patientCredentials.value = [
-      { role: 'Demo Patient 1', patient_id: 'SYM2024000001', pwd: 'Patient123!' }
-    ];
-  }
-};
-
-fetchDemoPatients();
-
 const handleLogin = async () => {
   isLoading.value = true;
   error.value = '';
   
-  if (loginType.value === 'patient') {
-    const result = await login(patientId.value, 'dummy-password', 'patient');
-    if (result.success) {
-      router.push('/patient-portal');
-    } else {
-      error.value = result.error || 'Invalid patient ID or password';
-    }
+  const result = await login(email.value, password.value, 'clinician');
+  if (result.success) {
+    router.push('/dashboard');
   } else {
-    const result = await login(email.value, password.value, 'clinician');
-    if (result.success) {
-      router.push('/dashboard');
-    } else {
-      error.value = result.error || 'Invalid email or password';
-    }
+    error.value = result.error || 'Invalid email or password';
   }
   isLoading.value = false;
 };

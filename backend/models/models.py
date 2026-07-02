@@ -253,10 +253,10 @@ class User(db.Model):
 class Patient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     # Encrypted PII and sensitive health data
-    _patient_id = db.Column('patient_id', db.String(200), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=True)  # Hashed password for patient login (optional)
-    _first_name = db.Column('first_name', db.String(200))
-    _last_name = db.Column('last_name', db.String(200))
+    _patient_id = db.Column('patient_id', db.String(200), unique=True, nullable=False, index=True)
+    _phone_number = db.Column('phone_number', db.String(200))  # Encrypted phone number
+    _first_name = db.Column('first_name', db.String(200), index=True)
+    _last_name = db.Column('last_name', db.String(200), index=True)
     age = db.Column(db.Integer)
     gender = db.Column(db.String(50))
     weight = db.Column(db.Float)  # kg
@@ -266,6 +266,9 @@ class Patient(db.Model):
     _region = db.Column('region', db.String(200))
     _occupation = db.Column('occupation', db.String(200))
     date_of_diagnosis = db.Column(db.Integer)
+    # OTP fields (encrypted like other sensitive data)
+    _otp_code = db.Column('otp_code', db.String(200))  # Encrypted OTP code - larger size for encryption
+    otp_expires_at = db.Column(db.DateTime, index=True)
 
     # Many-to-many relationship with hospitals
     hospitals = db.relationship('Hospital', secondary=patient_hospital, backref=db.backref('patients', lazy=True))
@@ -422,32 +425,34 @@ class Patient(db.Model):
     def antibiotic_usage_history(self, value):
         self._antibiotic_usage_history = encrypt_data(value)
 
-    def set_password(self, password):
-        """Hash and set patient password"""
-        self.password = hash_password(password)
+    @property
+    def phone_number(self):
+        return decrypt_data(self._phone_number)
 
-    def verify_password(self, password):
-        """Verify patient password"""
-        return verify_password(password, self.password)
+    @phone_number.setter
+    def phone_number(self, value):
+        self._phone_number = encrypt_data(value)
+
+    @property
+    def otp_code(self):
+        return decrypt_data(self._otp_code)
+
+    @otp_code.setter
+    def otp_code(self, value):
+        self._otp_code = encrypt_data(value)
 
     def get_primary_hospital(self):
         """Get the primary hospital for this patient"""
-        from sqlalchemy import select
-        result = db.session.execute(
-            select(patient_hospital).where(
-                (patient_hospital.c.patient_id == self.id) &
-                (patient_hospital.c.is_primary == True)
-            )
-        ).first()
-        if result:
-            return Hospital.query.get(result[1])
-        # Fallback to first hospital if no primary set
+        # Use the already loaded hospitals relationship to avoid extra DB queries
+        # Since we don't have direct access to the association table's is_primary from the relationship,
+        # fallback to first hospital
         if self.hospitals:
             return self.hospitals[0]
         return None
 
     def to_dict(self):
         primary_hospital = self.get_primary_hospital()
+        hospital_count = len(self.hospitals)
         return {
             "id": self.id,
             "patient_id": self.patient_id,
@@ -455,8 +460,11 @@ class Patient(db.Model):
             "hospital_id": primary_hospital.id if primary_hospital else None,
             "hospital": primary_hospital.to_dict() if primary_hospital else None,
             "hospitals": [h.to_dict() for h in self.hospitals],
+            "hospital_count": hospital_count,
+            "is_single_hospital": hospital_count == 1,
             "first_name": self.first_name,
             "last_name": self.last_name,
+            "phone_number": self.phone_number,
             "age": self.age,
             "gender": self.gender,
             "weight": self.weight,
@@ -502,6 +510,39 @@ class Patient(db.Model):
             "last_risk_calculation": self.last_risk_calculation.isoformat() if self.last_risk_calculation else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
+        }
+        
+    def to_list_dict(self):
+        """Lightweight dict for list views—only includes necessary fields for speed"""
+        hospital_count = len(self.hospitals)
+        hospital_ids = [h.id for h in self.hospitals]
+        return {
+            "id": self.id,
+            "patient_id": self.patient_id,
+            "is_single_hospital": hospital_count == 1,
+            "hospital_ids": hospital_ids,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "age": self.age,
+            "gender": self.gender,
+            "city": self.city,
+            "symptoms": self.symptoms,
+            "tb_status_label": self.tb_status_label,
+            "genexpert_test": self.genexpert_test,
+            "sputum_smear_test": self.sputum_smear_test,
+            "chest_xray": self.chest_xray,
+            "has_fever": self.has_fever,
+            "has_cough": self.has_cough,
+            "has_weight_loss": self.has_weight_loss,
+            "has_night_sweats": self.has_night_sweats,
+            "has_chest_pain": self.has_chest_pain,
+            "has_blood": self.has_blood,
+            "weight": self.weight,
+            "oxygen_saturation_spo2": self.oxygen_saturation_spo2,
+            "contact_with_tb_patient": self.contact_with_tb_patient,
+            "previous_tb_treatment": self.previous_tb_treatment,
+            "hiv": self.hiv,
+            "drug_resistance": self.drug_resistance
         }
 
 class Diagnosis(db.Model):

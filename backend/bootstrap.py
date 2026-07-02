@@ -45,7 +45,7 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import make_url
 
 from app import app, db, load_models
-from import_data import main as import_data_main
+from import_data import main as import_data_main, get_or_create_default_hospital
 from import_new_datasets import import_healthcare_dataset, import_medicine_dataset, import_amr_dataset
 from models.models import Alert, Diagnosis, ExternalDatasetRow, Patient, Treatment, User, LabTest, Prescription, AuditLog, ATCDrug, DetailedLabResult, AntibioticResistance, Hospital, PharmacyInventory, PatientConsent
 from models.train_model import train_models_from_database
@@ -53,7 +53,8 @@ from seed_users import seed_all
 from seed_facilities_and_inventory import seed_facilities, seed_pharmacy_inventory
 from add_prescription_dosage_fields import add_prescription_fields
 from seed_lab_tests import seed_lab_tests
-from seed_patient_passwords import main as seed_patient_passwords_main
+from seed_patient_phones import main as seed_patient_phones_main
+from add_patient_indexes import add_indexes
 
 
 MANAGED_MODELS = [Hospital, User, Patient, Diagnosis, Treatment, Alert, ExternalDatasetRow, LabTest, Prescription, AuditLog, ATCDrug, DetailedLabResult, AntibioticResistance, PharmacyInventory, PatientConsent]
@@ -161,6 +162,50 @@ def ensure_schema_compatibility():
                     else:  # sqlite
                         # SQLite doesn't support ALTER COLUMN MODIFY, we'd need to recreate table
                         # But for simplicity, we'll skip for sqlite as it's more flexible
+                        pass
+                    if database_type in ["mysql", "postgresql"]:
+                        db.session.execute(text(statement))
+                        db.session.commit()
+            
+            # Special case: Ensure patient.otp_code column exists and is large enough for encryption
+            if table.name == "patient" and column.name == "otp_code":
+                existing_col = existing_columns.get("otp_code")
+                existing_col_old = existing_columns.get("_otp_code")
+                
+                if existing_col_old and not existing_col:
+                    # Old column _otp_code exists, rename it to otp_code
+                    print(f"      Renaming {table.name}._otp_code to {table.name}.otp_code...")
+                    if database_type == "mysql":
+                        statement = f"ALTER TABLE {quote(table.name)} CHANGE COLUMN {quote('_otp_code')} {quote('otp_code')} VARCHAR(200)"
+                    elif database_type == "postgresql":
+                        statement = f"ALTER TABLE {quote(table.name)} RENAME COLUMN {quote('_otp_code')} TO {quote('otp_code')}"
+                    else:  # sqlite
+                        statement = f"ALTER TABLE {quote(table.name)} RENAME COLUMN {quote('_otp_code')} TO {quote('otp_code')}"
+                    db.session.execute(text(statement))
+                    db.session.commit()
+                elif not existing_col and not existing_col_old:
+                    # Column doesn't exist at all, add it
+                    print(f"      Adding missing {table.name}.{column.name} column...")
+                    if database_type == "mysql":
+                        statement = f"ALTER TABLE {quote(table.name)} ADD COLUMN {quote(column.name)} VARCHAR(200)"
+                    elif database_type == "postgresql":
+                        statement = f"ALTER TABLE {quote(table.name)} ADD COLUMN {quote(column.name)} VARCHAR(200)"
+                    else:  # sqlite
+                        statement = f"ALTER TABLE {quote(table.name)} ADD COLUMN {quote(column.name)} VARCHAR(200)"
+                    db.session.execute(text(statement))
+                    db.session.commit()
+                elif existing_col:
+                    # Column exists, check if it's too small (encrypted data needs more space)
+                    # Always update to VARCHAR(200) for OTP encryption compatibility
+                    print(f"      Updating {table.name}.{column.name} to VARCHAR(200) for encryption...")
+                    if database_type == "mysql":
+                        statement = f"ALTER TABLE {quote(table.name)} MODIFY COLUMN {quote(column.name)} VARCHAR(200)"
+                    elif database_type == "postgresql":
+                        statement = f"ALTER TABLE {quote(table.name)} ALTER COLUMN {quote(column.name)} TYPE VARCHAR(200)"
+                    else:  # sqlite
+                        # SQLite doesn't support ALTER COLUMN MODIFY, we'd need to recreate table
+                        # For sqlite, we'll skip as it's more flexible with column sizes
+                        print(f"      Skipping column size update for SQLite (flexible sizing)")
                         pass
                     if database_type in ["mysql", "postgresql"]:
                         db.session.execute(text(statement))
@@ -279,6 +324,10 @@ def bootstrap(import_data_enabled=True, seed_enabled=True, train_enabled=True, r
         ensure_schema_compatibility()
         print("      Tables ready.")
         
+        print("      Adding performance indexes...")
+        add_indexes()
+        print("      Performance indexes added.")
+        
         print("      Adding prescription dosage fields...")
         add_prescription_fields()
         print("      Prescription dosage fields added.")
@@ -304,8 +353,14 @@ def bootstrap(import_data_enabled=True, seed_enabled=True, train_enabled=True, r
         print("[2.85/4] Seeding lab tests...")
         seed_lab_tests()
         
-        print("[2.9/4] Setting patient passwords for demo login...")
-        seed_patient_passwords_main()
+        print("[2.88/4] Ensuring patients from seeding have hospital associations...")
+        with app.app_context():
+            patients_fixed_seed = ensure_patients_have_hospitals()
+            if patients_fixed_seed > 0:
+                print(f"      Fixed {patients_fixed_seed} patients without hospital associations.")
+        
+        print("[2.9/4] Setting patient phone numbers for demo...")
+        seed_patient_phones_main()
     else:
         print("[2/4] Skipping user/sample data seeding.")
 
@@ -325,8 +380,38 @@ def bootstrap(import_data_enabled=True, seed_enabled=True, train_enabled=True, r
         patients_fixed = ensure_patients_have_hospitals()
         if patients_fixed > 0:
             print(f"      Fixed {patients_fixed} patients without hospital associations.")
+        
+        print("[3.8/4] Setting patient phone numbers...")
+        seed_patient_phones_main()
     else:
         print("[3/4] Skipping dataset import.")
+        print("[3.5/4] Ensuring patients have hospital associations...")
+        with app.app_context():
+            patients_fixed = ensure_patients_have_hospitals()
+            if patients_fixed > 0:
+                print(f"      Fixed {patients_fixed} patients without hospital associations.")
+    
+    print("[3.9/4] Ensuring all patients have phone numbers and verifying table structure...")
+    with app.app_context():
+        # Verify OTP columns exist
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('patient')]
+        otp_code_exists = 'otp_code' in columns or '_otp_code' in columns
+        otp_expires_at_exists = 'otp_expires_at' in columns
+        
+        if otp_code_exists:
+            print("      ✓ OTP code column exists")
+        else:
+            print("      ⚠ OTP code column missing!")
+        
+        if otp_expires_at_exists:
+            print("      ✓ OTP expires column exists")
+        else:
+            print("      ⚠ OTP expires column missing!")
+        
+        # Ensure all patients have phone numbers
+        seed_patient_phones_main()
 
     training_result = None
     if train_enabled:
@@ -383,7 +468,8 @@ def main():
 
     if args.runserver:
         print("Starting backend API server...")
-        app.run(host=args.host, port=args.port, debug=args.debug)
+        from app import socketio
+        socketio.run(app, host=args.host, port=args.port, debug=args.debug)
 
 
 if __name__ == "__main__":
