@@ -3735,13 +3735,23 @@ def patients():
         user_hospital_id = current_user.hospital_id if current_user else None
         
         # Check if search is an exact patient_id match for OTP workflow
-        # This check must happen BEFORE hospital filter to allow cross-hospital access
+        # Only bypass hospital filter if the patient has active consent for this hospital
         is_exact_patient_id_search = False
         if search and current_user and current_user.role in ['admin', 'doctor', 'hospital_admin']:
             exact_patient_match = Patient.query.filter(Patient.patient_id == search).first()
-            is_exact_patient_id_search = exact_patient_match is not None
+            if exact_patient_match and current_user.hospital_id:
+                # Only bypass hospital filter if patient is already associated with this hospital
+                # OR has active granted consent for this hospital
+                is_associated = any(h.id == current_user.hospital_id for h in exact_patient_match.hospitals)
+                has_active_consent = PatientConsent.query.filter(
+                    PatientConsent.patient_id == exact_patient_match.id,
+                    PatientConsent.requesting_hospital_id == current_user.hospital_id,
+                    PatientConsent.status == 'granted',
+                    (PatientConsent.expires_at.is_(None) | (PatientConsent.expires_at > datetime.now()))
+                ).first() is not None
+                is_exact_patient_id_search = is_associated or has_active_consent
         
-        # Skip hospital filter if: allow_cross_hospital is true OR exact patient_id search
+        # Skip hospital filter if: allow_cross_hospital is true OR verified exact patient_id search
         should_apply_hospital_filter = current_user and not is_exact_patient_id_search and not allow_cross_hospital
         
         if should_apply_hospital_filter:
@@ -3793,11 +3803,10 @@ def patients():
                     print(f"DEBUG: Found patient {p.patient_id} (id: {p.id})")
                     break
             
-            if exact_patient_match and current_user and current_user.role in ['admin', 'doctor', 'hospital_admin']:
-                # For OTP workflow, allow finding patient by exact ID even if not associated
-                # This enables cross-hospital patient access via OTP verification
-                # Bypass hospital filter for exact patient_id match
-                print(f"DEBUG: Bypassing hospital filter for exact match")
+            if exact_patient_match and current_user and current_user.role in ['admin', 'doctor', 'hospital_admin'] and is_exact_patient_id_search:
+                # Only allow direct access if patient is associated with this hospital or has active consent
+                # (is_exact_patient_id_search already verified this above)
+                print(f"DEBUG: Verified access for exact match")
                 query = Patient.query.options(joinedload(Patient.hospitals)).filter(Patient.id == exact_patient_match.id)
             else:
                 # For non-exact searches, we cannot search encrypted fields
