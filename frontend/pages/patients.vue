@@ -574,7 +574,8 @@ const debounceLoadResults = () => {
 
 const loadHospitals = async () => {
   try {
-    const res = await $fetch('http://127.0.0.1:5000/api/hospitals', {
+    const config = useRuntimeConfig()
+    const res = await $fetch(`${config.public.apiBase}/hospitals`, {
       headers: {
         'Authorization': `Bearer ${authToken.value}`
       }
@@ -607,7 +608,8 @@ const closePatientModal = () => {
 const requestOtp = async () => {
   isOtpLoading.value = true;
   try {
-    const res = await $fetch('http://127.0.0.1:5000/api/patients/request-otp', {
+    const config = useRuntimeConfig()
+    const res = await $fetch(`${config.public.apiBase}/patients/request-otp`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${authToken.value}`
@@ -638,7 +640,8 @@ const requestOtp = async () => {
 const verifyOtp = async () => {
   isOtpLoading.value = true;
   try {
-    const res = await $fetch('http://127.0.0.1:5000/api/patients/verify-otp', {
+    const config = useRuntimeConfig()
+    const res = await $fetch(`${config.public.apiBase}/patients/verify-otp`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${authToken.value}`,
@@ -704,6 +707,7 @@ const subscribePatientsWithFilters = () => {
 
 const loadPatientsViaAPI = async () => {
   try {
+    const config = useRuntimeConfig()
     const params: any = { page: currentPage.value, per_page: perPage };
     if (thisHospitalOnly.value) {
       params.this_hospital_only = 'true';
@@ -711,7 +715,7 @@ const loadPatientsViaAPI = async () => {
     if (searchQuery.value) {
       params.search = searchQuery.value;
     }
-    const res = await $fetch('http://127.0.0.1:5000/api/patients', {
+    const res = await $fetch(`${config.public.apiBase}/patients`, {
       headers: {
         'Authorization': `Bearer ${authToken.value}`
       },

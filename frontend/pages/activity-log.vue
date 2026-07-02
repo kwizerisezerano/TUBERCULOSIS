@@ -138,7 +138,8 @@ const loadPage = async (page: number) => {
 const loadAuditLogs = async () => {
   loading.value = true;
   try {
-    const response = await $fetch<AuditLogsResponse>(`http://127.0.0.1:5000/api/audit-logs?page=${currentPage.value}&per_page=20`, {
+    const config = useRuntimeConfig()
+    const response = await $fetch<AuditLogsResponse>(`${config.public.apiBase}/audit-logs?page=${currentPage.value}&per_page=20`, {
       headers: {
         'Authorization': `Bearer ${useCookie('auth_token').value}`
       }

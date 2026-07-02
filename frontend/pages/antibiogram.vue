@@ -123,7 +123,8 @@ const fetchAntibiogram = async () => {
     if (selectedSpecies.value) params.append('bacterial_species', selectedSpecies.value);
     if (selectedHospital.value) params.append('hospital_id', selectedHospital.value.toString());
     
-    const response = await fetch(`http://127.0.0.1:5000/api/antibiogram?${params}`, {
+    const config = useRuntimeConfig()
+    const response = await fetch(`${config.public.apiBase}/antibiogram?${params}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const data = await response.json();
@@ -143,7 +144,8 @@ const fetchAntibiogram = async () => {
 const fetchHospitals = async () => {
   try {
     const token = localStorage.getItem('auth_token');
-    const response = await fetch('http://127.0.0.1:5000/api/hospitals', {
+    const config = useRuntimeConfig()
+    const response = await fetch(`${config.public.apiBase}/hospitals`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const data = await response.json();

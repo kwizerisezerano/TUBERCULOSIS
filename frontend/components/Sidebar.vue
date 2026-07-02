@@ -126,7 +126,8 @@ const fetchAlertCount = async () => {
     if (!authToken.value || userRole.value === 'patient') {
       return;
     }
-    const response = await fetch('http://127.0.0.1:5000/api/alerts/unread-count', {
+    const config = useRuntimeConfig()
+    const response = await fetch(`${config.public.apiBase}/alerts/unread-count`, {
       headers: { 'Authorization': `Bearer ${authToken.value}` }
     });
     const data = await response.json();

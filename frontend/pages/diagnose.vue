@@ -1233,7 +1233,8 @@ const diagnoses = ref<any[]>([]);
 const isLoading = ref(false);
 const diagnosisResult = ref<any>(null);
 const prescriptionCreated = ref(false);
-const API_BASE = 'http://127.0.0.1:5000/api';
+const config = useRuntimeConfig()
+const API_BASE = config.public.apiBase;
 
 // Antibiotic assessment
 const antibioticAssessment = ref({

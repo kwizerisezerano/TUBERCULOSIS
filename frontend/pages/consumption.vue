@@ -125,7 +125,8 @@ const fetchConsumption = async () => {
     if (endDate.value) params.append('end_date', endDate.value);
     if (selectedHospital.value) params.append('hospital_id', selectedHospital.value.toString());
     
-    const response = await fetch(`http://127.0.0.1:5000/api/consumption-surveillance?${params}`, {
+    const config = useRuntimeConfig()
+    const response = await fetch(`${config.public.apiBase}/consumption-surveillance?${params}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const data = await response.json();
@@ -140,7 +141,8 @@ const fetchConsumption = async () => {
 const fetchHospitals = async () => {
   try {
     const token = localStorage.getItem('auth_token');
-    const response = await fetch('http://127.0.0.1:5000/api/hospitals', {
+    const config = useRuntimeConfig()
+    const response = await fetch(`${config.public.apiBase}/hospitals`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const data = await response.json();

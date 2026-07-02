@@ -181,8 +181,8 @@ import { ref, onMounted } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 
 const { authToken } = useAuth()
-
-const API_BASE = 'http://127.0.0.1:5000/api'
+const config = useRuntimeConfig()
+const API_BASE = config.public.apiBase
 
 const settings = ref({
   systemName: 'TB Predictive EHR',

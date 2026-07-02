@@ -75,7 +75,8 @@ const currentPage = ref(1);
 const perPage = 20;
 const totalResults = ref(0);
 const totalPages = ref(1);
-const API_BASE = 'http://127.0.0.1:5000/api';
+const config = useRuntimeConfig()
+const API_BASE = config.public.apiBase;
 
 const getStatusClass = (status: string) => {
   const classes: Record<string, string> = {

@@ -33,7 +33,8 @@ export const useAuth = () => {
       body.email = identifier;
     }
 
-    const data = await $fetch('http://127.0.0.1:5000/api/auth/login', {
+    const config = useRuntimeConfig()
+    const data = await $fetch(`${config.public.apiBase}/auth/login`, {
       method: 'POST',
       body,
     });

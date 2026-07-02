@@ -147,7 +147,8 @@ onMounted(async () => {
   
   // Fetch patient data
   try {
-    const data = await $fetch(`http://127.0.0.1:5000/api/patients/${currentUser.value?.id}`, {
+    const config = useRuntimeConfig()
+    const data = await $fetch(`${config.public.apiBase}/patients/${currentUser.value?.id}`, {
       headers: {
         'Authorization': `Bearer ${authToken.value}`
       }
@@ -161,7 +162,8 @@ onMounted(async () => {
 const updateConsent = async (status: string) => {
   isLoading.value = true
   try {
-    await $fetch(`http://127.0.0.1:5000/api/patients/${patient.value?.id}/consent`, {
+    const config = useRuntimeConfig()
+    await $fetch(`${config.public.apiBase}/patients/${patient.value?.id}/consent`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${authToken.value}`
@@ -171,7 +173,7 @@ const updateConsent = async (status: string) => {
       }
     })
     // Refresh patient data
-    const data = await $fetch(`http://127.0.0.1:5000/api/patients/${patient.value?.id}`, {
+    const data = await $fetch(`${config.public.apiBase}/patients/${patient.value?.id}`, {
       headers: {
         'Authorization': `Bearer ${authToken.value}`
       }
@@ -200,7 +202,8 @@ const changePassword = async () => {
   passwordMessage.value = ''
   
   try {
-    await $fetch(`http://127.0.0.1:5000/api/patients/${patient.value?.id}/password`, {
+    const config = useRuntimeConfig()
+    await $fetch(`${config.public.apiBase}/patients/${patient.value?.id}/password`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${authToken.value}`

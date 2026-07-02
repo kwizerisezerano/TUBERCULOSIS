@@ -84,7 +84,8 @@ const { currentUser, authToken } = useAuth();
 const fetchAlerts = async () => {
   try {
     if (!authToken.value) return;
-    const response = await fetch('http://127.0.0.1:5000/api/alerts?unread_only=true&per_page=5', {
+    const config = useRuntimeConfig()
+    const response = await fetch(`${config.public.apiBase}/alerts?unread_only=true&per_page=5`, {
       headers: {
         'Authorization': `Bearer ${authToken.value}`
       }
@@ -99,7 +100,8 @@ const fetchAlerts = async () => {
 const fetchUnreadCount = async () => {
   try {
     if (!authToken.value) return;
-    const response = await fetch('http://127.0.0.1:5000/api/alerts/unread-count', {
+    const config = useRuntimeConfig()
+    const response = await fetch(`${config.public.apiBase}/alerts/unread-count`, {
       headers: {
         'Authorization': `Bearer ${authToken.value}`
       }
@@ -114,7 +116,8 @@ const fetchUnreadCount = async () => {
 const markAsRead = async (alertId: number) => {
   try {
     if (!authToken.value) return;
-    await fetch(`http://127.0.0.1:5000/api/alerts/${alertId}/read`, {
+    const config = useRuntimeConfig()
+    await fetch(`${config.public.apiBase}/alerts/${alertId}/read`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${authToken.value}`

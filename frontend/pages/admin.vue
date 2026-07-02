@@ -333,8 +333,8 @@ const settings = ref({
   itemsPerPage: 20,
   dateFormat: 'DD/MM/YYYY'
 })
-
-const API_BASE = 'http://127.0.0.1:5000/api'
+const config = useRuntimeConfig()
+const API_BASE = config.public.apiBase
 
 const fetchStats = async () => {
   loadingStats.value = true
