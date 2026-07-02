@@ -3708,6 +3708,7 @@ def patients():
         sort = request.args.get('sort', 'created_desc')
         filter_hospital_id = request.args.get('hospital_id', type=int)
         this_hospital_only = request.args.get('this_hospital_only', 'false').lower() == 'true'
+        allow_cross_hospital = request.args.get('allow_cross_hospital', 'false').lower() == 'true'
 
         from sqlalchemy.orm import joinedload
         query = Patient.query.options(joinedload(Patient.hospitals))
@@ -3716,7 +3717,17 @@ def patients():
         current_user = get_current_user_from_jwt()
         user_hospital_id = current_user.hospital_id if current_user else None
         
-        if current_user:
+        # Check if search is an exact patient_id match for OTP workflow
+        # This check must happen BEFORE hospital filter to allow cross-hospital access
+        is_exact_patient_id_search = False
+        if search and current_user and current_user.role in ['admin', 'doctor', 'hospital_admin']:
+            exact_patient_match = Patient.query.filter(Patient.patient_id == search).first()
+            is_exact_patient_id_search = exact_patient_match is not None
+        
+        # Skip hospital filter if: allow_cross_hospital is true OR exact patient_id search
+        should_apply_hospital_filter = current_user and not is_exact_patient_id_search and not allow_cross_hospital
+        
+        if should_apply_hospital_filter:
             # Only Admin can see all patients or filter by hospital
             if current_user.role == 'admin':
                 if filter_hospital_id:
@@ -3752,15 +3763,30 @@ def patients():
                     query = query.filter(~Patient.hospitals.any())
         
         # Apply search filter at database level
+        # Note: Cannot use ilike on encrypted fields (first_name, last_name, patient_id are properties)
+        # Only exact patient_id matching is supported
         if search:
-            search_lower = f"%{search.lower()}%"
-            query = query.filter(
-                db.or_(
-                    Patient.first_name.ilike(search_lower),
-                    Patient.last_name.ilike(search_lower),
-                    Patient.patient_id.ilike(search_lower)
-                )
-            )
+            print(f"DEBUG: Searching for patient_id: {search}")
+            # Check if search is an exact patient_id match
+            # Need to search the raw encrypted column since property getter decrypts
+            exact_patient_match = None
+            for p in Patient.query.all():
+                if p.patient_id == search:
+                    exact_patient_match = p
+                    print(f"DEBUG: Found patient {p.patient_id} (id: {p.id})")
+                    break
+            
+            if exact_patient_match and current_user and current_user.role in ['admin', 'doctor', 'hospital_admin']:
+                # For OTP workflow, allow finding patient by exact ID even if not associated
+                # This enables cross-hospital patient access via OTP verification
+                # Bypass hospital filter for exact patient_id match
+                print(f"DEBUG: Bypassing hospital filter for exact match")
+                query = Patient.query.options(joinedload(Patient.hospitals)).filter(Patient.id == exact_patient_match.id)
+            else:
+                # For non-exact searches, we cannot search encrypted fields
+                # Only filter by exact patient_id if it matches (with hospital filter still applied)
+                print(f"DEBUG: No exact match or user not authorized, applying hospital filter")
+                query = query.filter(Patient.patient_id == search)
         
         sort_mapping = {
             'id_asc': Patient.id.asc(),

@@ -56,11 +56,12 @@ export const useApi = () => {
   };
 
   return {
-    getPatients: (page = 1, perPage = 20, search = '', hospitalId: number | null = null, thisHospitalOnly: boolean = false) => {
+    getPatients: (page = 1, perPage = 20, search = '', hospitalId: number | null = null, thisHospitalOnly: boolean = false, allowCrossHospital: boolean = false) => {
       let url = `/patients?page=${page}&per_page=${perPage}`
       if (search) url += `&search=${encodeURIComponent(search)}`
       if (hospitalId) url += `&hospital_id=${hospitalId}`
       if (thisHospitalOnly) url += `&this_hospital_only=true`
+      if (allowCrossHospital) url += `&allow_cross_hospital=true`
       return request(url)
     },
     getPatientById: (id: number) => request(`/patients/${id}`),

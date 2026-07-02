@@ -1,6 +1,12 @@
 <template>
   <DashboardLayout>
-
+    <NotificationModal
+      :is-open="notification.isOpen"
+      :title="notification.title"
+      :message="notification.message"
+      :type="notification.type"
+      @close="closeNotification"
+    />
     <div class="space-y-6">
       <!-- Progress Steps -->
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
@@ -102,6 +108,30 @@
                     class="px-4 py-3 rounded-xl bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition"
                   >
                     {{ loadingManualPatient ? 'Loading...' : 'Find' }}
+                  </button>
+                  <button
+                    @click="requestOtp"
+                    :disabled="isOtpLoading || !manualPatientId"
+                    class="px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition"
+                  >
+                    {{ isOtpLoading ? 'Sending...' : 'Request OTP' }}
+                  </button>
+                </div>
+                <!-- OTP Input -->
+                <div v-if="otpSent" class="flex gap-2 mt-2">
+                  <input
+                    v-model="otpCode"
+                    type="text"
+                    placeholder="Enter OTP"
+                    maxlength="6"
+                    class="flex-1 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 outline-none"
+                  />
+                  <button
+                    @click="verifyOtp"
+                    :disabled="isOtpLoading || !otpCode"
+                    class="px-4 py-3 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition"
+                  >
+                    {{ isOtpLoading ? 'Verifying...' : 'Verify OTP' }}
                   </button>
                 </div>
               </div>
@@ -1196,6 +1226,7 @@
 
 <script setup lang="ts">
 import DashboardLayout from '~/components/DashboardLayout.vue';
+import NotificationModal from '~/components/NotificationModal.vue';
 import { useAuth } from '~/composables/useAuth';
 const { getPatients, diagnose, getDiagnoses, getPatientById } = useApi();
 const { authToken } = useAuth();
@@ -1235,6 +1266,93 @@ const diagnosisResult = ref<any>(null);
 const prescriptionCreated = ref(false);
 const config = useRuntimeConfig()
 const API_BASE = config.public.apiBase;
+
+// OTP related
+const findPatientId = ref('');
+const otpCode = ref('');
+const otpSent = ref(false);
+const isOtpLoading = ref(false);
+
+// Notification modal
+const notification = ref({
+  isOpen: false,
+  title: '',
+  message: '',
+  type: 'info' as 'success' | 'error' | 'warning' | 'info'
+});
+
+const showNotification = (title: string, message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+  notification.value = {
+    isOpen: true,
+    title,
+    message,
+    type
+  };
+};
+
+const closeNotification = () => {
+  notification.value.isOpen = false;
+};
+
+const requestOtp = async () => {
+  findPatientId.value = manualPatientId.value;
+  isOtpLoading.value = true;
+  try {
+    const res = await $fetch(`${config.public.apiBase}/patients/request-otp`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken.value}`
+      },
+      body: {
+        patient_id: findPatientId.value
+      }
+    });
+    if ((res as any).already_associated) {
+      showNotification('Already Associated', 'Patient is already associated with your hospital! Click "Find" to load the patient.', 'info');
+      // Refresh patients list to ensure the patient appears in search
+      await loadPatientsList();
+    } else {
+      otpSent.value = true;
+      showNotification('OTP Sent', 'OTP sent to patient\'s phone!', 'success');
+    }
+  } catch (e: any) {
+    console.error('Request OTP failed:', e);
+    showNotification('Error', e.data?.msg || 'Failed to send OTP', 'error');
+  } finally {
+    isOtpLoading.value = false;
+  }
+};
+
+const verifyOtp = async () => {
+  findPatientId.value = manualPatientId.value;
+  isOtpLoading.value = true;
+  try {
+    const res = await $fetch(`${config.public.apiBase}/patients/verify-otp`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken.value}`,
+        'Content-Type': 'application/json'
+      },
+      body: {
+        patient_id: findPatientId.value,
+        otp_code: otpCode.value
+      }
+    });
+    showNotification('OTP Verified', 'Patient is now associated with your hospital!', 'success');
+    // Reset OTP state
+    otpSent.value = false;
+    otpCode.value = '';
+    // Refresh patients list to include newly associated patient
+    await loadPatientsList();
+    // Load the patient
+    await loadPatientByManualId();
+  } catch (e: any) {
+    console.error('Verify OTP failed:', e);
+    showNotification('Verification Failed', e.data?.msg || 'Invalid or expired OTP', 'error');
+  } finally {
+    isOtpLoading.value = false;
+  }
+};
 
 // Antibiotic assessment
 const antibioticAssessment = ref({
@@ -1493,12 +1611,19 @@ const debounceLoadPatients = () => {
   debounceTimer = setTimeout(loadPatientsList, 300) as unknown as number;
 };
 
-const loadPatientsList = async () => {
+const loadPatientsList = async (searchTerm?: string) => {
   try {
-    const res = await getPatients(1, 50, patientSearch.value);
+    const searchToUse = searchTerm || patientSearch.value;
+    const res = await getPatients(1, 50, searchToUse);
     patientsList.value = (res as any).patients || [];
+    console.log('Loaded patients:', patientsList.value.length, 'search:', searchToUse);
+    if (patientsList.value.length === 0 && searchToUse) {
+      console.log('No patients found for search:', searchToUse);
+    }
+    console.log('Patient IDs in list:', patientsList.value.map(p => p.patient_id));
   } catch (e) {
     console.error('Failed to load patients', e);
+    showNotification('Error', 'Failed to load patients list', 'error');
   }
 };
 
@@ -1524,18 +1649,19 @@ const loadPatientByManualId = async () => {
   if (!manualPatientId.value) return;
   loadingManualPatient.value = true;
   try {
-    // First try to search patients list by patient_id
-    let patient = patientsList.value.find(p => p.patient_id.toLowerCase() === manualPatientId.value.toLowerCase());
-    if (!patient) {
-      // If not found in list, try to fetch directly from API by searching
-      const searchRes = await getPatients(1, 10, manualPatientId.value);
-      const searchPatients = (searchRes as any).patients || [];
-      patient = searchPatients.find(p => p.patient_id.toLowerCase() === manualPatientId.value.toLowerCase());
-      
-      if (patient && !patientsList.value.find(p => p.id === patient.id)) {
-        patientsList.value.push(patient);
-      }
-    }
+    // Load patients list with the manual patient ID as search term
+    // This will trigger the exact patient_id match bypass in the backend
+    await loadPatientsList(manualPatientId.value);
+    
+    console.log('Patients list after refresh:', patientsList.value.length);
+    console.log('Searching for patient ID:', manualPatientId.value);
+    
+    // Search patients list by patient_id (case-insensitive)
+    let patient = patientsList.value.find(p => {
+      const match = p.patient_id && p.patient_id.toLowerCase() === manualPatientId.value.toLowerCase();
+      if (match) console.log('Found patient:', p.patient_id);
+      return match;
+    });
     
     if (patient) {
       selectedPatientId.value = patient.id;
@@ -1549,11 +1675,12 @@ const loadPatientByManualId = async () => {
       await fetchPatientDrugResistance();
       await fetchPatientLabTests();
     } else {
-      alert('Patient not found. Please check the Patient ID and try again.');
+      console.log('Patient not found in list. List contents:', patientsList.value.map(p => p.patient_id));
+      showNotification('Patient Not Found', 'Patient not found or not associated with your hospital. Use OTP verification to access cross-hospital patients.', 'error');
     }
   } catch (e) {
     console.error('Failed to load patient by ID', e);
-    alert('Failed to find patient. Please check your network connection or contact support.');
+    showNotification('Error', 'Failed to find patient. Please check your network connection or contact support.', 'error');
   } finally {
     loadingManualPatient.value = false;
   }
@@ -2070,7 +2197,7 @@ const resetDiagnosis = () => {
 
 const createPrescription = async () => {
   if (!diagnosisResult.value || !selectedPatientId.value) {
-    alert('Please complete diagnosis first');
+    showNotification('Incomplete Diagnosis', 'Please complete diagnosis first', 'warning');
     return;
   }
 
@@ -2118,16 +2245,16 @@ const createPrescription = async () => {
     });
 
     if (response.ok) {
-      alert('✓ Prescription created successfully!\n\nThe pharmacist will review and dispense the medication.');
+      showNotification('Success', 'Prescription created successfully! The pharmacist will review and dispense the medication.', 'success');
       // Navigate to prescriptions page
       window.location.href = '/prescriptions';
     } else {
       const errorData = await response.json();
-      alert(`Failed to create prescription: ${errorData.msg || 'Unknown error'}`);
+      showNotification('Error', `Failed to create prescription: ${errorData.msg || 'Unknown error'}`, 'error');
     }
   } catch (error) {
     console.error('Error creating prescription:', error);
-    alert(`Network error: ${error.message}`);
+    showNotification('Network Error', `Network error: ${error.message}`, 'error');
   }
 };
 
