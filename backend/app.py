@@ -4019,17 +4019,20 @@ def lab_tests():
         # Hospital-based access control
         current_user = get_current_user_from_jwt()
         if current_user:
-            # Admin can see all or filter by hospital
-            if current_user.role == 'admin':
-                if filter_hospital_id:
-                    query = query.filter(LabTest.hospital_id == filter_hospital_id)
-            else:
-                # Non-admin users see only their hospital's lab tests
-                if current_user.hospital_id:
-                    query = query.filter(LabTest.hospital_id == current_user.hospital_id)
-                # User has no hospital, show nothing or only patients with no hospital
+            # If fetching for a specific patient, skip hospital filter
+            # (access is already controlled by patient association/consent)
+            # This allows doctors to see lab results from all hospitals the patient visited
+            if not patient_id:
+                # Admin can see all or filter by hospital
+                if current_user.role == 'admin':
+                    if filter_hospital_id:
+                        query = query.filter(LabTest.hospital_id == filter_hospital_id)
                 else:
-                    query = query.filter(LabTest.hospital_id.is_(None))
+                    # Non-admin users see only their hospital's lab tests
+                    if current_user.hospital_id:
+                        query = query.filter(LabTest.hospital_id == current_user.hospital_id)
+                    else:
+                        query = query.filter(LabTest.hospital_id.is_(None))
         
         if patient_id:
             query = query.filter_by(patient_id=patient_id)
@@ -6837,21 +6840,28 @@ def get_diagnoses():
     per_page = request.args.get('per_page', 20, type=int)
     filter_hospital_id = request.args.get('hospital_id', type=int)
     
+    filter_patient_id = request.args.get('patient_id', type=int)
+    
     # Build query with hospital-based access control and joinedload
     from sqlalchemy.orm import joinedload
-    # Optimize: Add joinedload for patient to avoid N+1 queries
     query = Diagnosis.query.options(joinedload(Diagnosis.hospital), joinedload(Diagnosis.patient))
     current_user = get_current_user_from_jwt()
     
     if current_user:
-        if current_user.role == 'admin':
-            if filter_hospital_id:
-                query = query.filter_by(hospital_id=filter_hospital_id)
-        else:
-            if current_user.hospital_id:
-                query = query.filter_by(hospital_id=current_user.hospital_id)
+        # If fetching for a specific patient, skip hospital filter so the doctor
+        # sees all diagnoses across all hospitals the patient has visited
+        if not filter_patient_id:
+            if current_user.role == 'admin':
+                if filter_hospital_id:
+                    query = query.filter_by(hospital_id=filter_hospital_id)
             else:
-                query = query.filter(Diagnosis.hospital_id.is_(None))
+                if current_user.hospital_id:
+                    query = query.filter_by(hospital_id=current_user.hospital_id)
+                else:
+                    query = query.filter(Diagnosis.hospital_id.is_(None))
+    
+    if filter_patient_id:
+        query = query.filter_by(patient_id=filter_patient_id)
     
     pagination = query.order_by(Diagnosis.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     diagnoses = [d.to_dict() for d in pagination.items]
