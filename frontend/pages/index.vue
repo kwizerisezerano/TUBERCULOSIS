@@ -223,44 +223,44 @@ const stats = [
 
 const credentialGroups = [
   {
-    title: 'System Access',
-    subtitle: 'Cross-hospital admin access',
-    badge: 'Admin',
+    title: 'System Admin',
+    subtitle: 'Full cross-hospital access',
+    badge: 'Global',
     credentials: [
       { role: 'System Admin', email: 'divinekageruka@gmail.com', pwd: 'Admin123!', groupClass: 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:bg-slate-800' }
     ]
   },
   {
-    title: 'Hospital One',
-    subtitle: 'Same-hospital staff accounts',
-    badge: 'Main Hospital',
+    title: 'Default Hospital',
+    subtitle: 'Doctor · Lab Tech · Pharmacist share this hospital',
+    badge: 'Hospital 1',
     credentials: [
-      { role: 'Hospital Admin', email: 'igiclarisse10@gmail.com', pwd: 'Admin123!', groupClass: 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-800/40' },
-      { role: 'Doctor', email: 'igiranezac459@gmail.com', pwd: 'Doctor123!', groupClass: 'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-200 dark:hover:bg-blue-800/40' },
-      { role: 'Lab Technician', email: 'clarisseigiraneza56@gmail.com', pwd: 'LabTech123!', groupClass: 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200 dark:hover:bg-amber-800/40' },
-      { role: 'Pharmacist', email: 'clarisseigiraneza915@gmail.com', pwd: 'Pharm123!', groupClass: 'border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-700 dark:bg-violet-900/30 dark:text-violet-200 dark:hover:bg-violet-800/40' }
+      { role: 'Hosp. Admin', email: 'igiclarisse10@gmail.com',       pwd: 'Admin123!',   groupClass: 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-800/40' },
+      { role: 'Doctor',      email: 'igiranezac459@gmail.com',       pwd: 'Doctor123!',  groupClass: 'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-200 dark:hover:bg-blue-800/40' },
+      { role: 'Lab Tech',    email: 'clarisseigiraneza56@gmail.com',  pwd: 'LabTech123!', groupClass: 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200 dark:hover:bg-amber-800/40' },
+      { role: 'Pharmacist',  email: 'clarisseigiraneza915@gmail.com', pwd: 'Pharm123!',   groupClass: 'border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-700 dark:bg-violet-900/30 dark:text-violet-200 dark:hover:bg-violet-800/40' }
     ]
   },
   {
-    title: 'Hospital Two',
-    subtitle: 'Second hospital demo accounts',
+    title: 'Test Hospital 2',
+    subtitle: 'Doctor · Lab Tech · Pharmacist share this hospital',
     badge: 'Hospital 2',
     credentials: [
-      { role: 'Hospital Admin (Hosp 2)', email: 'admin2@hospital2.com', pwd: 'Admin123!', groupClass: 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-800/40' },
-      { role: 'Doctor (Hosp 2)', email: 'doctor2@hospital2.com', pwd: 'Doctor123!', groupClass: 'border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-700 dark:bg-sky-900/30 dark:text-sky-200 dark:hover:bg-sky-800/40' },
-      { role: 'Lab Tech (Hosp 2)', email: 'labtech2@hospital2.com', pwd: 'LabTech123!', groupClass: 'border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-700 dark:bg-sky-900/30 dark:text-sky-200 dark:hover:bg-sky-800/40' },
-      { role: 'Pharmacist (Hosp 2)', email: 'pharmacist2@hospital2.com', pwd: 'Pharm123!', groupClass: 'border-fuchsia-300 bg-fuchsia-50 text-fuchsia-700 hover:bg-fuchsia-100 dark:border-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-200 dark:hover:bg-fuchsia-800/40' }
+      { role: 'Hosp. Admin', email: 'admin2@hospital2.com',      pwd: 'Admin123!',   groupClass: 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-800/40' },
+      { role: 'Doctor',      email: 'doctor2@hospital2.com',     pwd: 'Doctor123!',  groupClass: 'border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-700 dark:bg-sky-900/30 dark:text-sky-200 dark:hover:bg-sky-800/40' },
+      { role: 'Lab Tech',    email: 'labtech2@hospital2.com',    pwd: 'LabTech123!', groupClass: 'border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-700 dark:bg-sky-900/30 dark:text-sky-200 dark:hover:bg-sky-800/40' },
+      { role: 'Pharmacist',  email: 'pharmacist2@hospital2.com', pwd: 'Pharm123!',   groupClass: 'border-fuchsia-300 bg-fuchsia-50 text-fuchsia-700 hover:bg-fuchsia-100 dark:border-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-200 dark:hover:bg-fuchsia-800/40' }
     ]
   },
   {
-    title: 'Hospital Three',
-    subtitle: 'Third hospital demo accounts',
+    title: 'Test Hospital 3',
+    subtitle: 'Doctor · Lab Tech · Pharmacist share this hospital',
     badge: 'Hospital 3',
     credentials: [
-      { role: 'Hospital Admin (Hosp 3)', email: 'admin3@hospital3.com', pwd: 'Admin123!', groupClass: 'border-lime-300 bg-lime-50 text-lime-700 hover:bg-lime-100 dark:border-lime-700 dark:bg-lime-900/30 dark:text-lime-200 dark:hover:bg-lime-800/40' },
-      { role: 'Doctor (Hosp 3)', email: 'doctor3@hospital3.com', pwd: 'Doctor123!', groupClass: 'border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-200 dark:hover:bg-cyan-800/40' },
-      { role: 'Lab Tech (Hosp 3)', email: 'labtech3@hospital3.com', pwd: 'LabTech123!', groupClass: 'border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-200 dark:hover:bg-cyan-800/40' },
-      { role: 'Pharmacist (Hosp 3)', email: 'pharmacist3@hospital3.com', pwd: 'Pharm123!', groupClass: 'border-pink-300 bg-pink-50 text-pink-700 hover:bg-pink-100 dark:border-pink-700 dark:bg-pink-900/30 dark:text-pink-200 dark:hover:bg-pink-800/40' }
+      { role: 'Hosp. Admin', email: 'admin3@hospital3.com',      pwd: 'Admin123!',   groupClass: 'border-lime-300 bg-lime-50 text-lime-700 hover:bg-lime-100 dark:border-lime-700 dark:bg-lime-900/30 dark:text-lime-200 dark:hover:bg-lime-800/40' },
+      { role: 'Doctor',      email: 'doctor3@hospital3.com',     pwd: 'Doctor123!',  groupClass: 'border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-200 dark:hover:bg-cyan-800/40' },
+      { role: 'Lab Tech',    email: 'labtech3@hospital3.com',    pwd: 'LabTech123!', groupClass: 'border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-200 dark:hover:bg-cyan-800/40' },
+      { role: 'Pharmacist',  email: 'pharmacist3@hospital3.com', pwd: 'Pharm123!',   groupClass: 'border-pink-300 bg-pink-50 text-pink-700 hover:bg-pink-100 dark:border-pink-700 dark:bg-pink-900/30 dark:text-pink-200 dark:hover:bg-pink-800/40' }
     ]
   }
 ];

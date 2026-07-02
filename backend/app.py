@@ -6684,6 +6684,7 @@ def diagnose():
                 prescription = Prescription(
                     patient_id=patient.id,
                     diagnosis_id=diagnosis_record.id,
+                    hospital_id=user.hospital_id,
                     created_by=user.id,
                     medication=drug_name,
                     atc_drug_id=atc_drug.id,
