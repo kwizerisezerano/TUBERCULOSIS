@@ -8,19 +8,8 @@ from models.models import db, Patient
 import random
 
 # Sample Rwandan phone numbers (starts with +250)
-DEFAULT_PHONE = "+250790989830"
-SAMPLE_PHONES = [
-    "+250790989830",
-    "+250781234567",
-    "+250782345678",
-    "+250783456789",
-    "+250784567890",
-    "+250785678901",
-    "+250786789012",
-    "+250787890123",
-    "+250788901234",
-    "+250789012345"
-]
+DEFAULT_PHONE = "+250 780 219 351"
+SAMPLE_PHONES = ["+250 780 219 351"]
 
 def main():
     with app.app_context():

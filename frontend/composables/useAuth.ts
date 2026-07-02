@@ -17,10 +17,42 @@ export interface Patient {
 }
 
 export const useAuth = () => {
-  const authToken = useCookie('auth_token', { maxAge: 60 * 60 * 24 * 7 });
+  const authToken = useCookie<string | null>('auth_token', { maxAge: 60 * 60 * 24 * 7, sameSite: 'lax' });
   const currentUser = useState<User | Patient | null>('auth_user', () => null);
 
-  const isLoggedIn = computed(() => !!authToken.value && !!currentUser.value);
+  const isLoggedIn = computed(() => !!authToken.value);
+
+  const restoreSession = async () => {
+    const token = authToken.value || (process.client ? localStorage.getItem('auth_token') : null);
+    if (!token || currentUser.value) {
+      if (token) {
+        authToken.value = token;
+      }
+      return;
+    }
+
+    authToken.value = token;
+
+    try {
+      const config = useRuntimeConfig();
+      const data = await $fetch(`${config.public.apiBase}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      currentUser.value = ((data as any).user || (data as any).patient) as User | Patient;
+      if (process.client) {
+        localStorage.setItem('auth_token', token);
+      }
+    } catch (error: any) {
+      const status = error?.response?.status;
+      if (status === 401 || status === 403) {
+        authToken.value = null;
+        currentUser.value = null;
+        if (process.client) {
+          localStorage.removeItem('auth_token');
+        }
+      }
+    }
+  };
 
   const userRole = computed(() => currentUser.value?.role);
 
@@ -39,8 +71,9 @@ export const useAuth = () => {
       body,
     });
 
-    authToken.value = (data as any).access_token;
-    localStorage.setItem('auth_token', (data as any).access_token);
+    const token = (data as any).access_token;
+    authToken.value = token;
+    localStorage.setItem('auth_token', token);
 
     if (type === 'patient') {
       currentUser.value = (data as any).patient as Patient;
@@ -69,6 +102,7 @@ const logout = () => {
     userRole,
     login,
     logout,
+    restoreSession,
   };
 };
 

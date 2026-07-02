@@ -5,6 +5,12 @@
 </template>
 
 <script setup lang="ts">
+const { restoreSession } = useAuth();
+
+onMounted(() => {
+  void restoreSession();
+});
+
 useHead({
   title: 'Predictive EHR Analytics Dashboard',
   meta: [

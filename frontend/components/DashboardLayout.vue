@@ -79,7 +79,7 @@ const showAlerts = ref(false);
 const unreadCount = ref(0);
 const alerts = ref<any[]>([]);
 
-const { currentUser, authToken } = useAuth();
+const { currentUser, authToken, isLoggedIn } = useAuth();
 
 const fetchAlerts = async () => {
   try {
@@ -143,20 +143,18 @@ const formatDate = (dateString: string) => {
   return date.toLocaleDateString();
 };
 
-onMounted(() => {
-  if (!currentUser.value) {
+onMounted(async () => {
+  if (!isLoggedIn.value) {
     navigateTo('/');
-  } else {
-    // If user is patient, don't fetch alerts
-    if (currentUser.value.role !== 'patient') {
+    return;
+  }
+  if (currentUser.value?.role !== 'patient') {
+    fetchUnreadCount();
+    fetchAlerts();
+    setInterval(() => {
       fetchUnreadCount();
       fetchAlerts();
-      // Refresh alerts every 30 seconds
-      setInterval(() => {
-        fetchUnreadCount();
-        fetchAlerts();
-      }, 30000);
-    }
+    }, 30000);
   }
 });
 </script>

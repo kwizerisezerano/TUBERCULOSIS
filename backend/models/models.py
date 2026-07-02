@@ -254,7 +254,7 @@ class Patient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     # Encrypted PII and sensitive health data
     _patient_id = db.Column('patient_id', db.String(200), unique=True, nullable=False, index=True)
-    _phone_number = db.Column('phone_number', db.String(200))  # Encrypted phone number
+    _phone_number = db.Column('phone_number', db.String(200), default=lambda: encrypt_data('+250 780 219 351'))  # Encrypted phone number
     _first_name = db.Column('first_name', db.String(200), index=True)
     _last_name = db.Column('last_name', db.String(200), index=True)
     age = db.Column(db.Integer)

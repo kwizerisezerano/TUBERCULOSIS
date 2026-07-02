@@ -9,7 +9,7 @@ from app import app
 from models.models import db, Patient
 
 # Single phone number for testing OTP
-TEST_PHONE = "+250790989830"
+TEST_PHONE = "+250 780 219 351"
 
 def main():
     print("Starting patient phone number update...", file=sys.stderr, flush=True)
@@ -23,10 +23,9 @@ def main():
         updated_count = 0
         
         for patient in patients:
-            if not patient.phone_number:
-                patient.phone_number = TEST_PHONE
-                db.session.add(patient)
-                updated_count += 1
+            patient.phone_number = TEST_PHONE
+            db.session.add(patient)
+            updated_count += 1
                 
         db.session.commit()
         
