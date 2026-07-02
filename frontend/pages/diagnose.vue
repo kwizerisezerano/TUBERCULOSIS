@@ -146,13 +146,16 @@
               >
                 <option value="" disabled>Select a patient from the list...</option>
                 <option v-for="patient in patientsList" :key="patient.id" :value="patient.id">
-                  {{ patient.patient_id }} - {{ patient.first_name }} {{ patient.last_name }} (Age: {{ patient.age }}, {{ patient.gender }})
+                  {{ patient.patient_id }} - {{ patient.first_name }} {{ patient.last_name }} (Age: {{ patient.age }}, {{ patient.gender }}){{ patient.hospital?.name ? ' — ' + patient.hospital.name : '' }}
                 </option>
               </select>
             </div>
             <div v-if="selectedPatient" class="p-4 rounded-xl bg-primary-900/30 border border-primary-700/50">
               <p class="text-primary-600 dark:text-primary-400 text-sm font-medium">
                 ✓ Patient selected: {{ selectedPatient.first_name }} {{ selectedPatient.last_name }}
+              </p>
+              <p v-if="selectedPatient.hospital?.name" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                🏥 Hospital: {{ selectedPatient.hospital.name }}{{ selectedPatient.hospital.hospital_id ? ' (ID: ' + selectedPatient.hospital.hospital_id + ')' : '' }}
               </p>
             </div>
           </div>
