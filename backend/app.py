@@ -7419,7 +7419,9 @@ def verify_patient_otp():
 
         # Associate patient with user's hospital
         hospital = Hospital.query.get(user.hospital_id)
-        if hospital and hospital not in patient.hospitals:
+        if hospital:
+            if hospital in patient.hospitals:
+                return jsonify({'msg': 'Patient is already associated with your hospital!'}), 400
             patient.hospitals.append(hospital)
 
         # Create consent record

@@ -1,5 +1,12 @@
 <template>
   <DashboardLayout>
+    <NotificationModal
+      :is-open="notification.isOpen"
+      :title="notification.title"
+      :message="notification.message"
+      :type="notification.type"
+      @close="closeNotification"
+    />
     <div class="space-y-6">
       <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
         <h2 class="text-xl font-bold text-gray-900 dark:text-white">Patient Records</h2>
@@ -430,6 +437,7 @@
 
 <script setup lang="ts">
 import DashboardLayout from '~/components/DashboardLayout.vue';
+import NotificationModal from '~/components/NotificationModal.vue';
 const { getPatientById } = useApi();
 const { connect, disconnect, subscribePatients, onPatientsUpdate, offPatientsUpdate, isConnected } = useSocket();
 const router = useRouter();
@@ -458,6 +466,27 @@ const showOnlySingleHospital = ref<boolean | string>('');
 const thisHospitalOnly = ref(false);
 const { authToken, currentUser } = useAuth();
 const user = currentUser;
+
+// Notification modal
+const notification = ref({
+  isOpen: false,
+  title: '',
+  message: '',
+  type: 'info' as 'success' | 'error' | 'warning' | 'info'
+});
+
+const showNotification = (title: string, message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+  notification.value = {
+    isOpen: true,
+    title,
+    message,
+    type
+  };
+};
+
+const closeNotification = () => {
+  notification.value.isOpen = false;
+};
 
 function getRiskInfo(patient: any): { class: string; text: string } {
   let score = 0;
@@ -588,7 +617,7 @@ const requestOtp = async () => {
       }
     });
     if ((res as any).already_associated) {
-      alert('Patient is already associated with your hospital!');
+      showNotification('Already Associated', 'Patient is already associated with your hospital!', 'info');
       // Let's try to open the patient details
       const foundPatient = filteredPatients.value.find((p: any) => p.patient_id === findPatientId.value);
       if (foundPatient) {
@@ -596,11 +625,11 @@ const requestOtp = async () => {
       }
     } else {
       otpSent.value = true;
-      alert('OTP sent to patient\'s phone!');
+      showNotification('OTP Sent', 'OTP sent to patient\'s phone!', 'success');
     }
   } catch (e: any) {
     console.error('Request OTP failed:', e);
-    alert(e.data?.msg || 'Failed to send OTP');
+    showNotification('Error', e.data?.msg || 'Failed to send OTP', 'error');
   } finally {
     isOtpLoading.value = false;
   }
@@ -620,7 +649,7 @@ const verifyOtp = async () => {
         otp_code: otpCode.value
       }
     });
-    alert('OTP verified! Patient is now associated with your hospital!');
+    showNotification('OTP Verified', 'Patient is now associated with your hospital!', 'success');
     // Reset OTP state
     otpSent.value = false;
     findPatientId.value = '';
@@ -631,7 +660,7 @@ const verifyOtp = async () => {
     }
   } catch (e: any) {
     console.error('Verify OTP failed:', e);
-    alert(e.data?.msg || 'Invalid or expired OTP');
+    showNotification('Verification Failed', e.data?.msg || 'Invalid or expired OTP', 'error');
   } finally {
     isOtpLoading.value = false;
   }
