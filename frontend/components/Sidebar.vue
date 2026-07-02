@@ -7,16 +7,22 @@
     <!-- Header with Logo -->
     <div class="p-6 border-b border-gray-200 dark:border-gray-800">
       <div class="flex items-center gap-3">
-        <div class="h-10 w-10 rounded-xl bg-primary-600 flex items-center justify-center shadow-sm">
+        <div class="h-10 w-10 rounded-xl bg-primary-600 flex items-center justify-center shadow-sm shrink-0">
           <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
             <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
           </svg>
         </div>
-        <div>
+        <div class="flex-1 min-w-0">
           <p class="font-bold text-lg">Predictive EHR</p>
           <p class="text-xs text-gray-500 dark:text-gray-400">Analytics Dashboard</p>
         </div>
+        <NuxtLink v-if="userRole !== 'patient'" to="/alerts" class="relative shrink-0 p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+          </svg>
+          <span v-if="unreadAlertCount > 0" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">{{ unreadAlertCount > 9 ? '9+' : unreadAlertCount }}</span>
+        </NuxtLink>
       </div>
     </div>
 
@@ -34,7 +40,7 @@
         >
           <span v-html="item.icon"></span>
           <span class="font-medium">{{ item.label }}</span>
-          <span v-if="item.badge && item.badge > 0" class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{{ item.badge }}</span>
+
         </router-link>
       </template>
     </nav>
@@ -95,7 +101,7 @@ const { userRole, currentUser, logout, authToken } = useAuth();
 const route = useRoute();
 
 const showLogoutModal = ref(false);
-const unreadAlertCount = ref(0);
+const { unreadAlertCount, refresh: refreshAlertCount } = useAlertCount();
 
 const userInitial = computed(() => {
   if (userRole.value === 'patient') {
@@ -135,30 +141,12 @@ const hospitalLabel = computed(() => {
   return '';
 });
 
-// Fetch unread alert count
-const fetchAlertCount = async () => {
-  try {
-    if (!authToken.value || userRole.value === 'patient') {
-      return;
-    }
-    const config = useRuntimeConfig()
-    const response = await fetch(`${config.public.apiBase}/alerts/unread-count`, {
-      headers: { 'Authorization': `Bearer ${authToken.value}` }
-    });
-    const data = await response.json();
-    unreadAlertCount.value = data.unread_count || 0;
-  } catch (error) {
-    console.error('Failed to fetch alert count:', error);
-  }
-};
-
-// Fetch alert count on mount and periodically
 onMounted(() => {
-  if (userRole.value !== 'patient') {
-    fetchAlertCount();
-    const interval = setInterval(fetchAlertCount, 30000); // Refresh every 30 seconds
-    onUnmounted(() => clearInterval(interval));
-  }
+  if (userRole.value === 'patient') return;
+  refreshAlertCount();
+  const interval = setInterval(refreshAlertCount, 30000);
+  watch(authToken, (token) => { if (token) refreshAlertCount(); });
+  onUnmounted(() => clearInterval(interval));
 });
 
 const isActive = (path: string) => route.path === path || route.path.startsWith(path + '/');
@@ -262,7 +250,6 @@ const navItems = computed(() => {
       label: 'Alerts',
       icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>`,
       roles: ['admin', 'doctor', 'hospital_admin'],
-      badge: unreadAlertCount.value
     },
     {
       path: '/hospitals',

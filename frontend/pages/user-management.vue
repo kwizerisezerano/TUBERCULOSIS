@@ -159,6 +159,11 @@
             <option value="lab_technician">Lab Technician</option>
             <option value="pharmacist">Pharmacist</option>
           </select>
+          <select v-if="!showEditModal" v-model="form.hospital_id"
+            class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm outline-none focus:ring-2 focus:ring-primary-500">
+            <option value="">Select Hospital</option>
+            <option v-for="h in hospitalOptions" :key="h.id" :value="h.id">{{ h.name }}</option>
+          </select>
         </div>
         <p v-if="formError" class="text-sm text-red-500">{{ formError }}</p>
         <div class="flex justify-end gap-3 pt-2">
@@ -218,7 +223,7 @@ const editingUser = ref(null)
 const deletingUser = ref(null)
 const saving = ref(false)
 const formError = ref('')
-const form = ref({ username: '', email: '', password: '', role: '' })
+const form = ref({ username: '', email: '', password: '', role: '', hospital_id: '' })
 
 const ROLE_ORDER = ['admin', 'hospital_admin', 'doctor', 'lab_technician', 'pharmacist']
 
@@ -298,7 +303,7 @@ const fetchUsers = async () => {
 }
 
 const openAddModal = () => {
-  form.value = { username: '', email: '', password: '', role: '' }
+  form.value = { username: '', email: '', password: '', role: '', hospital_id: '' }
   formError.value = ''
   showAddModal.value = true
 }
@@ -330,6 +335,7 @@ const saveUser = async () => {
   try {
     const body = { username: form.value.username, email: form.value.email, role: form.value.role }
     if (form.value.password) body.password = form.value.password
+    if (!showEditModal.value && form.value.hospital_id) body.hospital_id = form.value.hospital_id
     const url    = showEditModal.value ? `${API_BASE}/users/${editingUser.value.id}` : `${API_BASE}/users`
     const method = showEditModal.value ? 'PUT' : 'POST'
     const res = await fetch(url, {

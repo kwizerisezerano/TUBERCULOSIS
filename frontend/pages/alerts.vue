@@ -68,6 +68,34 @@
             </div>
           </div>
         </div>
+
+        <!-- Pagination -->
+        <div v-if="totalPages > 1" class="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            Page {{ currentPage }} of {{ totalPages }} ({{ totalAlerts }} total)
+          </p>
+          <div class="flex gap-2">
+            <button
+              @click="goToPage(currentPage - 1)"
+              :disabled="currentPage === 1"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+            >Previous</button>
+            <button
+              v-for="p in pageNumbers"
+              :key="p"
+              @click="goToPage(p)"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium border transition"
+              :class="p === currentPage
+                ? 'bg-primary-600 text-white border-primary-600'
+                : 'border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'"
+            >{{ p }}</button>
+            <button
+              @click="goToPage(currentPage + 1)"
+              :disabled="currentPage === totalPages"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+            >Next</button>
+          </div>
+        </div>
       </div>
     </div>
   </DashboardLayout>
@@ -78,10 +106,23 @@ import { ref, computed, onMounted } from 'vue';
 import DashboardLayout from '~/components/DashboardLayout.vue';
 
 const { getAlerts, markAlertRead, getDashboardStats } = useApi();
+const { unreadAlertCount, refresh: refreshAlertCount } = useAlertCount();
 
 const alerts = ref<any[]>([]);
 const dashboard = ref<any>({});
 const loading = ref(false);
+const currentPage = ref(1);
+const perPage = 10;
+const totalAlerts = ref(0);
+
+const totalPages = computed(() => Math.ceil(totalAlerts.value / perPage));
+const pageNumbers = computed(() => {
+  const pages = [];
+  const start = Math.max(1, currentPage.value - 2);
+  const end = Math.min(totalPages.value, start + 4);
+  for (let i = start; i <= end; i++) pages.push(i);
+  return pages;
+});
 
 const unreadCount = computed(() => alerts.value.filter(a => !a.is_read).length);
 const criticalCount = computed(() => alerts.value.filter(a => a.severity === 'critical').length);
@@ -90,10 +131,11 @@ const fetchAlerts = async () => {
   loading.value = true;
   try {
     const [alertsRes, dashboardRes] = await Promise.all([
-      getAlerts(1, 100, false),
+      getAlerts(currentPage.value, perPage, false),
       getDashboardStats()
     ]);
     alerts.value = alertsRes.alerts || [];
+    totalAlerts.value = alertsRes.total || 0;
     dashboard.value = dashboardRes;
   } catch (error) {
     console.error('Failed to fetch alerts:', error);
@@ -102,15 +144,19 @@ const fetchAlerts = async () => {
   }
 };
 
+const goToPage = (page: number) => {
+  if (page < 1 || page > totalPages.value) return;
+  currentPage.value = page;
+  fetchAlerts();
+};
+
 const markAsRead = async (alert: any) => {
   if (alert.is_read) return;
-  
   try {
     await markAlertRead(alert.id);
     alert.is_read = true;
-    // Refresh stats
-    const dashboardRes = await getDashboardStats();
-    dashboard.value = dashboardRes;
+    dashboard.value.alert_stats && dashboard.value.alert_stats.unread--;
+    refreshAlertCount();
   } catch (error) {
     console.error('Failed to mark alert as read:', error);
   }
@@ -118,13 +164,10 @@ const markAsRead = async (alert: any) => {
 
 const markAllRead = async () => {
   try {
-    for (const alert of alerts.value.filter(a => !a.is_read)) {
-      await markAlertRead(alert.id);
-      alert.is_read = true;
-    }
-    // Refresh stats
-    const dashboardRes = await getDashboardStats();
-    dashboard.value = dashboardRes;
+    await Promise.all(alerts.value.filter(a => !a.is_read).map(a => markAlertRead(a.id)));
+    alerts.value.forEach(a => a.is_read = true);
+    if (dashboard.value.alert_stats) dashboard.value.alert_stats.unread = 0;
+    refreshAlertCount();
   } catch (error) {
     console.error('Failed to mark all alerts as read:', error);
   }

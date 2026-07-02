@@ -3551,6 +3551,7 @@ def get_users():
             email=data.get('email'),
             password=hashed_password,
             role=data.get('role', 'doctor'),
+            hospital_id=data.get('hospital_id') or user.hospital_id,
             is_active=data.get('is_active', True)
         )
         db.session.add(new_user)
@@ -7040,24 +7041,20 @@ def get_alerts():
         }), 200
 
 @app.route('/api/alerts/unread-count', methods=['GET'])
+@jwt_required()
 def get_unread_alerts_count():
     """Get count of unread alerts for current user (simplified endpoint)"""
     try:
-        from flask_jwt_extended import verify_jwt_in_request_optional
-        verify_jwt_in_request_optional()
-        
         current_user = get_current_user_from_jwt()
         if not current_user:
             return jsonify({'unread_count': 0})
         
         query = Alert.query.filter_by(is_read=False)
         
-        # Hospital-based access control
         if current_user.role != 'admin' and current_user.hospital_id:
             query = query.filter_by(hospital_id=current_user.hospital_id)
         
-        count = query.count()
-        return jsonify({'unread_count': count})
+        return jsonify({'unread_count': query.count()})
     except Exception as e:
         return jsonify({'unread_count': 0}), 200
 

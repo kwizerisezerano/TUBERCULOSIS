@@ -27,14 +27,6 @@
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Default Language</label>
-              <select v-model="settings.language" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none">
-                <option value="en">English</option>
-                <option value="fr">French</option>
-                <option value="rw">Kinyarwanda</option>
-              </select>
-            </div>
-            <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Timezone</label>
               <select v-model="settings.timezone" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none">
                 <option value="Africa/Kigali">Africa/Kigali (CAT)</option>
@@ -133,22 +125,6 @@
           <div class="space-y-4">
             <div class="flex items-center justify-between">
               <div>
-                <p class="font-medium text-gray-900 dark:text-white">Require 2FA</p>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Require two-factor authentication for all users</p>
-              </div>
-              <button
-                @click="settings.require2FA = !settings.require2FA"
-                :class="settings.require2FA ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-              >
-                <span
-                  :class="settings.require2FA ? 'translate-x-6' : 'translate-x-1'"
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                />
-              </button>
-            </div>
-            <div class="flex items-center justify-between">
-              <div>
                 <p class="font-medium text-gray-900 dark:text-white">Session Timeout (minutes)</p>
                 <p class="text-sm text-gray-500 dark:text-gray-400">Auto-logout after inactivity</p>
               </div>
@@ -164,11 +140,11 @@
 
         <!-- Save Button -->
         <div class="flex justify-end gap-3">
-          <button class="px-6 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium transition-colors">
+          <button @click="resetDefaults" class="px-6 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium transition-colors">
             Reset to Defaults
           </button>
-          <button @click="saveSettings" class="px-6 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-medium transition-colors">
-            Save Settings
+          <button @click="saveSettings" class="px-6 py-2 rounded-xl font-medium transition-colors" :class="saved ? 'bg-green-600 text-white' : 'bg-primary-600 hover:bg-primary-700 text-white'">
+            {{ saved ? '✓ Saved' : 'Save Settings' }}
           </button>
         </div>
       </div>
@@ -178,44 +154,33 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useAuth } from '~/composables/useAuth'
 
-const { authToken } = useAuth()
-const config = useRuntimeConfig()
-const API_BASE = config.public.apiBase
-
-const settings = ref({
+const DEFAULTS = {
   systemName: 'TB Predictive EHR',
-  language: 'en',
   timezone: 'Africa/Kigali',
   autoTrain: true,
   confidenceThreshold: 75,
   dataRetentionDays: 365,
   autoArchive: true,
-  require2FA: false,
   sessionTimeout: 30
-})
+}
 
-const saveSettings = async () => {
-  try {
-    const token = authToken.value
-    const response = await fetch(`${API_BASE}/settings`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(settings.value)
-    })
-    if (response.ok) {
-      alert('Settings saved successfully')
-    }
-  } catch (error) {
-    console.error('Error saving settings:', error)
-  }
+const settings = ref({ ...DEFAULTS })
+const saved = ref(false)
+
+const saveSettings = () => {
+  localStorage.setItem('system_settings', JSON.stringify(settings.value))
+  saved.value = true
+  setTimeout(() => saved.value = false, 2000)
+}
+
+const resetDefaults = () => {
+  settings.value = { ...DEFAULTS }
+  localStorage.removeItem('system_settings')
 }
 
 onMounted(() => {
-  // Load settings from API if available
+  const stored = localStorage.getItem('system_settings')
+  if (stored) settings.value = { ...DEFAULTS, ...JSON.parse(stored) }
 })
 </script>
